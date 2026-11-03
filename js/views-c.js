@@ -1,0 +1,295 @@
+'use strict';
+/* ============================================================
+   Views: My To-Do · AI Meeting Hub · Team & Settings
+   ============================================================ */
+
+/* ============================ MY TO-DO ============================ */
+function todoBuckets(uid_) {
+  const t0 = today();
+  const mine = visibleTasks().filter(t => t.assigneeId === uid_ && t.status !== 'cancelled');
+  return {
+    today: sortBy(mine.filter(t => isActive(t) && taskStart(t) <= t0 && taskEnd(t) >= t0), t => taskEnd(t)),
+    upcoming: sortBy(mine.filter(t => isActive(t) && taskStart(t) > t0), t => taskStart(t)),
+    overdue: sortBy(mine.filter(isDelayed), t => taskEnd(t)),
+    done: sortBy(mine.filter(t => t.status === 'done'), t => t.doneAt || '').reverse(),
+  };
+}
+V.todo = root => {
+  const f = ST.todo;
+  if (!f.user || !member(f.user) || (!isAdmin() && f.user !== me().id)) f.user = me().id;
+  const who = member(f.user), own = f.user === me().id, B = todoBuckets(f.user);
+  const tabs = [['today', 'วันนี้', B.today.length], ['upcoming', 'กำลังจะถึง', B.upcoming.length], ['overdue', 'เกินกำหนด', B.overdue.length], ['done', 'เสร็จแล้ว', B.done.length]];
+  const list = B[f.tab];
+  const doneToday = B.done.filter(t => t.doneAt === today()).length, denom = B.today.length + doneToday;
+  const myProjects = S().projects.filter(p => p.squad.includes(me().id) || canManageProject(p));
+  const row = t => {
+    const p = t.projectId && project(t.projectId), late = isDelayed(t), done = t.status === 'done';
+    return `<li class="todo ${done ? 'is-done' : ''}">
+      <button class="tick ${done ? 'on' : ''}" data-act="toggleDone" data-id="${t.id}" aria-label="${done ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายเสร็จ'}" ${canStatus(t) ? '' : 'disabled'}>${done ? ico('check', 14) : ''}</button>
+      <div class="grow clickable" data-act="openTask" data-id="${t.id}"><b>${esc(t.title)}</b>
+        <div class="tmeta">${prioDot(t.priority)}<span>${PRIO[t.priority].th}</span>
+          ${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : ''}${t.source === 'ram' ? `<span class="pchip ram">RAM · ${esc(t.ram?.area || '')}</span>` : ''}${t.source === 'meeting' ? '<span class="pchip ram">ประชุม</span>' : ''}${t.private ? `<span class="muted">${ico('lock', 12)} ส่วนตัว</span>` : ''}
+          ${linkList(t) ? '<span class="muted">' + ico('paperclip', 12) + ' มีไฟล์/ลิงก์</span>' : ''}</div></div>
+      <div class="due ${late ? 'late' : ''}">${done ? 'เสร็จ ' + fmtD(t.doneAt) : `${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small>`}</div>
+      ${isActive(t) && t.status === 'todo' ? `<button class="btn btn-ghost btn-sm" data-act="startTask" data-id="${t.id}" ${canStatus(t) ? '' : 'disabled'}>เริ่มทำ</button>` : isActive(t) ? '<span class="badge st-doing">กำลังทำ</span>' : ''}</li>`;
+  };
+  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, own ? `สวัสดี ${esc(me().name)} — ${B.today.length ? `วันนี้มี <b>${B.today.length}</b> งานที่ต้องโฟกัส` : 'วันนี้ว่าง ไม่มีงานที่ต้องทำ 🎉'}` : 'คุณกำลังดูในฐานะ Admin',
+    isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '') + `
+  ${B.overdue.length && f.tab !== 'overdue' ? `<button class="banner late" data-act="todoTab" data-id="overdue">${ico('alert', 18)} มีงานเกินกำหนด ${B.overdue.length} รายการ — กดเพื่อดู</button>` : ''}
+  ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานใหม่… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
+    <input type="date" name="due" value="${today()}" aria-label="กำหนดส่ง"><select name="prio" aria-label="ความสำคัญ">${Object.keys(PRIO).map(k => opt(k, 'สำคัญ: ' + PRIO[k].th, k === 'med' ? 'med' : '')).join('')}</select>
+    <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว (ไม่ผูก Project)', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
+    <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
+  <div class="todo-grid"><div>
+    <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" class="${f.tab === k ? 'on' : ''} ${k === 'overdue' && n ? 'warn' : ''}" data-act="todoTab" data-id="${k}">${l}<em>${n}</em></button>`).join('')}</div>
+    ${list.length ? `<ul class="todolist">${list.map(row).join('')}</ul>` : empty(f.tab === 'done' ? 'check' : 'clock', { today: 'ไม่มีงานสำหรับวันนี้', upcoming: 'ยังไม่มีงานที่กำลังจะถึง', overdue: 'ไม่มีงานเกินกำหนด', done: 'ยังไม่มีงานที่เสร็จ' }[f.tab], f.tab === 'overdue' ? 'เยี่ยมมาก ทุกอย่างทันกำหนด' : 'พิมพ์ชื่องานในช่องด้านบนเพื่อเพิ่มได้ทันที')}
+  </div>
+  <aside class="card side"><div class="card-h"><h3>ความคืบหน้าวันนี้</h3></div>
+    <div class="ring" style="--p:${denom ? Math.round(doneToday / denom * 100) : 0}"><b>${denom ? Math.round(doneToday / denom * 100) : 0}%</b><span>${doneToday}/${denom} งาน</span></div>
+    <p class="muted small center">งานจาก Project และ RAM ที่ได้รับมอบหมาย จะปรากฏที่นี่อัตโนมัติ และอัปเดตตรงกับ Kanban / Gantt</p></aside></div>`;
+  const qa = $('#quickAdd');
+  if (qa) qa.onsubmit = e => {
+    e.preventDefault(); const v = qa.elements, title = v.title.value.trim(); if (!title) { v.title.focus(); return; }
+    const t = newTask('personal', { title, start: v.due.value || today(), duration: 1, priority: v.prio.value, projectId: v.pid.value || null, private: v.priv.checked && !v.pid.value, type: 'Admin / อื่นๆ' });
+    if (t.projectId) t.source = 'project';
+    S().tasks.push(t); ST.todo.tab = t.start > today() ? 'upcoming' : (t.start < today() ? 'overdue' : 'today'); commit(); toast('เพิ่มงานแล้ว');
+    setTimeout(() => $('#quickAdd input[name=title]')?.focus(), 30);
+  };
+};
+ACT.todoTab = el => { ST.todo.tab = el.dataset.id; render(); };
+ACT.toggleDone = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) setStatus(t, t.status === 'done' ? 'todo' : 'done'); };
+ACT.startTask = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) setStatus(t, 'doing'); };
+
+/* ========================== AI MEETING HUB ========================== */
+const MON_RX = TH_MON.map(m => m.replace(/\./g, '\\.?'));
+function parseDateText(l) {
+  let m;
+  if ((m = l.match(/\b(\d{4})-(\d{2})-(\d{2})\b/))) return m[0];
+  if ((m = l.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))) {
+    let y = m[3] ? +m[3] : new Date().getFullYear(); if (y > 2400) y -= 543; else if (y < 100) y += 2000;
+    const d = new Date(y, +m[2] - 1, +m[1]); if (!isNaN(d)) return iso(d);
+  }
+  for (let i = 0; i < 12; i++) {
+    const rx = new RegExp(`(\\d{1,2})\\s*(?:${MON_RX[i]}|${TH_MON_FULL[i]})(?:\\s*(\\d{2,4}))?`);
+    if ((m = l.match(rx))) { let y = m[2] ? +m[2] : new Date().getFullYear(); if (y > 2400) y -= 543; else if (y < 100) y += 2000; return iso(new Date(y, i, +m[1])); }
+  }
+  if (/พรุ่งนี้|tomorrow/i.test(l)) return addDays(today(), 1);
+  if (/วันนี้|today/i.test(l)) return today();
+  if (/สัปดาห์หน้า|next week/i.test(l)) return addDays(today(), 7);
+  return '';
+}
+/* Rule-based extractor. Swap this function for a real AI/transcription call when available. */
+function analyzeMeeting(text) {
+  const lines = text.split(/\r?\n/).map(l => l.replace(/^\s*(?:[-*•▪●]|\d+[.)])\s*/, '').trim()).filter(l => l.length > 2);
+  const verbs = /(ทำ|จัด|ส่ง|เตรียม|ประสาน|ติดตาม|ออกแบบ|สรุป|ตรวจ|นัด|ขอ|อัปเดต|อัพเดต|ยืนยัน|ร่าง|ผลิต|ถ่าย|เขียน|prepare|send|follow|update|design|review|confirm|draft|book|check)/i;
+  const actRx = /(action\s*(items?)?\s*[:：-]|todo\s*[:：-]|to-do\s*[:：-]|\[ ?\]|☐|รับผิดชอบ|follow[- ]?up|@\w+|ให้.{1,40}(ทำ|จัด|ส่ง|เตรียม|ประสาน|ติดตาม))/i;
+  const decRx = /^(สรุป|ตกลง|มติ|ที่ประชุม|ตัดสินใจ|อนุมัติ|decision|decided|agreed|approved)/i;
+  const found = l => S().members.find(m => l.toLowerCase().includes(m.name.toLowerCase()) || (m.alias && l.includes(m.alias)));
+  const out = { summary: '', keyPoints: [], decisions: [], actions: [] };
+  lines.forEach(l => {
+    const who = found(l);
+    if (decRx.test(l)) out.decisions.push(l.replace(decRx, '').replace(/^[\s:：-]+/, '') || l);
+    else if (actRx.test(l) || (who && verbs.test(l))) {
+      const due = parseDateText(l);
+      const title = l.replace(/^(action\s*(items?)?|todo|to-do)\s*[:：-]?\s*/i, '').replace(/\[ ?\]|☐|@\w+/g, '').replace(/\s{2,}/g, ' ').trim();
+      out.actions.push({ id: uid('a_'), title, assigneeId: who?.id || '', due, priority: /ด่วน|urgent|asap/i.test(l) ? 'high' : 'med', include: true, taskId: null });
+    } else if (!/[:：]$/.test(l) && l.length > 5) out.keyPoints.push(l);
+  });
+  out.keyPoints = out.keyPoints.slice(0, 8);
+  out.summary = out.keyPoints.length ? 'ประเด็นหลัก: ' + out.keyPoints.slice(0, 3).join(' · ') + ` — พบข้อสรุป ${out.decisions.length} ข้อ และ Action Items ${out.actions.length} รายการ` : (lines.length ? 'ไม่พบประเด็นชัดเจน กรุณาตรวจสอบและแก้ไขสรุปด้วยตนเอง' : '');
+  return out;
+}
+const SAMPLE_NOTES = `ประชุมวางแผนงาน Roadshow
+- ที่ประชุมตกลง เริ่ม Roadshow ภาคเหนือในไตรมาสแรก
+- สรุป งบ Production ต้องไม่เกินที่อนุมัติไว้
+- งบประมาณยังรอ Finance ยืนยัน
+- Action: Nitikun ออกแบบ Roadshow Kit ภายใน 15/12/2026
+- Pitcha ประสานทีม RAM ภาคใต้ ก่อน 20 ธ.ค.
+- @Chayada ร่างข่าวประชาสัมพันธ์ พรุ่งนี้`;
+
+V.meetings = root => {
+  const ms = sortBy(S().meetings, m => m.date).reverse(), f = ST.meet;
+  if (f.sel && !ms.find(m => m.id === f.sel)) f.sel = null;
+  if (!f.sel && ms.length && !f.draft) f.sel = ms[0].id;
+  const cur = f.draft || ms.find(m => m.id === f.sel);
+  root.innerHTML = pageHead('AI Meeting Hub', 'เปลี่ยนบันทึกประชุมให้เป็นข้อสรุป การตัดสินใจ และ Action Items — ตรวจสอบก่อนสร้างเป็น Task ของทีม',
+    `<button class="btn btn-primary" data-act="newMeeting">${ico('plus', 16)} ประชุมใหม่</button>`) + `
+  <div class="meet-grid"><aside class="card meet-list"><div class="card-h"><h3>การประชุม (${ms.length})</h3></div>
+    ${ms.length ? ms.map(m => `<button class="mi ${cur && cur.id === m.id ? 'on' : ''}" data-act="selMeeting" data-id="${m.id}"><b>${esc(m.title)}</b><small>${fmtDY(m.date)} · ${m.status === 'confirmed' ? 'ยืนยันแล้ว' : 'ฉบับร่าง'} · ${m.actions.length} action</small></button>`).join('') : '<p class="muted small pad">ยังไม่มีบันทึกการประชุม</p>'}</aside>
+    <section>${cur ? meetingDetail(cur) : empty('mic', 'เริ่มจากการเพิ่มประชุม', 'วางข้อความบันทึก อัปโหลดไฟล์สรุป หรือแนบเสียง/รูป Post-it แล้วให้ระบบช่วยแยก Action Items', `<button class="btn btn-primary" data-act="newMeeting">${ico('plus', 16)} ประชุมใหม่</button>`)}</section></div>`;
+  bindMeeting(root, cur);
+};
+function meetingDetail(m) {
+  const lines = a => (a || []).join('\n');
+  return `<div class="card meet-detail" id="meetBox">
+    <div class="note ${m.status === 'draft' ? 'warn' : ''}">${ico('sparkles', 15)} ${m.status === 'draft' ? '<b>ฉบับร่างจากระบบ</b> — ระบบอ่านข้อความด้วยกฎอัตโนมัติ อาจจับชื่อ วันที่ หรือความหมายผิด โปรดตรวจและแก้ไขก่อนสร้าง Task' : 'ยืนยันแล้ว — แก้ไขได้ และสร้าง Task เพิ่มจาก Action ที่ยังไม่ได้แปลงได้'}</div>
+    <div class="form-grid">
+      <label class="field"><span>หัวข้อ</span><input id="mTitle" value="${esc(m.title)}"></label>
+      <label class="field"><span>วันที่ประชุม</span><input type="date" id="mDate" value="${m.date}"></label>
+      <label class="field full"><span>เชื่อมกับ Project (Action ที่สร้างจะเข้า Project นี้)</span><select id="mProj">${projectOptions(m.projectId, '— ไม่ผูก Project (เป็นงานจากการประชุม) —')}</select></label>
+      ${m.fileName ? `<div class="field full"><span>ไฟล์ต้นทาง</span><div class="static">${ico('paperclip', 14)} ${esc(m.fileName)}</div>${m.media || ''}</div>` : ''}
+      <label class="field full"><span>สรุปภาพรวม</span><textarea id="mSum" rows="3">${esc(m.summary)}</textarea></label>
+      <label class="field"><span>ประเด็นสำคัญ <small>(บรรทัดละ 1 ข้อ)</small></span><textarea id="mKey" rows="5">${esc(lines(m.keyPoints))}</textarea></label>
+      <label class="field"><span>ข้อสรุป / การตัดสินใจ</span><textarea id="mDec" rows="5">${esc(lines(m.decisions))}</textarea></label></div>
+    <div class="card-h mt"><h3>Action Items <small class="muted">เลือก ตรวจชื่อ/วันที่ แล้วกดสร้าง Task</small></h3><button class="btn btn-ghost btn-sm" id="addAct">${ico('plus', 14)} เพิ่มรายการ</button></div>
+    <div class="table-wrap"><table class="tbl actions"><thead><tr><th></th><th>งาน</th><th>ผู้รับผิดชอบ</th><th>กำหนดส่ง</th><th>สำคัญ</th><th></th></tr></thead><tbody id="actBody">${m.actions.map(actRow).join('')}</tbody></table></div>
+    ${m.actions.length ? '' : '<p class="muted small pad">ไม่พบ Action Items — กด “เพิ่มรายการ” เพื่อเพิ่มเอง</p>'}
+    <div class="meet-foot">${m.draftNew ? '' : `<button class="btn btn-danger-ghost" id="delMeet">${ico('trash', 15)} ลบการประชุม</button>`}<span class="grow"></span>
+      <button class="btn btn-ghost" id="saveMeet">บันทึกฉบับ${m.status === 'draft' ? 'ร่าง' : ''}</button><button class="btn btn-primary" id="convMeet">${ico('check', 16)} สร้างเป็น Task ของทีม</button></div></div>`;
+}
+const actRow = a => `<tr data-aid="${a.id}" class="${a.taskId ? 'conv' : ''}"><td><input type="checkbox" class="a-inc" ${a.include && !a.taskId ? 'checked' : ''} ${a.taskId ? 'disabled' : ''} aria-label="เลือก"></td>
+  <td><input class="a-title" value="${esc(a.title)}" ${a.taskId ? 'disabled' : ''}></td>
+  <td><select class="a-who ${a.assigneeId ? '' : 'need'}" ${a.taskId ? 'disabled' : ''}>${memberOptions(a.assigneeId, '— ระบุคน —')}</select></td>
+  <td><input type="date" class="a-due" value="${a.due || ''}" ${a.taskId ? 'disabled' : ''}></td>
+  <td><select class="a-pr" ${a.taskId ? 'disabled' : ''}>${Object.keys(PRIO).map(k => opt(k, PRIO[k].th, a.priority)).join('')}</select></td>
+  <td>${a.taskId ? `<span class="badge st-done" title="สร้าง Task แล้ว">เป็น Task แล้ว</span>` : '<button class="icon-btn a-rm" aria-label="ลบ">' + ico('x', 15) + '</button>'}</td></tr>`;
+function readMeetingForm(m) {
+  m.title = $('#mTitle').value.trim() || 'ประชุมไม่มีชื่อ'; m.date = $('#mDate').value || today(); m.projectId = $('#mProj').value || null;
+  m.summary = $('#mSum').value; m.keyPoints = $('#mKey').value.split('\n').map(x => x.trim()).filter(Boolean); m.decisions = $('#mDec').value.split('\n').map(x => x.trim()).filter(Boolean);
+  m.actions = $$('#actBody tr').map(r => {
+    const old = m.actions.find(a => a.id === r.dataset.aid) || {};
+    return { id: r.dataset.aid, title: $('.a-title', r).value.trim(), assigneeId: $('.a-who', r).value, due: $('.a-due', r).value, priority: $('.a-pr', r).value, include: $('.a-inc', r).checked, taskId: old.taskId || null };
+  }).filter(a => a.title);
+}
+function bindMeeting(root, m) {
+  if (!m) return;
+  const body = $('#actBody'); if (!body) return;
+  const bindRm = () => $$('.a-rm', body).forEach(b => b.onclick = () => { b.closest('tr').remove(); });
+  bindRm();
+  $('#addAct').onclick = () => { body.insertAdjacentHTML('beforeend', actRow({ id: uid('a_'), title: '', assigneeId: '', due: '', priority: 'med', include: true })); bindRm(); $$('.a-title', body).pop().focus(); };
+  const persist = () => { readMeetingForm(m); if (m.draftNew) { delete m.draftNew; S().meetings.push(m); ST.meet.draft = null; } ST.meet.sel = m.id; };
+  $('#saveMeet').onclick = () => { persist(); commit(); toast('บันทึกแล้ว'); };
+  const del = $('#delMeet'); if (del) del.onclick = async () => { if (await confirmBox('ลบการประชุมนี้? (Task ที่สร้างแล้วจะไม่ถูกลบ)', 'ลบ', true)) { S().meetings = S().meetings.filter(x => x.id !== m.id); ST.meet.sel = null; commit(); toast('ลบแล้ว'); } };
+  $('#convMeet').onclick = () => {
+    readMeetingForm(m);
+    const sel = m.actions.filter(a => a.include && !a.taskId);
+    if (!sel.length) return toast('ยังไม่ได้เลือก Action ที่จะสร้างเป็น Task', 'error');
+    const missing = sel.filter(a => !a.assigneeId);
+    if (missing.length) { toast(`กรุณาระบุผู้รับผิดชอบ ${missing.length} รายการ`, 'error'); $$('#actBody tr').forEach(r => { if (!$('.a-who', r).value && $('.a-inc', r).checked) r.classList.add('flash'); }); return; }
+    if (!isAdmin() && !(m.projectId && canManageProject(project(m.projectId))) && sel.some(a => a.assigneeId !== me().id) ) {
+      /* members may still create tasks for the team from a meeting they ran; allow but note */
+    }
+    sel.forEach(a => {
+      const t = newTask(m.projectId ? 'project' : 'meeting', { title: a.title, assigneeId: a.assigneeId, start: a.due && a.due >= today() ? a.due : today(), duration: 1, priority: a.priority, projectId: m.projectId, desc: `จากการประชุม “${m.title}” (${fmtDY(m.date)})`, meetingId: m.id, type: 'Admin / อื่นๆ' });
+      if (a.due) { t.duration = Math.max(1, diffDays(t.start, a.due) + 1); if (taskMode(t) === 'working') t.duration = Math.max(1, workdaysBetween(t.start, a.due)); }
+      S().tasks.push(t); a.taskId = t.id;
+    });
+    m.status = 'confirmed'; persist(); commit(); toast(`สร้าง ${sel.length} Task แล้ว — ผู้รับผิดชอบจะเห็นใน My To-Do`);
+  };
+}
+function workdaysBetween(a, b) { let n = 0, d = a; while (d <= b && n < 999) { if (!isOff(d)) n++; d = addDays(d, 1); } return n || 1; }
+ACT.selMeeting = el => { ST.meet.sel = el.dataset.id; ST.meet.draft = null; render(); };
+ACT.newMeeting = () => {
+  let media = '', fileName = '', textFromFile = '';
+  const m = modal({
+    title: 'ประชุมใหม่ — รวบรวมและสรุป', wide: true,
+    body: `<form class="form-grid" id="mtForm" autocomplete="off">
+      <label class="field"><span>หัวข้อการประชุม *</span><input name="title" required placeholder="เช่น Weekly Sync / Workshop Brainstorm"></label>
+      <label class="field"><span>วันที่</span><input type="date" name="date" value="${today()}"></label>
+      <div class="field full"><span>แหล่งข้อมูล</span><div class="src-pick">
+        <label class="srcbtn"><input type="file" id="mtFile" accept="audio/*,image/*,.txt,.md,.csv,.vtt,.srt,.doc,.docx,.pdf" hidden>${ico('upload', 18)}<b>อัปโหลดไฟล์</b><small>เสียง · เอกสาร · รูป Post-it</small></label>
+        <button type="button" class="srcbtn" id="mtSample">${ico('sparkles', 18)}<b>ลองตัวอย่าง</b><small>ดูว่าระบบแยกอย่างไร</small></button></div>
+        <div id="fileInfo" class="muted small"></div><div id="mediaBox"></div></div>
+      <label class="field full"><span>ข้อความบันทึกประชุม / ข้อความถอดเสียง / ข้อความบน Post-it</span>
+        <textarea name="text" rows="9" placeholder="วางหรือพิมพ์ที่นี่ — เคล็ดลับ: เขียน “Action: ชื่อคน ทำอะไร ภายใน 15/12” ระบบจะจับชื่อและวันที่ให้"></textarea></label>
+      <div class="note full">${ico('sparkles', 14)} <b>เวอร์ชันนี้แยกเนื้อหาด้วยกฎอ่านข้อความในเครื่อง</b> — ไฟล์เสียงและรูปภาพจะถูกแนบไว้ แต่ยังไม่ถูกถอดความอัตโนมัติ (ต้องพิมพ์/วางข้อความ หรือเชื่อมบริการ AI ภายหลัง) ผลลัพธ์เป็นฉบับร่างที่คุณต้องตรวจก่อนเสมอ</div></form>`,
+    actions: [{ label: 'ยกเลิก' }, {
+      label: ico('sparkles', 15) + ' วิเคราะห์และสร้างฉบับร่าง', cls: 'btn-primary', onClick: () => {
+        const f = $('#mtForm'); if (!f.reportValidity()) return false;
+        const text = f.elements.text.value.trim();
+        if (!text) { toast('กรุณาวางหรือพิมพ์ข้อความบันทึกประชุมก่อน', 'error'); return false; }
+        const r = analyzeMeeting(text);
+        ST.meet.draft = { id: uid('mt_'), draftNew: true, title: f.elements.title.value.trim(), date: f.elements.date.value, source: 'text', fileName, media, projectId: null, status: 'draft', raw: text, ...r };
+        render(); toast('สร้างฉบับร่างแล้ว — โปรดตรวจสอบก่อนสร้าง Task');
+      },
+    }],
+    onOpen(md) {
+      const f = $('#mtForm', md.el), fin = $('#mtFile', md.el);
+      f.addEventListener('submit', e => e.preventDefault());
+      $('#mtSample', md.el).onclick = () => { f.elements.title.value ||= 'ประชุมวางแผน Roadshow'; f.elements.text.value = SAMPLE_NOTES; };
+      fin.onchange = () => {
+        const file = fin.files[0]; if (!file) return; fileName = file.name;
+        const info = $('#fileInfo', md.el), box = $('#mediaBox', md.el);
+        info.textContent = `แนบแล้ว: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+        if (!f.elements.title.value) f.elements.title.value = file.name.replace(/\.[^.]+$/, '');
+        if (/^audio\//.test(file.type)) { const u = URL.createObjectURL(file); box.innerHTML = `<audio controls src="${u}"></audio>`; info.textContent += ' — ฟังแล้วพิมพ์สรุป/ถอดความในช่องด้านล่าง'; media = ''; }
+        else if (/^image\//.test(file.type)) { const r = new FileReader(); r.onload = () => { box.innerHTML = `<img class="preview" src="${r.result}" alt="รูป Post-it">`; if (file.size < 600000) media = `<img class="preview" src="${r.result}" alt="รูปต้นทาง">`; }; r.readAsDataURL(file); info.textContent += ' — พิมพ์ข้อความบน Post-it แต่ละใบเป็น 1 บรรทัดในช่องด้านล่าง'; }
+        else if (/\.(txt|md|csv|vtt|srt)$/i.test(file.name) || file.type.startsWith('text/')) { const r = new FileReader(); r.onload = () => { f.elements.text.value = r.result; }; r.readAsText(file); info.textContent += ' — อ่านข้อความเข้าช่องด้านล่างแล้ว'; }
+        else info.textContent += ' — เบราว์เซอร์อ่านไฟล์ Word/PDF โดยตรงไม่ได้ กรุณาคัดลอกข้อความมาวางด้านล่าง';
+      };
+    },
+  });
+};
+
+/* ========================= TEAM & SETTINGS ========================= */
+V.team = root => {
+  const admin = isAdmin(), st = S().settings;
+  const memberCard = m => {
+    const w = workload(m.id), pms = S().projects.filter(p => p.pmId === m.id);
+    return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
+      ${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
+      <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
+      <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p><div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
+  };
+  root.innerHTML = pageHead('ทีมและการตั้งค่า', `สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
+    admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
+  <div class="note">${ico('lock', 14)} <b>สิทธิ์การใช้งาน:</b> Admin เห็นและจัดการทุกอย่าง · Project Manager จัดการ Project และ Squad ของตน · สมาชิกดูและอัปเดตงานที่ได้รับมอบหมาย · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
+  ${S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}
+  ${admin ? `<h2 class="sec-h">การตั้งค่า (Admin)</h2><div class="two-col">
+    <section class="card"><div class="card-h"><h3>การนับวัน & วันหยุดบริษัท</h3></div>
+      <label class="field"><span>วิธีนับระยะเวลางาน (ค่าเริ่มต้นของทีม)</span><select id="setMode">${opt('working', 'วันทำงาน — ข้ามวันหยุดสุดสัปดาห์และวันหยุดบริษัท', st.dayMode)}${opt('calendar', 'วันปฏิทิน — นับทุกวัน', st.dayMode)}</select></label>
+      <div class="field"><span>วันหยุดประจำสัปดาห์</span><div class="wk-pick">${TH_DOW.map((d, i) => `<label class="pill"><input type="checkbox" class="wk" value="${i}" ${st.weekend.includes(i) ? 'checked' : ''}><span>${d}</span></label>`).join('')}</div></div>
+      <div class="field"><span>วันหยุดบริษัท</span><ul class="holidays">${sortBy(st.holidays, h => h.date).map((h, i) => `<li><span>${fmtDY(h.date)} — ${esc(h.name)}</span><button class="icon-btn" data-act="rmHoliday" data-id="${h.date}" aria-label="ลบ">${ico('x', 14)}</button></li>`).join('') || '<li class="muted">ยังไม่มีวันหยุด</li>'}</ul>
+      <div class="inline-add"><input type="date" id="hDate"><input id="hName" placeholder="ชื่อวันหยุด"><button class="btn btn-ghost btn-sm" data-act="addHoliday">เพิ่ม</button></div></div></section>
+    <section class="card"><div class="card-h"><h3>รายการตัวเลือก</h3></div>
+      <label class="field"><span>พื้นที่ / หน่วยงานผู้ขอ (RAM) <small>บรรทัดละ 1 รายการ</small></span><textarea id="setAreas" rows="5">${esc(st.areas.join('\n'))}</textarea></label>
+      <label class="field"><span>ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
+      <button class="btn btn-primary btn-sm" data-act="saveLists">บันทึกรายการ</button></section></div>
+    <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
+      <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
+      <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
+  const imp = $('#importIn'); if (imp) imp.onchange = () => {
+    const file = imp.files[0]; if (!file) return;
+    const r = new FileReader(); r.onload = async () => {
+      try { const d = JSON.parse(r.result); if (!d.members || !d.tasks) throw 0; if (!await confirmBox('แทนที่ข้อมูลปัจจุบันทั้งหมดด้วยไฟล์นี้?', 'นำเข้า', true)) return; Store.state = d; commit(); toast('นำเข้าข้อมูลแล้ว'); }
+      catch (e) { toast('ไฟล์ไม่ถูกต้อง', 'error'); }
+    }; r.readAsText(file);
+  };
+  const sm = $('#setMode'); if (sm) sm.onchange = () => { st.dayMode = sm.value; commit(); toast('บันทึกแล้ว'); };
+  $$('.wk').forEach(c => c.onchange = () => { st.weekend = $$('.wk:checked').map(x => +x.value); commit(); });
+};
+ACT.addHoliday = () => { const d = $('#hDate').value, n = $('#hName').value.trim(); if (!d || !n) return toast('ระบุวันที่และชื่อวันหยุด', 'error'); S().settings.holidays.push({ date: d, name: n }); commit(); };
+ACT.rmHoliday = el => { S().settings.holidays = S().settings.holidays.filter(h => h.date !== el.dataset.id); commit(); };
+ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.areas = sp('#setAreas'); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
+ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' })); };
+ACT.resetDemo = async () => { if (await confirmBox('ลบข้อมูลทั้งหมดและกลับเป็นข้อมูลตัวอย่าง?', 'รีเซ็ต', true)) { Store.state = seed(); commit(); toast('รีเซ็ตแล้ว'); } };
+ACT.newMember = () => openMember(null);
+ACT.editMember = el => openMember(el.dataset.id);
+function openMember(id) {
+  const orig = id ? member(id) : null;
+  const m = orig ? { ...orig } : { id: uid('m_'), name: '', alias: '', position: '', group: 'prime', role: 'member', resp: '' };
+  modal({
+    title: orig ? `แก้ไขโปรไฟล์ — ${orig.name}` : 'เพิ่มสมาชิก',
+    body: `<form id="mbForm" class="form-grid" autocomplete="off">
+      <label class="field"><span>ชื่อ *</span><input name="name" required value="${esc(m.name)}"></label><label class="field"><span>ชื่อเล่น (ไทย)</span><input name="alias" value="${esc(m.alias || '')}"></label>
+      <label class="field"><span>หน้าที่ / ทีม</span><select name="group">${groupOptions(m.group)}</select></label><label class="field"><span>ตำแหน่ง</span><input name="position" value="${esc(m.position)}"></label>
+      <label class="field full"><span>งานที่รับผิดชอบ</span><textarea name="resp" rows="2">${esc(m.resp)}</textarea></label>
+      <label class="field full"><span>สิทธิ์</span><select name="role">${opt('member', 'สมาชิก (ดูและอัปเดตงานที่ได้รับมอบหมาย)', m.role)}${opt('admin', 'Admin (ดูภาพรวมและจัดการทั้งหมด)', m.role)}</select></label></form>`,
+    actions: (orig ? [{ label: ico('trash', 15) + ' ลบสมาชิก', cls: 'btn-danger-ghost', left: true, onClick: async () => {
+      if (orig.id === me().id) { toast('ไม่สามารถลบตัวเองได้', 'error'); return false; }
+      if (S().members.filter(x => x.role === 'admin' && x.id !== orig.id).length === 0 && orig.role === 'admin') { toast('ต้องมี Admin อย่างน้อย 1 คน', 'error'); return false; }
+      const n = S().tasks.filter(t => t.assigneeId === orig.id && isActive(t)).length;
+      if (await confirmBox(`ลบ ${esc(orig.name)}? ${n ? `งานที่ยังเปิดอยู่ ${n} รายการจะกลายเป็น “ยังไม่ระบุผู้รับผิดชอบ”` : ''}`, 'ลบสมาชิก', true)) {
+        S().tasks = S().tasks.filter(t => !(t.private && t.assigneeId === orig.id)); S().tasks.forEach(t => { if (t.assigneeId === orig.id) t.assigneeId = ''; });
+        S().projects.forEach(p => { p.squad = p.squad.filter(x => x !== orig.id); if (p.pmId === orig.id) p.pmId = me().id; });
+        S().members = S().members.filter(x => x.id !== orig.id); commit(); toast('ลบสมาชิกแล้ว'); return true;
+      } return false;
+    } }] : []).concat([{ label: 'ยกเลิก' }, { label: 'บันทึก', cls: 'btn-primary', onClick: () => {
+      const f = $('#mbForm'); if (!f.reportValidity()) return false;
+      Object.assign(m, { name: f.elements.name.value.trim(), alias: f.elements.alias.value.trim(), group: f.elements.group.value, position: f.elements.position.value.trim(), resp: f.elements.resp.value, role: f.elements.role.value });
+      if (orig) Object.assign(orig, m); else S().members.push(m);
+      commit(); toast('บันทึกแล้ว');
+    } }]),
+    onOpen(md) { $('#mbForm', md.el).addEventListener('submit', e => e.preventDefault()); },
+  });
+}

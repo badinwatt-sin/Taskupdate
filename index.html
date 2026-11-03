@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#4f46e5">
+<title>Agency Experience Team Hub</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M9 17l5 5 9-12' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<a class="skip" href="#view">ข้ามไปยังเนื้อหา</a>
+<div id="scrim"></div>
+<aside class="sidebar" aria-label="เมนูหลัก">
+  <div class="brand"><div class="logo"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
+    <div><b>Experience Hub</b><small>Agency Experience Team</small></div></div>
+  <nav id="nav"></nav>
+  <div class="side-foot"><div id="sync" class="sync local">เก็บในเบราว์เซอร์นี้</div>
+    <button id="userBtn" class="user-btn" aria-label="เปลี่ยนผู้ใช้"></button></div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <button id="menuBtn" class="icon-btn menu-btn" aria-label="เปิดเมนู"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+    <button id="searchBtn" class="search-trigger" aria-label="ค้นหา"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span>ค้นหางาน, Project, Event…</span><kbd>Ctrl K</kbd></button>
+    <button id="addBtn" class="btn btn-primary"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>สร้างงาน</span></button>
+  </header>
+  <main id="view" class="view" tabindex="-1"><div class="loading">กำลังโหลด…</div></main>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<script src="js/core.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/views-a.js"></script>
+<script src="js/views-b.js"></script>
+<script src="js/views-c.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
