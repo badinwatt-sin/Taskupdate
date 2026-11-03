@@ -3,7 +3,7 @@
    App shell: router, navigation, search, user switcher
    ============================================================ */
 const NAV = [
-  ['dashboard', 'Team Dashboard', 'dashboard'], ['support', 'Event & RAM Support', 'inbox'], ['calendar', 'Major Event Calendar', 'calendar'],
+  ['dashboard', 'Dashboard', 'dashboard'], ['support', 'Offsite & Event Support', 'inbox'], ['calendar', 'Major Event Calendar', 'calendar'],
   ['projects', 'Project & Squad', 'folder'], ['board', 'Gantt & Kanban', 'board'], ['todo', 'My To-Do', 'check'],
   ['meetings', 'AI Meeting Hub', 'mic'], ['team', 'ทีมและการตั้งค่า', 'users'],
 ];
@@ -54,7 +54,7 @@ function openSearch() {
         const q = inp.value.trim().toLowerCase(); if (!q) { out.innerHTML = '<p class="muted small pad">พิมพ์เพื่อค้นหาในทุกส่วนของระบบ</p>'; return; }
         const has = s => String(s || '').toLowerCase().includes(q), rows = [];
         visibleTasks().filter(t => has(t.title) || has(t.ram?.requester) || has(t.desc)).slice(0, 8).forEach(t => rows.push(['งาน', t.title, `${member(t.assigneeId)?.name || '–'} · ${STATUS[t.status].th}`, 'openTask', t.id]));
-        S().projects.filter(p => has(p.name) || has(p.goal)).forEach(p => rows.push(['Project', p.name, `PM: ${member(p.pmId)?.name || '–'}`, 'goProject', p.id]));
+        visibleProjects().filter(p => has(p.name) || has(p.goal)).forEach(p => rows.push(['Project', p.name, `PM: ${member(p.pmId)?.name || '–'}`, 'goProject', p.id]));
         S().events.filter(e => has(e.name) || has(e.venue)).forEach(e => rows.push(['Event', e.name, fmtRange(e.start, e.end), 'openEvent', e.id]));
         S().meetings.filter(x => has(x.title) || has(x.summary)).forEach(x => rows.push(['ประชุม', x.title, fmtDY(x.date), 'goMeeting', x.id]));
         S().members.filter(x => has(x.name) || has(x.alias)).forEach(x => rows.push(['สมาชิก', x.name, x.position, 'goTodo', x.id]));

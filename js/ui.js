@@ -119,7 +119,7 @@ const memberOptions = (sel, blank) => (blank ? opt('', blank, sel) : '') + S().g
   return `<optgroup label="${esc(g.name)}">${ms.map(m => opt(m.id, m.name, sel)).join('')}</optgroup>`;
 }).join('');
 const groupOptions = (sel, blank) => (blank ? opt('', blank, sel) : '') + S().groups.map(g => opt(g.id, g.name, sel)).join('');
-const projectOptions = (sel, blank) => (blank ? opt('', blank, sel) : '') + S().projects.map(p => opt(p.id, p.name, sel)).join('');
+const projectOptions = (sel, blank) => (blank ? opt('', blank, sel) : '') + visibleProjects().map(p => opt(p.id, p.name, sel)).join('');
 function linkList(t) {
   const L = (t.links || []).map(l => `<a class="attach" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${ico('link', 14)}${esc(l.label || l.url)}</a>`);
   const F = (t.files || []).map(f => `<a class="attach" href="${f.data}" download="${esc(f.name)}">${ico('paperclip', 14)}${esc(f.name)}</a>`);
@@ -132,11 +132,11 @@ const ST = {
   dash: { group: '' },
   tracker: { q: '', area: '', who: '', status: '', month: '' },
   cal: { mode: 'month', y: new Date().getFullYear(), m: new Date().getMonth(), ram: true, ms: true },
-  proj: { tab: 'overview', group: '', who: '', zoom: 'day' },
+  proj: { tab: 'tasks', group: '', who: '', zoom: 'day' },
   board: { tab: 'kanban', project: '', group: '', who: '', zoom: 'day', hideDone: false },
-  todo: { tab: 'today', user: null },
+  todo: { week: 0, user: null, view: 'board' },
   meet: { sel: null, draft: null },
-  team: {},
+  team: { tab: 'members' },
 };
 const setPath = (path, val) => { const ks = path.split('.'); let o = ST; while (ks.length > 1) o = o[ks.shift()]; o[ks[0]] = val; };
 

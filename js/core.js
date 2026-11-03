@@ -31,10 +31,24 @@ const fmtRel = s => {
 const monthKey = s => s.slice(0, 7);
 
 /* ---------- Working-day calendar ---------- */
-const isOff = s => {
+/* Thai public holidays (government announcement). 2026 complete; 2027 = fixed-date holidays only,
+   lunar-calendar holidays for 2027 must be added by Admin once announced. */
+const PUBLIC_HOLIDAYS = [
+  ['2026-01-01', 'วันขึ้นปีใหม่'], ['2026-03-03', 'วันมาฆบูชา'], ['2026-04-06', 'วันจักรี'], ['2026-04-13', 'วันสงกรานต์'], ['2026-04-14', 'วันสงกรานต์'], ['2026-04-15', 'วันสงกรานต์'],
+  ['2026-05-01', 'วันแรงงานแห่งชาติ'], ['2026-05-04', 'วันฉัตรมงคล'], ['2026-06-01', 'ชดเชยวันวิสาขบูชา'], ['2026-06-03', 'วันเฉลิมฯ สมเด็จพระราชินี'],
+  ['2026-07-28', 'วันเฉลิมฯ พระบาทสมเด็จพระเจ้าอยู่หัว'], ['2026-07-29', 'วันอาสาฬหบูชา'], ['2026-07-30', 'วันเข้าพรรษา'], ['2026-08-12', 'วันแม่แห่งชาติ'],
+  ['2026-10-13', 'วันนวมินทรมหาราช'], ['2026-10-23', 'วันปิยมหาราช'], ['2026-12-07', 'ชดเชยวันพ่อแห่งชาติ'], ['2026-12-10', 'วันรัฐธรรมนูญ'], ['2026-12-31', 'วันสิ้นปี'],
+  ['2027-01-01', 'วันขึ้นปีใหม่'], ['2027-04-06', 'วันจักรี'], ['2027-04-13', 'วันสงกรานต์'], ['2027-04-14', 'วันสงกรานต์'], ['2027-04-15', 'วันสงกรานต์'],
+  ['2027-05-03', 'ชดเชยวันแรงงานแห่งชาติ'], ['2027-05-04', 'วันฉัตรมงคล'], ['2027-06-03', 'วันเฉลิมฯ สมเด็จพระราชินี'], ['2027-07-28', 'วันเฉลิมฯ พระบาทสมเด็จพระเจ้าอยู่หัว'],
+  ['2027-08-12', 'วันแม่แห่งชาติ'], ['2027-10-13', 'วันนวมินทรมหาราช'], ['2027-10-25', 'ชดเชยวันปิยมหาราช'], ['2027-12-06', 'ชดเชยวันพ่อแห่งชาติ'], ['2027-12-10', 'วันรัฐธรรมนูญ'], ['2027-12-31', 'วันสิ้นปี'],
+];
+const PUBLIC_MAP = new Map(PUBLIC_HOLIDAYS);
+function holidayOf(s) {
   const st = Store.state.settings;
-  return st.weekend.includes(parse(s).getDay()) || st.holidays.some(h => h.date === s);
-};
+  if (st.usePublicHolidays !== false && PUBLIC_MAP.has(s)) return { name: PUBLIC_MAP.get(s), kind: 'public' };
+  const h = st.holidays.find(x => x.date === s); return h ? { name: h.name, kind: 'company' } : null;
+}
+const isOff = s => Store.state.settings.weekend.includes(parse(s).getDay()) || !!holidayOf(s);
 const nextWork = s => { let n = 0; while (isOff(s) && n++ < 400) s = addDays(s, 1); return s; };
 function calcEnd(start, dur, mode) {
   dur = Math.max(1, parseInt(dur, 10) || 1);
@@ -44,7 +58,26 @@ function calcEnd(start, dur, mode) {
   return s;
 }
 
+const prevWork = s => { let n = 0; while (isOff(s) && n++ < 400) s = addDays(s, -1); return s; };
+function calcStart(end, dur, mode) {
+  dur = Math.max(1, parseInt(dur, 10) || 1);
+  if (mode === 'calendar') return addDays(end, -(dur - 1));
+  let s = prevWork(end), n = 1;
+  while (n < dur) { s = addDays(s, -1); if (!isOff(s)) n++; }
+  return s;
+}
+function countDays(start, end, mode) {
+  if (end < start) return 0;
+  if (mode === 'calendar') return diffDays(start, end) + 1;
+  let n = 0, d = start; while (d <= end && n < 5000) { if (!isOff(d)) n++; d = addDays(d, 1); } return Math.max(n, 1);
+}
+
 /* ---------- Constants ---------- */
+const OFFSITE_AREAS = [
+  { type: 'DCAO', label: 'DCAO', items: [1, 2, 3, 4].map(n => 'DCAO' + n) },
+  { type: 'RAM', label: 'RAM', items: Array.from({ length: 10 }, (_, i) => 'RAM' + pad(i + 1)) },
+  { type: 'OTHER', label: 'อื่น ๆ (ระบุ)', items: [] },
+];
 const STATUS = {
   todo: { label: 'Not Started', th: 'ยังไม่เริ่ม' },
   doing: { label: 'In Progress', th: 'กำลังทำ' },
@@ -61,7 +94,7 @@ const EV_STATUS = {
 };
 
 /* ---------- Store (localStorage, with optional shared server) ---------- */
-const LS_KEY = 'aex-hub-v1', LS_ME = 'aex-hub-me';
+const LS_KEY = 'aex-hub-v2', LS_ME = 'aex-hub-me';
 const Store = {
   state: null, mode: 'local', rev: 0, pending: false, timer: null,
   async init() {
@@ -78,6 +111,7 @@ const Store = {
       try { const raw = localStorage.getItem(LS_KEY); if (raw) { this.state = JSON.parse(raw); loaded = true; } } catch (e) { }
     }
     if (!loaded) { this.state = seed(); this.save(); }
+    const st = this.state; st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
     if (this.mode === 'server') setInterval(() => this.poll(), 10000);
     this.setSync();
   },
@@ -125,7 +159,25 @@ const taskStart = t => taskMode(t) === 'working' ? nextWork(t.start) : t.start;
 const taskEnd = t => calcEnd(t.start, t.duration, taskMode(t));
 const isActive = t => t.status === 'todo' || t.status === 'doing';
 const isDelayed = t => isActive(t) && taskEnd(t) < today();
-const visibleTasks = () => S().tasks.filter(t => !t.private || t.assigneeId === me().id);
+/* ----- Visibility scope: Admin = everyone · Leader = self + direct/indirect reports · Staff = self.
+   Everyone also sees tasks of projects they belong to, and team post-its. ----- */
+function subordinates(id, acc = new Set()) {
+  S().members.filter(m => m.managerId === id).forEach(m => { if (!acc.has(m.id) && m.id !== id) { acc.add(m.id); subordinates(m.id, acc); } });
+  return acc;
+}
+const myScope = () => { if (isAdmin()) return null; const s = subordinates(me().id); s.add(me().id); return s; };
+const inScope = id => { const s = myScope(); return !s || s.has(id); };
+const scopeMembers = () => S().members.filter(m => inScope(m.id));
+const isLeader = () => !isAdmin() && subordinates(me().id).size > 0;
+const inProject = p => isAdmin() || p.pmId === me().id || p.squad.includes(me().id);
+const visibleProjects = () => S().projects.filter(p => inProject(p) || (myScope() && [p.pmId, ...p.squad].some(inScope)));
+const isPostit = t => t.submitted && !t.projectId && t.source !== 'ram' && !t.private;
+function taskVisible(t) {
+  if (t.private && t.assigneeId !== me().id) return false;
+  if (isAdmin() || inScope(t.assigneeId) || isPostit(t)) return true;
+  const p = t.projectId && project(t.projectId); return !!(p && inProject(p));
+}
+const visibleTasks = () => S().tasks.filter(taskVisible);
 
 function canFullEdit(t) {
   if (isAdmin()) return !t.private || t.assigneeId === me().id;

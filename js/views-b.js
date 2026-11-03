@@ -16,7 +16,7 @@ function boardTasks(f, fixedProject) {
 }
 function filterBar(key, fixedProject, extra = '') {
   const f = ST[key];
-  const projOpts = opt('', 'ทุก Project', f.project) + S().projects.map(p => opt(p.id, p.name, f.project)).join('') + opt('__ram', 'งานสนับสนุน RAM', f.project) + opt('__postit', 'Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
+  const projOpts = opt('', 'ทุก Project', f.project) + visibleProjects().map(p => opt(p.id, p.name, f.project)).join('') + opt('__postit', 'Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
   return `<div class="filters">
     ${fixedProject ? '' : `<select data-f="${key}.project" aria-label="Project">${projOpts}</select>`}
     <select data-f="${key}.group" aria-label="Squad">${groupOptions(f.group, 'ทุก Squad / หน้าที่')}</select>
@@ -34,7 +34,6 @@ function kanbanHTML(tasks) {
       <div class="kcol-body" data-drop="${c}">${ts.map(kcard).join('') || '<p class="kempty">ลากงานมาวางที่นี่</p>'}</div></div>`;
   }).join('')}</div><p class="muted small kb-hint">ลากการ์ด / Post-it เพื่อเปลี่ยนสถานะ · หรือกดการ์ดแล้วเลือกสถานะ · งานที่เลยกำหนดจะติดป้าย “ล่าช้า” แต่ยังอยู่ในสถานะจริงของมัน</p>`;
 }
-const isPostit = t => t.submitted && !t.projectId && t.source !== 'ram' && !t.private;
 function postitCard(t) {
   const m = member(t.assigneeId), st = postitOf(m), late = isDelayed(t);
   return `<article class="kcard postit pat-${st.pattern} ${late ? 'is-late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
@@ -112,7 +111,7 @@ function ganttHTML(tasks, zoom, hideDone) {
       rowIdx.set(t.id, { r, left, right: left + w });
       rows += `<div class="g-row"><div class="g-label clickable" style="width:${LW}px" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 22)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '–')} · ${t.duration} วัน</small></div></div>
         <div class="g-track" style="width:${W}px"><div class="g-bar st-${t.status} ${isDelayed(t) ? 'late' : ''} ${depRisks(t).length ? 'risk' : ''}" style="left:${left}px;width:${w}px;--c:${p ? p.color : '#d97706'}" data-act="openTask" data-id="${t.id}" title="${esc(t.title)} · ${fmtRange(a, b)} · ${STATUS[t.status].th}${isDelayed(t) ? ' (ล่าช้า)' : ''}">
-        <span>${w > 80 ? esc(t.title) : ''}</span></div></div></div>`; r++;
+        <i class="hl"></i><span>${w > 80 ? esc(t.title) : ''}</span><i class="hr"></i></div></div></div>`; r++;
     });
   });
   // dependency arrows
@@ -127,7 +126,7 @@ function ganttHTML(tasks, zoom, hideDone) {
   }));
   const todayX = LW + (diffDays(min, t0) + .5) * px;
   const H = HH + r * RH;
-  return `<div class="gantt-wrap"><div class="gantt" style="width:${LW + W}px;height:${H}px">
+  return `<div class="gantt-wrap"><div class="gantt" data-px="${px}" style="width:${LW + W}px;height:${H}px">
     <div class="g-head" style="height:${HH}px"><div class="g-label corner" style="width:${LW}px">งาน / ผู้รับผิดชอบ</div><div class="g-scale" style="width:${W}px"><div class="g-months">${months}</div><div class="g-days">${dayRow}</div></div></div>
     <div class="g-off" style="left:${LW}px;top:${HH}px;height:${H - HH}px;width:${W}px">${off}</div>
     ${rows}
@@ -139,6 +138,103 @@ function ganttHTML(tasks, zoom, hideDone) {
 const zoomCtl = key => `<div class="seg-ctl sm">${[['day', 'วัน'], ['week', 'สัปดาห์'], ['month', 'เดือน']].map(([k, l]) => `<button class="${ST[key].zoom === k ? 'on' : ''}" data-act="setZoom" data-id="${key}:${k}">${l}</button>`).join('')}</div>`;
 ACT.setZoom = el => { const [k, z] = el.dataset.id.split(':'); ST[k].zoom = z; render(); };
 
+/* drag a bar to move it, drag its edges to change start/end (users who can edit the task) */
+document.addEventListener('click', e => { if (window.__ganttDragged) { e.stopPropagation(); e.preventDefault(); } }, true);
+function bindGantt(root) {
+  const g = $('.gantt', root); if (!g) return; const px = +g.dataset.px;
+  $$('.g-bar', g).forEach(bar => {
+    const t = S().tasks.find(x => x.id === bar.dataset.id); if (!t || !canFullEdit(t)) return;
+    bar.classList.add('drag-ok');
+    bar.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      const mode = e.target.classList.contains('hl') ? 'l' : e.target.classList.contains('hr') ? 'r' : 'm';
+      const x0 = e.clientX, left0 = bar.offsetLeft, w0 = bar.offsetWidth; let dd = 0, moved = false;
+      bar.setPointerCapture(e.pointerId);
+      const mv = ev => {
+        const dx = ev.clientX - x0; if (Math.abs(dx) > 3) moved = true; dd = Math.round(dx / px);
+        if (mode === 'm') bar.style.left = left0 + dd * px + 'px';
+        else if (mode === 'r') bar.style.width = Math.max(px, w0 + dd * px) + 'px';
+        else { bar.style.left = left0 + dd * px + 'px'; bar.style.width = Math.max(px, w0 - dd * px) + 'px'; }
+      };
+      const up = () => {
+        bar.removeEventListener('pointermove', mv); bar.removeEventListener('pointerup', up);
+        if (!moved) return; window.__ganttDragged = true; setTimeout(() => { window.__ganttDragged = false; }, 60);
+        if (!dd) return render();
+        const s = taskStart(t), en = taskEnd(t), m = taskMode(t), before = { start: t.start, duration: t.duration };
+        if (mode === 'm') t.start = addDays(s, dd);
+        else if (mode === 'r') { let ne = addDays(en, dd); if (ne < s) ne = s; t.duration = countDays(s, ne, m); }
+        else { let ns = addDays(s, dd); if (ns > en) ns = en; t.start = ns; t.duration = countDays(ns, en, m); }
+        commit(); toast(`${esc(t.title)} · ${fmtRange(taskStart(t), taskEnd(t))}`, 'ok', () => { Object.assign(t, before); commit(); });
+      };
+      bar.addEventListener('pointermove', mv); bar.addEventListener('pointerup', up);
+    });
+  });
+}
+
+/* ---------------- Task List (Excel-style grid) ---------------- */
+const TL_ORDER = {};
+function taskListHTML(p, f) {
+  const all = S().tasks.filter(t => t.projectId === p.id), idx = new Map(all.map((t, i) => [t.id, i + 1]));
+  let rows = all;
+  if (f.group) rows = rows.filter(t => member(t.assigneeId)?.group === f.group);
+  if (f.who) rows = rows.filter(t => t.assigneeId === f.who);
+  const squad = [...new Set([p.pmId, ...p.squad])].map(member).filter(Boolean);
+  const whoOpts = sel => opt('', '— เลือกผู้รับผิดชอบ —', sel) + squad.map(m => opt(m.id, m.name, sel)).join('');
+  const row = t => {
+    const full = canFullEdit(t), d = full ? '' : 'disabled', risk = depRisks(t).length;
+    return `<tr data-id="${t.id}" class="${isDelayed(t) ? 'is-late' : ''} ${t.status === 'done' ? 'is-done' : ''}">
+      <td class="rn">${idx.get(t.id)}</td>
+      <td><input class="c-title" value="${esc(t.title)}" placeholder="ชื่องาน" ${d}></td>
+      <td><select class="c-who" ${d}>${whoOpts(t.assigneeId)}</select></td>
+      <td><input type="date" class="c-start" value="${taskStart(t)}" ${d}></td>
+      <td><input type="date" class="c-end" value="${taskEnd(t)}" ${d}></td>
+      <td><input type="number" min="1" class="c-dur" value="${t.duration}" ${d}></td>
+      <td><select class="c-status st-${t.status}" ${canStatus(t) ? '' : 'disabled'}>${Object.keys(STATUS).map(k => opt(k, STATUS[k].th, t.status)).join('')}</select></td>
+      <td><input class="c-dep" value="${(t.deps || []).map(x => idx.get(x)).filter(Boolean).join(', ')}" placeholder="เช่น 1, 2" ${d}></td>
+      <td class="acts">${risk ? `<span class="risk" title="อาจกระทบกำหนดการจากงานก่อนหน้า">${ico('alert', 14)}</span>` : ''}<button class="icon-btn" data-act="openTask" data-id="${t.id}" title="รายละเอียด" aria-label="รายละเอียด">${ico('edit', 15)}</button>${full ? `<button class="icon-btn" data-act="delRow" data-id="${t.id}" title="ลบ" aria-label="ลบ">${ico('trash', 15)}</button>` : ''}</td></tr>`;
+  };
+  return `<section class="card flush tl"><div class="table-wrap"><table class="tbl grid"><thead><tr><th>#</th><th>งาน</th><th>ผู้รับผิดชอบ (Squad)</th><th>เริ่ม</th><th>สิ้นสุด</th><th>วัน</th><th>สถานะ</th><th>ทำหลังแถว</th><th></th></tr></thead>
+    <tbody id="tlBody">${rows.map(row).join('')}</tbody></table></div>
+    <div class="tl-foot"><button class="btn btn-ghost btn-sm" data-act="addRow" data-id="${p.id}">${ico('plus', 14)} เพิ่มบรรทัด</button>
+    <span class="muted small">กรอกชื่องาน เลือกคนใน Squad แล้วกรอกวันที่ 2 ใน 3 ช่อง (เริ่ม / สิ้นสุด / วัน) ระบบคำนวณที่เหลือให้ · กด Enter ที่ช่องชื่อเพื่อขึ้นบรรทัดใหม่ · ปรับวันแบบลากได้ที่แท็บ Gantt Chart</span></div></section>`;
+}
+function bindTaskList(root, p) {
+  const body = $('#tlBody', root); if (!body) return;
+  const get = el => S().tasks.find(x => x.id === el.closest('tr').dataset.id);
+  body.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !e.target.classList.contains('c-title')) return; e.preventDefault();
+    const tr = e.target.closest('tr'), next = tr.nextElementSibling;
+    if (next) $('.c-title', next).focus(); else ACT.addRow({ dataset: { id: p.id } });
+  });
+  body.addEventListener('change', e => {
+    const el = e.target, t = get(el); if (!t) return;
+    if (el.classList.contains('c-title')) { t.title = el.value.trim(); Store.save(); }
+    else if (el.classList.contains('c-who')) { t.assigneeId = el.value; Store.save(); }
+    else if (el.classList.contains('c-status')) setStatus(t, el.value);
+    else if (el.classList.contains('c-dep')) {
+      const all = S().tasks.filter(x => x.projectId === p.id);
+      t.deps = [...new Set(el.value.split(/[,\s]+/).map(n => all[parseInt(n, 10) - 1]?.id).filter(x => x && x !== t.id))]; commit();
+    } else if (/c-(start|end|dur)/.test(el.className)) {
+      const tr = el.closest('tr'), ch = el.classList.contains('c-start') ? 'start' : el.classList.contains('c-end') ? 'end' : 'duration';
+      const order = [ch, ...(TL_ORDER[t.id] || ['start', 'duration']).filter(x => x !== ch)].slice(0, 2); TL_ORDER[t.id] = order;
+      const third = ['start', 'end', 'duration'].find(k => !order.includes(k)), m = taskMode(t);
+      const s = $('.c-start', tr), en = $('.c-end', tr), du = $('.c-dur', tr);
+      if (third === 'end' && s.value) en.value = calcEnd(s.value, du.value, m);
+      if (third === 'start' && en.value) s.value = calcStart(en.value, du.value, m);
+      if (third === 'duration') { const n = s.value && en.value ? countDays(s.value, en.value, m) : 0; if (!n) { toast('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม', 'error'); return render(); } du.value = n; }
+      t.start = s.value; t.duration = Math.max(1, parseInt(du.value, 10) || 1); Store.save();
+      [[s, 'start'], [en, 'end'], [du, 'duration']].forEach(([i, k]) => i.classList.toggle('auto', k === third));
+    }
+  });
+}
+ACT.addRow = el => {
+  const p = project(el.dataset.id), all = S().tasks.filter(t => t.projectId === p.id), last = all[all.length - 1];
+  const t = newTask('project', { projectId: p.id, assigneeId: '', start: last ? addDays(taskEnd(last), 1) : today(), duration: 1 });
+  if (taskMode(t) === 'working') t.start = nextWork(t.start);
+  S().tasks.push(t); commit(); setTimeout(() => { const i = $$('#tlBody .c-title'); i.length && i[i.length - 1].focus(); }, 30);
+};
+ACT.delRow = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) deleteTask(t); };
+
 /* ---------------- Board page (all projects) ---------------- */
 V.board = root => {
   const f = ST.board, tasks = boardTasks(f);
@@ -146,14 +242,14 @@ V.board = root => {
   const extra = f.tab === 'gantt' ? zoomCtl('board') + `<label class="check"><input type="checkbox" data-f="board.hideDone" ${f.hideDone ? 'checked' : ''}> ซ่อนงานที่เสร็จแล้ว</label>` : '';
   root.innerHTML = pageHead('Gantt & Kanban', 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
     + filterBar('board', null, extra) + (f.tab === 'kanban' ? kanbanHTML(tasks) : ganttHTML(tasks, f.zoom, f.hideDone));
-  if (f.tab === 'kanban') bindKanban(root);
+  if (f.tab === 'kanban') bindKanban(root); else bindGantt(root);
 };
 ACT.boardTab = el => { const [k, t] = el.dataset.id.split(':'); ST[k].tab = t; render(); };
 
 /* ======================= PROJECTS ======================= */
 V.projects = (root, id) => {
   if (id) return projectDetail(root, id);
-  const ps = S().projects;
+  const ps = visibleProjects();
   root.innerHTML = pageHead('Project & Squad Planning', 'สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
     (isAdmin() || isPM() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} สร้าง Project</button>` : '')) +
     (ps.length ? `<div class="pcards">${ps.map(p => {
@@ -168,9 +264,9 @@ V.projects = (root, id) => {
 ACT.newProject = () => openProject(null);
 
 function projectDetail(root, id) {
-  const p = project(id); if (!p) { location.hash = '#/projects'; return; }
+  const p = project(id); if (!p || !visibleProjects().includes(p)) { location.hash = '#/projects'; return; }
   const f = ST.proj, s = projectStats(p), pm = member(p.pmId), can = canManageProject(p);
-  const tabs = [['overview', 'ภาพรวม & Squad'], ['tasks', 'รายการงาน'], ['kanban', 'Kanban'], ['gantt', 'Gantt Chart']];
+  const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'ภาพรวม & Squad']];
   const mode = p.dayMode || S().settings.dayMode;
   const tasks = boardTasks(f, p.id);
   let content = '';
@@ -183,10 +279,7 @@ function projectDetail(root, id) {
       ${sq.map(x => `<div class="squad-g"><div>${groupChip(x.g)}</div><div class="squad-m">${x.ms.map(m => `<span class="person">${avatar(m, 26)}<span>${esc(m.name)}${m.id === p.pmId ? ' <span class="pm">PM</span>' : ''}</span></span>`).join('')}</div></div>`).join('') || '<p class="muted pad">ยังไม่มีสมาชิก</p>'}</section></div>
       <section class="card mt"><div class="card-h"><h3>งานที่ใกล้ถึงกำหนด</h3></div>${upcoming.length ? `<ul class="list">${upcoming.map(t => `<li class="clickable" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '')}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small></span></li>`).join('')}</ul>` : '<p class="muted pad">ไม่มีงานค้าง</p>'}</section>`;
   } else if (f.tab === 'tasks') {
-    const ts = sortBy(tasks, t => taskStart(t));
-    content = filterBar('proj', p.id) + (ts.length ? `<section class="card flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>เริ่ม</th><th>ระยะเวลา</th><th>เสร็จ (คำนวณ)</th><th>ต้องทำหลัง</th><th>สถานะ</th></tr></thead><tbody>
-      ${ts.map(t => `<tr class="clickable" data-act="openTask" data-id="${t.id}"><td class="main"><b>${prioDot(t.priority)} ${esc(t.title)}</b><small class="muted">${esc(t.type || '')}</small></td><td>${personChip(member(t.assigneeId))}</td><td>${fmtD(taskStart(t))}</td><td>${t.duration} วัน</td><td>${fmtD(taskEnd(t))}</td>
-      <td class="small">${(t.deps || []).map(d => { const x = S().tasks.find(y => y.id === d); return x ? `<span class="dep ${isDelayed(x) ? 'late' : ''}">${esc(x.title)}</span>` : ''; }).join('') || '–'}${depRisks(t).length ? ` <span class="risk" title="อาจกระทบกำหนดการ">${ico('alert', 13)}</span>` : ''}</td><td>${statusBadge(t)}</td></tr>`).join('')}</tbody></table></div></section>` : empty('check', 'ยังไม่มีงานใน Project นี้', 'เพิ่มงานแรกเพื่อเริ่มวางแผน', `<button class="btn btn-primary" data-act="newTask" data-pid="${p.id}">${ico('plus', 16)} เพิ่มงาน</button>`));
+    content = filterBar('proj', p.id) + taskListHTML(p, f);
   } else if (f.tab === 'kanban') {
     content = filterBar('proj', p.id) + kanbanHTML(tasks);
   } else {
@@ -197,7 +290,7 @@ function projectDetail(root, id) {
       <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}
       <button class="btn btn-primary" data-act="newTask" data-pid="${p.id}">${ico('plus', 16)} เพิ่มงาน</button></div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${f.tab === k ? 'on' : ''}" data-act="boardTab" data-id="proj:${k}">${l}</button>`).join('')}</div>${content}`;
-  if (f.tab === 'kanban') bindKanban(root);
+  if (f.tab === 'kanban') bindKanban(root); else if (f.tab === 'gantt') bindGantt(root); else if (f.tab === 'tasks') bindTaskList(root, p);
 }
 ACT.editProject = el => openProject(el.dataset.id);
 ACT.reschedule = async el => {

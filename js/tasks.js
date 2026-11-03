@@ -24,8 +24,7 @@ function newTask(kind, over = {}) {
     id: uid('t_'), title: '', desc: '', projectId: null, assigneeId: me().id, start: today(), duration: 1, priority: 'med',
     status: 'todo', deps: [], links: [], files: [], source: kind, type: '', private: false, createdBy: me().id, doneAt: null, ...over,
   };
-  if (kind === 'ram') t.ram = { area: S().settings.areas[0] || '', requester: '', eventDate: '', receivedAt: today(), detail: '' };
-  return t;
+    return t;
 }
 
 function openTask(taskOrId, preset) {
@@ -41,7 +40,7 @@ function openTask(taskOrId, preset) {
   const st = S().settings;
   const dis = (lim) => (full || (limited && lim)) ? '' : 'disabled';
   const kindSel = isNew && !preset?.source
-    ? `<label class="field"><span>ประเภทรายการ</span><select name="source">${['project', 'ram', 'personal'].map(k => opt(k, KINDS[k], t.source)).join('')}</select></label>`
+    ? `<label class="field"><span>ประเภทรายการ</span><select name="source">${['project', 'personal'].map(k => opt(k, KINDS[k], t.source)).join('')}</select></label>`
     : `<div class="field"><span>ประเภทรายการ</span><div class="static">${esc(KINDS[t.source])}${t.private ? ' · ' + ico('lock', 13) + ' ส่วนตัว' : ''}</div><input type="hidden" name="source" value="${t.source}"></div>`;
 
   const body = `<form id="taskForm" class="form-grid" autocomplete="off">
@@ -52,20 +51,13 @@ function openTask(taskOrId, preset) {
     <label class="field"><span>Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— ไม่ผูกกับ Project —')}</select></label>
     <label class="field"><span>ผู้รับผิดชอบ *</span><select name="assigneeId" ${dis()}>${memberOptions(t.assigneeId)}</select></label>
     <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
-    <label class="field"><span>วันเริ่ม *</span><input type="date" name="start" required value="${t.start}" ${dis()}></label>
-    <label class="field"><span>ระยะเวลา (วัน) *</span><input type="number" name="duration" min="1" max="999" value="${t.duration}" ${dis()}></label>
-    <div class="field"><span>วันเสร็จ (ระบบคำนวณ)</span><div class="static strong" id="endOut">–</div><small id="modeOut" class="muted"></small></div>
+    <div class="field full"><div class="triad">
+      <label class="field"><span>วันเริ่ม</span><input type="date" name="start" value="${t.start}" ${dis()}></label>
+      <label class="field"><span>วันเสร็จ</span><input type="date" name="end" value="" ${dis()}></label>
+      <label class="field"><span>ระยะเวลา (วัน)</span><input type="number" name="duration" min="1" max="999" value="${t.duration}" ${dis()}></label></div>
+      <small class="muted" id="modeOut"></small></div>
     <label class="field"><span>ความสำคัญ</span><select name="priority" ${dis()}>${Object.keys(PRIO).map(k => opt(k, PRIO[k].th, t.priority)).join('')}</select></label>
     <label class="field"><span>สถานะ</span><select name="status" ${dis(1)}>${Object.keys(STATUS).map(k => opt(k, `${STATUS[k].label} · ${STATUS[k].th}`, t.status)).join('')}</select></label>
-    <div class="ram-only full" id="ramBox">
-      <div class="form-grid inner">
-        <label class="field"><span>พื้นที่ / หน่วยงานผู้ขอ *</span><select name="ram_area" ${dis()}>${st.areas.map(a => opt(a, a, t.ram?.area)).join('')}</select></label>
-        <label class="field"><span>ผู้ขอ / หน่วยงาน</span><input name="ram_requester" value="${esc(t.ram?.requester || '')}" placeholder="เช่น RAM เชียงใหม่" ${dis()}></label>
-        <label class="field"><span>วันที่จัดกิจกรรม</span><input type="date" name="ram_eventDate" value="${t.ram?.eventDate || ''}" ${dis()}></label>
-        <label class="field"><span>วันที่รับคำขอ</span><input type="date" name="ram_receivedAt" value="${t.ram?.receivedAt || ''}" ${dis()}></label>
-        <label class="field full"><span>รายละเอียดที่ต้องการ</span><textarea name="ram_detail" rows="2" ${dis()}>${esc(t.ram?.detail || '')}</textarea></label>
-      </div>
-    </div>
     <div class="field full" id="depsBox"><span>ต้องทำหลังจากงาน (Dependency)</span><div class="deps" id="depsList"></div></div>
     <label class="field full"><span>รายละเอียด / หมายเหตุ</span><textarea name="desc" rows="2" ${dis()}>${esc(t.desc)}</textarea></label>
     <label class="field full"><span>Link ที่เกี่ยวข้อง <small>(บรรทัดละ 1 ลิงก์ — รูปแบบ “ชื่อ | URL” หรือ URL เฉย ๆ)</small></span>
@@ -83,6 +75,7 @@ function openTask(taskOrId, preset) {
     label: isNew ? 'สร้างงาน' : 'บันทึก', cls: 'btn-primary', onClick: () => {
       const f = $('#taskForm'); if (!f.reportValidity()) return false;
       const v = n => f.elements[n]?.value ?? '';
+      if (full && (!f.elements.start.value || !(parseInt(f.elements.duration.value, 10) >= 1))) { toast('กรอกวันเริ่ม วันเสร็จ หรือระยะเวลา อย่างน้อย 2 ค่า (และวันเสร็จต้องไม่ก่อนวันเริ่ม)', 'error'); return false; }
       if (full) {
         const src = v('source');
         if (src === 'project' && !v('projectId')) { toast('งาน Project ต้องเลือก Project', 'error'); return false; }
@@ -110,15 +103,23 @@ function openTask(taskOrId, preset) {
     title: isNew ? 'สร้างงานใหม่' : (full ? 'แก้ไขงาน' : 'รายละเอียดงาน'), body, actions, wide: true,
     onOpen(m) {
       const f = $('#taskForm', m.el);
+      let order = ['start', 'duration'];
+      const recalc = ch => {
+        const e = f.elements, pid = e.projectId.value, p = pid && project(pid), mode = (p && p.dayMode) || st.dayMode;
+        if (ch) order = [ch, ...order.filter(x => x !== ch)].slice(0, 2);
+        const third = ['start', 'end', 'duration'].find(k => !order.includes(k));
+        if (third === 'end' && e.start.value) e.end.value = calcEnd(e.start.value, e.duration.value, mode);
+        if (third === 'start' && e.end.value) e.start.value = calcStart(e.end.value, e.duration.value, mode);
+        if (third === 'duration' && e.start.value && e.end.value) e.duration.value = countDays(e.start.value, e.end.value, mode) || '';
+        ['start', 'end', 'duration'].forEach(k => e[k].closest('.field').classList.toggle('auto', k === third));
+      };
       const refresh = () => {
         const src = f.elements.source.value, pid = f.elements.projectId.value;
-        $('#ramBox', m.el).hidden = src !== 'ram';
         $('#privRow', m.el).hidden = !(src === 'personal' && !pid);
         $('em[data-req]', m.el).textContent = src === 'project' ? '*' : '(ไม่บังคับ)';
         const p = pid && project(pid); const mode = (p && p.dayMode) || st.dayMode;
-        const s = f.elements.start.value;
-        $('#endOut', m.el).textContent = s ? fmtDY(calcEnd(s, f.elements.duration.value, mode)) : '–';
-        $('#modeOut', m.el).textContent = mode === 'working' ? 'นับเฉพาะวันทำงาน (ข้ามเสาร์–อาทิตย์/วันหยุด)' : 'นับตามวันปฏิทิน';
+        recalc();
+        $('#modeOut', m.el).textContent = (mode === 'working' ? 'นับเฉพาะวันทำงาน (ข้ามเสาร์–อาทิตย์/วันหยุด)' : 'นับตามวันปฏิทิน') + ' · กรอกอย่างน้อย 2 ใน 3 ช่อง ระบบคำนวณช่องที่เหลือให้';
         // dependency list (tasks in the same project)
         const cand = pid ? S().tasks.filter(x => x.projectId === pid && x.id !== t.id) : [];
         const cur = new Set($$('#depsList input:checked', m.el).map(i => i.value));
@@ -132,7 +133,8 @@ function openTask(taskOrId, preset) {
         $('#fileList', m.el).innerHTML = files.length ? files.map((x, i) => `<span class="attach">${ico('paperclip', 14)}${esc(x.name)} <small>${Math.round(x.size / 1024)} KB</small>${(full || limited) ? `<button type="button" class="x" data-i="${i}" aria-label="ลบไฟล์">×</button>` : ''}</span>`).join('') : '<span class="muted small">ยังไม่มีไฟล์แนบ</span>';
         $$('#fileList .x', m.el).forEach(b => b.onclick = () => { files.splice(+b.dataset.i, 1); drawFiles(); });
       };
-      f.addEventListener('input', refresh); f.addEventListener('change', refresh);
+      f.addEventListener('input', ev => { if (['start', 'end', 'duration'].includes(ev.target.name)) recalc(ev.target.name); else refresh(); });
+      f.addEventListener('change', ev => { if (!['start', 'end', 'duration'].includes(ev.target.name)) refresh(); });
       f.addEventListener('submit', e => e.preventDefault());
       const fin = $('#fileIn', m.el);
       if (fin) fin.onchange = () => {

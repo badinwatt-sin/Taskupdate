@@ -498,3 +498,60 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 .postit{transform:none;border-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.18)!important}.kcol-body .postit:nth-child(even){transform:none}.postit:hover{transform:translateY(-1px)}
 .ubtn,.mi{border-radius:8px}.mi.on{background:var(--slate-l);border-color:var(--line2)}
 .ubtn:hover,.ubtn.on{background:var(--slate-l);border-color:var(--text)}
+
+.triad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.field.auto input{background:var(--surface2);border-style:dashed}
+.field.auto>span::after{content:" · คำนวณให้";color:var(--accent);font-weight:400}
+
+.g-bar{touch-action:none}.g-bar.drag-ok{cursor:grab}.g-bar.drag-ok:active{cursor:grabbing}
+.g-bar .hl,.g-bar .hr{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize}.g-bar .hl{left:0}.g-bar .hr{right:0}
+.g-bar:not(.drag-ok) .hl,.g-bar:not(.drag-ok) .hr{display:none}
+.g-bar.drag-ok:hover .hl,.g-bar.drag-ok:hover .hr{background:rgba(0,0,0,.22)}
+.tbl.grid td{padding:5px 6px}.tbl.grid th{padding:9px 6px}
+.tbl.grid input,.tbl.grid select{border-color:transparent;background:transparent;padding:6px 7px;border-radius:5px}
+.tbl.grid input:hover:not(:disabled),.tbl.grid select:hover:not(:disabled){border-color:var(--line2);background:var(--surface)}
+.tbl.grid input:focus,.tbl.grid select:focus{border-color:var(--accent);background:var(--surface)}
+.tbl.grid input:disabled,.tbl.grid select:disabled{color:var(--text);opacity:1;-webkit-text-fill-color:var(--text)}
+.tbl.grid .c-title{min-width:240px;font-weight:500}.tbl.grid .c-who{min-width:160px}.tbl.grid .c-dur{width:64px}.tbl.grid .c-dep{width:92px}.tbl.grid input[type=date]{min-width:128px}
+.tbl.grid .c-status{min-width:100px;font-weight:500}.c-status.st-doing{color:var(--blue)}.c-status.st-done{color:var(--green)}
+.tbl.grid td.rn{color:var(--muted);text-align:center;width:36px;font-variant-numeric:tabular-nums}
+.tbl.grid tr.is-late td.rn{color:var(--red);font-weight:700}.tbl.grid tr.is-done .c-title{text-decoration:line-through;color:var(--muted)}
+.tbl.grid td.acts{white-space:nowrap;text-align:right}
+.tbl.grid input.auto{background:var(--surface2);border-style:dashed;border-color:var(--line2)}
+.tl-foot{display:flex;gap:14px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);flex-wrap:wrap}
+
+/* ---- minimal dashboard ---- */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:20px}
+.kpi2{padding:18px 22px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}.kpi2:last-child{border:0}
+.kpi2 b{font-size:30px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}.kpi2 span{color:var(--muted);font-size:13px}
+.kpi2.doing b{color:var(--blue)}.kpi2.done b{color:var(--green)}.kpi2.late b{color:var(--red)}
+.card.flushy{padding:20px 0 0;overflow:hidden}.card.flushy .card-h{padding:0 20px}
+.load-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--green)}
+.load-dot.lv-high{background:var(--red)}.load-dot.lv-low{background:#a1a1aa}
+.plist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.plist a{display:flex;align-items:center;gap:8px;color:var(--text);margin-bottom:5px;font-weight:500}.plist i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:8px}
+.legend.inline{margin:0 0 14px}.datebox.alt{background:var(--slate-l)}
+.seg-ctl.sm{margin-left:auto}
+/* offsite */
+.area-tag{display:inline-block;font-size:12px;font-weight:600;border:1px solid var(--line2);border-radius:5px;padding:0 8px;margin:1px 4px 1px 0;white-space:nowrap;background:var(--surface)}
+.tbl tr.total td{background:var(--surface2);font-weight:500}.nw{white-space:nowrap}.names{display:block;margin-top:3px}
+.cev.ram{background:#eef2f7;color:#334155;border:1px solid #cbd5e1}.legend i.hol{background:#fbeceb;border:1px solid #e9a8a2}
+.hol.public{color:var(--red)}.hol.company{color:var(--amber)}.mini-grid .hday{color:var(--red)}
+/* weekly planner */
+.week-bar{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;margin-bottom:16px}
+.week-nav{display:flex;align-items:center;gap:6px}.week-nav h2{font-size:18px;min-width:210px;text-align:center;font-weight:600}
+.health{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 18px}
+.health .dot{width:14px;height:14px;border-radius:50%;background:#a1a1aa;flex:none}.health b{display:block}.health small{color:var(--muted);display:block}
+.h-green .dot{background:#22a06b}.h-yellow .dot{background:#e5a50a}.h-red .dot{background:#d9392b}
+.h-green{border-color:#bfe3d0}.h-yellow{border-color:#f0d99a}.h-red{border-color:#f0b5ae}
+.hprog{margin-left:auto;min-width:170px}.hprog small{margin-top:4px}
+.kanban.three{grid-template-columns:repeat(3,minmax(240px,1fr))}
+.wcard .kc-title{font-weight:500}.wc-dates{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500}.wc-dates i{width:22px;height:1px;background:var(--line2)}.wc-dates small{margin-left:auto}
+.wc-foot{display:flex;align-items:center;gap:6px}
+.mini-btn{border:1px solid var(--line2);background:var(--surface);border-radius:5px;padding:1px 7px;font-size:12px;display:inline-flex;align-items:center;gap:3px;color:var(--text)}.mini-btn:hover{border-color:var(--text)}.mini-btn.on{color:var(--green);border-color:transparent}
+.kcard.is-late.wcard{border-left:3px solid var(--red)}
+.quick{grid-template-columns:1fr auto auto 160px auto auto}.qd{display:flex;flex-direction:column;gap:1px}.qd small{color:var(--muted);font-size:11px}.qd input{padding:4px 8px}
+/* org tree */
+.org,.org ul{list-style:none;margin:0;padding:0}.org ul{margin-left:22px;padding-left:18px;border-left:1px solid var(--line2)}
+.org li{margin:6px 0}.org-n{display:flex;align-items:center;gap:12px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}.org-n small{display:block;color:var(--muted)}
+.sr{position:absolute;left:-9999px}
+@media (max-width:860px){.kpi-row{grid-template-columns:1fr 1fr}.kpi2:nth-child(2){border-right:0}.kpi2:nth-child(-n+2){border-bottom:1px solid var(--line)}.week-bar{grid-template-columns:1fr}.kanban.three{grid-template-columns:repeat(3,82vw)}.quick{grid-template-columns:1fr 1fr}}

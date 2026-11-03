@@ -67,49 +67,67 @@ function openMyStyle(id) {
     },
   });
 }
+/* ---------------- Weekly planner ---------------- */
+const weekStartOf = off => { const d = parse(today()); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + off * 7); return iso(d); };
+function weekHealth(list, off) {
+  const total = list.length, done = list.filter(t => t.status === 'done').length, late = list.filter(isDelayed).length;
+  const dow = (new Date().getDay() + 6) % 7, expected = off < 0 ? 1 : off > 0 ? 0 : dow > 4 ? 1 : Math.min(1, (dow + .5) / 5);
+  const pct = total ? done / total : 1;
+  const soon = list.filter(t => t.status === 'todo' && off === 0 && taskEnd(t) <= addDays(today(), 1) && taskEnd(t) >= today()).length;
+  let level = 'green', msg = 'เป็นไปตามแผน';
+  if (!total) return { level: 'none', msg: 'ยังไม่มีงานในแผนสัปดาห์นี้', total, done, late, pct: 0 };
+  if (late > 0 || (off <= 0 && pct < expected - .35)) { level = 'red'; msg = late ? `มีงานเลยกำหนด ${late} รายการ` : 'ความคืบหน้าช้ากว่าแผนมาก'; }
+  else if (soon > 0 || (off <= 0 && pct < expected - .15)) { level = 'yellow'; msg = soon ? `มี ${soon} งานครบกำหนดภายใน 1 วันแต่ยังไม่เริ่ม` : 'ความคืบหน้าช้ากว่าแผนเล็กน้อย'; }
+  return { level, msg, total, done, late, pct: Math.round(pct * 100) };
+}
 V.todo = root => {
-  const f = ST.todo;
-  if (!f.user || !member(f.user) || (!isAdmin() && f.user !== me().id)) f.user = me().id;
-  const who = member(f.user), own = f.user === me().id, B = todoBuckets(f.user);
-  const tabs = [['today', 'วันนี้', B.today.length], ['upcoming', 'กำลังจะถึง', B.upcoming.length], ['overdue', 'เกินกำหนด', B.overdue.length], ['done', 'เสร็จแล้ว', B.done.length]];
-  const list = B[f.tab];
-  const doneToday = B.done.filter(t => t.doneAt === today()).length, denom = B.today.length + doneToday;
-  const myProjects = S().projects.filter(p => p.squad.includes(me().id) || canManageProject(p));
-  const row = t => {
-    const p = t.projectId && project(t.projectId), late = isDelayed(t), done = t.status === 'done';
-    return `<li class="todo ${done ? 'is-done' : ''}">
-      <button class="tick ${done ? 'on' : ''}" data-act="toggleDone" data-id="${t.id}" aria-label="${done ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายเสร็จ'}" ${canStatus(t) ? '' : 'disabled'}>${done ? ico('check', 14) : ''}</button>
-      <div class="grow clickable" data-act="openTask" data-id="${t.id}"><b>${esc(t.title)}</b>
-        <div class="tmeta">${prioDot(t.priority)}<span>${PRIO[t.priority].th}</span>
-          ${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : ''}${t.source === 'ram' ? `<span class="pchip ram">RAM · ${esc(t.ram?.area || '')}</span>` : ''}${t.source === 'meeting' ? '<span class="pchip ram">ประชุม</span>' : ''}${t.private ? `<span class="muted">${ico('lock', 12)} ส่วนตัว</span>` : ''}
-          ${linkList(t) ? '<span class="muted">' + ico('paperclip', 12) + ' มีไฟล์/ลิงก์</span>' : ''}</div></div>
-      <div class="due ${late ? 'late' : ''}">${done ? 'เสร็จ ' + fmtD(t.doneAt) : `${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small>`}</div>
-      ${canSubmit(t) ? (t.submitted ? `<button class="btn btn-ghost btn-sm" data-act="unsubmit" data-id="${t.id}" title="เอา Post-it ออกจากบอร์ด"><span class="submitted-tag">${ico('check', 12)} อยู่บนบอร์ด</span></button>` : `<button class="btn btn-primary btn-sm" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}
-      ${isActive(t) && t.status === 'todo' ? `<button class="btn btn-ghost btn-sm" data-act="startTask" data-id="${t.id}" ${canStatus(t) ? '' : 'disabled'}>เริ่มทำ</button>` : isActive(t) ? '<span class="badge st-doing">กำลังทำ</span>' : ''}</li>`;
+  const f = ST.todo, off = f.week || 0, ppl = scopeMembers();
+  if (!f.user || !ppl.find(m => m.id === f.user)) f.user = me().id;
+  const who = member(f.user), own = f.user === me().id;
+  const ws = weekStartOf(off), we = addDays(ws, 6);
+  const mine = visibleTasks().filter(t => t.assigneeId === f.user && t.status !== 'cancelled');
+  const inWeek = mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws);
+  const carry = off === 0 ? mine.filter(t => isActive(t) && taskEnd(t) < ws) : [];
+  const list = [...new Set(inWeek.concat(carry))];
+  const H = weekHealth(list, off), label = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
+  const myProjects = visibleProjects().filter(p => inProject(p));
+  const col = (st, th) => { const ts = sortBy(list.filter(t => t.status === st), t => taskEnd(t));
+    return `<div class="kcol k-${st}"><div class="kcol-h"><b>${th}</b><em>${ts.length}</em></div><div class="kcol-body" data-drop="${st}">${ts.map(wcard).join('') || '<p class="kempty">ลากงานมาวางที่นี่</p>'}</div></div>`; };
+  const wcard = t => {
+    const p = t.projectId && project(t.projectId), late = isDelayed(t), full = canFullEdit(t);
+    return `<article class="kcard wcard ${late ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
+      <b class="kc-title">${esc(t.title)}</b>
+      <div class="wc-dates"><span>${fmtD(taskStart(t))}</span><i></i><span class="${late ? 'late' : ''}">${fmtD(taskEnd(t))}</span><small class="muted">${late ? 'เลยกำหนด' : 'Start → Target'}</small></div>
+      <div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>
+        ${full && own ? `<button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="-7" title="เลื่อนไปสัปดาห์ก่อน" aria-label="เลื่อนไปสัปดาห์ก่อน">${ico('left', 13)}</button><button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="7" title="เลื่อนไปสัปดาห์ถัดไป" aria-label="เลื่อนไปสัปดาห์ถัดไป">${ico('right', 13)}</button>` : ''}
+        ${canSubmit(t) && own ? (t.submitted ? `<button class="mini-btn on" data-act="unsubmit" data-id="${t.id}" title="อยู่บน Kanban ทีม (กดเพื่อเอาออก)">${ico('check', 13)} บนบอร์ด</button>` : `<button class="mini-btn" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}</div></article>`;
   };
-  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, own ? `สวัสดี ${esc(me().name)} — ${B.today.length ? `วันนี้มี <b>${B.today.length}</b> งานที่ต้องโฟกัส` : 'วันนี้ว่าง ไม่มีงานที่ต้องทำ'}` : 'คุณกำลังดูในฐานะ Admin',
-    `<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} ปรับแต่ง Post-it & Icon</button>` + (isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '')) + `
-  ${B.overdue.length && f.tab !== 'overdue' ? `<button class="banner late" data-act="todoTab" data-id="overdue">${ico('alert', 18)} มีงานเกินกำหนด ${B.overdue.length} รายการ — กดเพื่อดู</button>` : ''}
-  ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานใหม่… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
-    <input type="date" name="due" value="${today()}" aria-label="กำหนดส่ง"><select name="prio" aria-label="ความสำคัญ">${Object.keys(PRIO).map(k => opt(k, 'สำคัญ: ' + PRIO[k].th, k === 'med' ? 'med' : '')).join('')}</select>
-    <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว (ไม่ผูก Project)', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
+  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, 'แผนงานรายสัปดาห์ — วางงาน กำหนดวันเริ่มและวันเป้าหมาย แล้วลากเพื่ออัปเดตความคืบหน้า',
+    `<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} Post-it & Icon</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
+  <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
+    <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
+  ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานในแผนสัปดาห์นี้… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
+    <label class="qd"><small>เริ่ม</small><input type="date" name="start" value="${off === 0 ? today() : ws}"></label><label class="qd"><small>เป้าหมายเสร็จ</small><input type="date" name="end" value="${off === 0 ? today() : ws}"></label>
+    <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
     <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
-  <div class="todo-grid"><div>
-    <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" class="${f.tab === k ? 'on' : ''} ${k === 'overdue' && n ? 'warn' : ''}" data-act="todoTab" data-id="${k}">${l}<em>${n}</em></button>`).join('')}</div>
-    ${own && (B.today.concat(B.upcoming, B.overdue)).some(t => canSubmit(t) && !t.submitted && !t.private) ? `<div class="submit-bar"><span>งานส่วนตัวที่ยังไม่ได้ Submit จะยังไม่แสดงบน Kanban ของทีม</span><button class="btn btn-primary btn-sm" data-act="submitAll">Submit ทั้งหมดขึ้นบอร์ด</button></div>` : ''}
-    ${list.length ? `<ul class="todolist">${list.map(row).join('')}</ul>` : empty(f.tab === 'done' ? 'check' : 'clock', { today: 'ไม่มีงานสำหรับวันนี้', upcoming: 'ยังไม่มีงานที่กำลังจะถึง', overdue: 'ไม่มีงานเกินกำหนด', done: 'ยังไม่มีงานที่เสร็จ' }[f.tab], f.tab === 'overdue' ? 'เยี่ยมมาก ทุกอย่างทันกำหนด' : 'พิมพ์ชื่องานในช่องด้านบนเพื่อเพิ่มได้ทันที')}
-  </div>
-  <aside class="card side"><div class="card-h"><h3>ความคืบหน้าวันนี้</h3></div>
-    <div class="ring" style="--p:${denom ? Math.round(doneToday / denom * 100) : 0}"><b>${denom ? Math.round(doneToday / denom * 100) : 0}%</b><span>${doneToday}/${denom} งาน</span></div>
-    <p class="muted small center">งานจาก Project และ RAM ที่ได้รับมอบหมาย จะปรากฏที่นี่อัตโนมัติ และอัปเดตตรงกับ Kanban / Gantt</p></aside></div>`;
+  <div class="kanban three">${col('todo', 'To do')}${col('doing', 'Doing')}${col('done', 'Done')}</div>
+  <p class="muted small kb-hint">ลากการ์ดไปคอลัมน์ถัดไปเมื่อคืบหน้า · ลูกศรบนการ์ดเลื่อนงานไปสัปดาห์อื่น (เฉพาะงานที่คุณแก้ไขได้) · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด · งานที่มอบหมายจาก Project เข้ามาในแผนอัตโนมัติ</p>`;
   const qa = $('#quickAdd');
   if (qa) qa.onsubmit = e => {
     e.preventDefault(); const v = qa.elements, title = v.title.value.trim(); if (!title) { v.title.focus(); return; }
-    const t = newTask('personal', { title, start: v.due.value || today(), duration: 1, priority: v.prio.value, projectId: v.pid.value || null, private: v.priv.checked && !v.pid.value, type: 'Admin / อื่นๆ' });
-    if (t.projectId) t.source = 'project';
-    S().tasks.push(t); ST.todo.tab = t.start > today() ? 'upcoming' : (t.start < today() ? 'overdue' : 'today'); commit(); toast('เพิ่มงานแล้ว');
+    if (v.end.value < v.start.value) return toast('วันเป้าหมายต้องไม่ก่อนวันเริ่ม', 'error');
+    const pid = v.pid.value, t = newTask(pid ? 'project' : 'personal', { title, start: v.start.value, projectId: pid || null, private: v.priv.checked && !pid, type: 'Admin / อื่นๆ' });
+    t.duration = countDays(t.start, v.end.value, taskMode(t)) || 1;
+    S().tasks.push(t); commit(); toast('เพิ่มงานเข้าแผนแล้ว');
     setTimeout(() => $('#quickAdd input[name=title]')?.focus(), 30);
   };
+  bindKanban(root);
+};
+ACT.weekGo = el => { const d = +el.dataset.d; ST.todo.week = d === 0 ? 0 : (ST.todo.week || 0) + d; render(); };
+ACT.shiftTask = el => {
+  const t = S().tasks.find(x => x.id === el.dataset.id); if (!t || !canFullEdit(t)) return;
+  const before = t.start; t.start = addDays(taskStart(t), +el.dataset.d); commit();
+  toast(`เลื่อนงานเป็น ${fmtRange(taskStart(t), taskEnd(t))}`, 'ok', () => { t.start = before; commit(); });
 };
 ACT.todoTab = el => { ST.todo.tab = el.dataset.id; render(); };
 ACT.toggleDone = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) setStatus(t, t.status === 'done' ? 'todo' : 'done'); };
@@ -284,21 +302,26 @@ V.team = root => {
     return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
       ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">${ico('sparkles', 16)}</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
-      <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p><div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
+      <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
   root.innerHTML = pageHead('ทีมและการตั้งค่า', `สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
-  <div class="note">${ico('lock', 14)} <b>สิทธิ์การใช้งาน:</b> Admin เห็นและจัดการทุกอย่าง · Project Manager จัดการ Project และ Squad ของตน · สมาชิกดูและอัปเดตงานที่ได้รับมอบหมาย · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
-  ${S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}
+  <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
+  <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Major Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
+  ${ST.team.tab === 'org' ? orgTree(admin) : S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}
   ${admin ? `<h2 class="sec-h">การตั้งค่า (Admin)</h2><div class="two-col">
     <section class="card"><div class="card-h"><h3>การนับวัน & วันหยุดบริษัท</h3></div>
       <label class="field"><span>วิธีนับระยะเวลางาน (ค่าเริ่มต้นของทีม)</span><select id="setMode">${opt('working', 'วันทำงาน — ข้ามวันหยุดสุดสัปดาห์และวันหยุดบริษัท', st.dayMode)}${opt('calendar', 'วันปฏิทิน — นับทุกวัน', st.dayMode)}</select></label>
       <div class="field"><span>วันหยุดประจำสัปดาห์</span><div class="wk-pick">${TH_DOW.map((d, i) => `<label class="pill"><input type="checkbox" class="wk" value="${i}" ${st.weekend.includes(i) ? 'checked' : ''}><span>${d}</span></label>`).join('')}</div></div>
-      <div class="field"><span>วันหยุดบริษัท</span><ul class="holidays">${sortBy(st.holidays, h => h.date).map((h, i) => `<li><span>${fmtDY(h.date)} — ${esc(h.name)}</span><button class="icon-btn" data-act="rmHoliday" data-id="${h.date}" aria-label="ลบ">${ico('x', 14)}</button></li>`).join('') || '<li class="muted">ยังไม่มีวันหยุด</li>'}</ul>
+      <label class="check mb"><input type="checkbox" id="setPublic" ${st.usePublicHolidays !== false ? 'checked' : ''}> ใช้วันหยุดราชการไทย (ตามประกาศ) ในปฏิทินและการนับวันทำงาน</label>
+      <p class="muted small mb">ข้อมูลวันหยุดราชการ: ปี 2569 ครบถ้วน · ปี 2570 มีเฉพาะวันที่คงที่ — วันหยุดตามจันทรคติของปี 2570 ให้เพิ่มเองในรายการด้านล่างเมื่อมีประกาศ</p>
+      <div class="field"><span>วันหยุดเพิ่มเติมของบริษัท</span><ul class="holidays">${sortBy(st.holidays, h => h.date).map((h, i) => `<li><span>${fmtDY(h.date)} — ${esc(h.name)}</span><button class="icon-btn" data-act="rmHoliday" data-id="${h.date}" aria-label="ลบ">${ico('x', 14)}</button></li>`).join('') || '<li class="muted">ยังไม่มีวันหยุด</li>'}</ul>
       <div class="inline-add"><input type="date" id="hDate"><input id="hName" placeholder="ชื่อวันหยุด"><button class="btn btn-ghost btn-sm" data-act="addHoliday">เพิ่ม</button></div></div></section>
-    <section class="card"><div class="card-h"><h3>รายการตัวเลือก</h3></div>
-      <label class="field"><span>พื้นที่ / หน่วยงานผู้ขอ (RAM) <small>บรรทัดละ 1 รายการ</small></span><textarea id="setAreas" rows="5">${esc(st.areas.join('\n'))}</textarea></label>
-      <label class="field"><span>ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
+    <section class="card"><div class="card-h"><h3>สิทธิ์เพิ่ม Major Event</h3></div>
+      <p class="muted small mb">Admin เพิ่มได้เสมอ — เลือกสมาชิกที่สามารถเพิ่มและแก้ไข Major Event ได้</p>
+      <div class="sp-m mb" id="editorPick">${S().members.filter(m => m.role !== 'admin').map(m => `<label class="pill"><input type="checkbox" value="${m.id}" ${st.eventEditors.includes(m.id) ? 'checked' : ''}><span>${avatar(m, 20)}${esc(m.name)}</span></label>`).join('')}</div>
+      <div class="card-h"><h3>ประเภทงาน</h3></div>
+      <label class="field"><span class="sr">ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
       <button class="btn btn-primary btn-sm" data-act="saveLists">บันทึกรายการ</button></section></div>
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
@@ -311,11 +334,23 @@ V.team = root => {
     }; r.readAsText(file);
   };
   const sm = $('#setMode'); if (sm) sm.onchange = () => { st.dayMode = sm.value; commit(); toast('บันทึกแล้ว'); };
+  const sp = $('#setPublic'); if (sp) sp.onchange = () => { st.usePublicHolidays = sp.checked; commit(); };
+  const ep = $('#editorPick'); if (ep) ep.onchange = () => { st.eventEditors = $$('input:checked', ep).map(i => i.value); Store.save(); toast('บันทึกสิทธิ์แล้ว'); };
   $$('.wk').forEach(c => c.onchange = () => { st.weekend = $$('.wk:checked').map(x => +x.value); commit(); });
 };
+ACT.teamTab = el => { ST.team.tab = el.dataset.id; render(); };
+function orgTree(admin) {
+  const ms = S().members, ids = new Set(ms.map(m => m.id));
+  const kids = id => ms.filter(m => m.managerId === id);
+  const node = (m, depth = 0) => { const k = kids(m.id), w = workload(m.id);
+    return `<li><div class="org-n">${avatar(m, 34)}<div class="grow"><b>${esc(m.name)}</b>${m.role === 'admin' ? ' <span class="badge ev-confirmed">Admin</span>' : ''}<small>${esc(m.position)}</small></div>
+      ${k.length ? `<span class="badge">${k.length} Direct report</span>` : ''}<span class="muted small">${w.active} งาน</span>${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="กำหนดหัวหน้า">${ico('edit', 15)}</button>` : ''}</div>${k.length && depth < 8 ? `<ul>${k.map(x => node(x, depth + 1)).join('')}</ul>` : ''}</li>`; };
+  const roots = ms.filter(m => !m.managerId || !ids.has(m.managerId));
+  return `<section class="card"><div class="card-h"><h3>สายบังคับบัญชา</h3><small class="muted">${admin ? 'Admin กำหนดหัวหน้างานของแต่ละคนได้ที่ปุ่มแก้ไข' : 'หัวหน้าทีมเห็นงานของลูกน้องในสายของตน'}</small></div><ul class="org">${roots.map(m => node(m)).join('')}</ul></section>`;
+}
 ACT.addHoliday = () => { const d = $('#hDate').value, n = $('#hName').value.trim(); if (!d || !n) return toast('ระบุวันที่และชื่อวันหยุด', 'error'); S().settings.holidays.push({ date: d, name: n }); commit(); };
 ACT.rmHoliday = el => { S().settings.holidays = S().settings.holidays.filter(h => h.date !== el.dataset.id); commit(); };
-ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.areas = sp('#setAreas'); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
+ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
 ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' })); };
 ACT.resetDemo = async () => { if (await confirmBox('ลบข้อมูลทั้งหมดและกลับเป็นข้อมูลตัวอย่าง?', 'รีเซ็ต', true)) { Store.state = seed(); commit(); toast('รีเซ็ตแล้ว'); } };
 ACT.newMember = () => openMember(null);
@@ -328,6 +363,7 @@ function openMember(id) {
     body: `<form id="mbForm" class="form-grid" autocomplete="off">
       <label class="field"><span>ชื่อ *</span><input name="name" required value="${esc(m.name)}"></label><label class="field"><span>ชื่อเล่น (ไทย)</span><input name="alias" value="${esc(m.alias || '')}"></label>
       <label class="field"><span>หน้าที่ / ทีม</span><select name="group">${groupOptions(m.group)}</select></label><label class="field"><span>ตำแหน่ง</span><input name="position" value="${esc(m.position)}"></label>
+      <label class="field full"><span>หัวหน้างาน (Reports to) <small>หัวหน้าจะเห็นงานของลูกน้องในสาย</small></span><select name="managerId">${opt('', '— ไม่มี / ระดับสูงสุด —', m.managerId || '')}${S().members.filter(x => x.id !== m.id && !subordinates(m.id).has(x.id)).map(x => opt(x.id, `${x.name} · ${x.position}`, m.managerId || '')).join('')}</select></label>
       <label class="field full"><span>งานที่รับผิดชอบ</span><textarea name="resp" rows="2">${esc(m.resp)}</textarea></label>
       <label class="field full"><span>สิทธิ์</span><select name="role">${opt('member', 'สมาชิก (ดูและอัปเดตงานที่ได้รับมอบหมาย)', m.role)}${opt('admin', 'Admin (ดูภาพรวมและจัดการทั้งหมด)', m.role)}</select></label></form>`,
     actions: (orig ? [{ label: ico('trash', 15) + ' ลบสมาชิก', cls: 'btn-danger-ghost', left: true, onClick: async () => {
@@ -337,11 +373,13 @@ function openMember(id) {
       if (await confirmBox(`ลบ ${esc(orig.name)}? ${n ? `งานที่ยังเปิดอยู่ ${n} รายการจะกลายเป็น “ยังไม่ระบุผู้รับผิดชอบ”` : ''}`, 'ลบสมาชิก', true)) {
         S().tasks = S().tasks.filter(t => !(t.private && t.assigneeId === orig.id)); S().tasks.forEach(t => { if (t.assigneeId === orig.id) t.assigneeId = ''; });
         S().projects.forEach(p => { p.squad = p.squad.filter(x => x !== orig.id); if (p.pmId === orig.id) p.pmId = me().id; });
+        S().members.forEach(x => { if (x.managerId === orig.id) x.managerId = orig.managerId || ''; });
+        S().offsite.forEach(o => { o.personIds = o.personIds.filter(x => x !== orig.id); }); S().offsite = S().offsite.filter(o => o.personIds.length);
         S().members = S().members.filter(x => x.id !== orig.id); commit(); toast('ลบสมาชิกแล้ว'); return true;
       } return false;
     } }] : []).concat([{ label: 'ยกเลิก' }, { label: 'บันทึก', cls: 'btn-primary', onClick: () => {
       const f = $('#mbForm'); if (!f.reportValidity()) return false;
-      Object.assign(m, { name: f.elements.name.value.trim(), alias: f.elements.alias.value.trim(), group: f.elements.group.value, position: f.elements.position.value.trim(), resp: f.elements.resp.value, role: f.elements.role.value });
+      Object.assign(m, { name: f.elements.name.value.trim(), alias: f.elements.alias.value.trim(), group: f.elements.group.value, position: f.elements.position.value.trim(), resp: f.elements.resp.value, role: f.elements.role.value, managerId: f.elements.managerId.value || '' });
       if (orig) Object.assign(orig, m); else S().members.push(m);
       commit(); toast('บันทึกแล้ว');
     } }]),

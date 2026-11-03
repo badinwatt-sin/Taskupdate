@@ -1,6 +1,7 @@
 'use strict';
 /* Demo data — dates are relative to "today" so the app always looks alive. */
 function seed() {
+  const m_ = n => 'm_' + n;
   const T = today(), D = n => addDays(T, n);
   const groups = [
     { id: 'lead', name: 'Leadership', short: 'Lead', color: '#334155' },
@@ -28,13 +29,12 @@ function seed() {
     mk('Pitcha', 'multimedia'), mk('Jadesalit', 'multimedia'), mk('Thanapon', 'multimedia'),
     mk('Chayada', 'comm'),
   ];
+  const boss = { jariya: 'kaeng', noravat: 'kaeng', phirat: 'kaeng', pitcha: 'kaeng', chayada: 'kaeng', praphatsorn: 'jariya', sudarat: 'jariya', butsaya: 'noravat', patcharanan: 'noravat', nitikun: 'phirat', tananchai: 'phirat', jadesalit: 'pitcha', thanapon: 'pitcha' };
+  members.forEach(mm => { const b = boss[mm.id.slice(2)]; if (b) mm.managerId = 'm_' + b; });
   const settings = {
     dayMode: 'working', weekend: [0, 6],
-    holidays: [
-      { date: '2026-12-07', name: 'ชดเชยวันพ่อแห่งชาติ' }, { date: '2026-12-10', name: 'วันรัฐธรรมนูญ' },
-      { date: '2026-12-31', name: 'วันสิ้นปี' }, { date: '2027-01-01', name: 'วันขึ้นปีใหม่' },
-    ],
-    areas: ['ภาคเหนือ', 'ภาคกลาง', 'ภาคอีสาน', 'ภาคใต้', 'กรุงเทพฯ และปริมณฑล', 'ส่วนกลาง'],
+    usePublicHolidays: true, eventEditors: [m_('noravat'), m_('butsaya')],
+    holidays: [{ date: '2026-11-20', name: 'วันหยุดพิเศษของบริษัท (ตัวอย่าง)' }],
     types: ['Event', 'Creative', 'Multimedia', 'Communication', 'Prime / Strategy', 'Admin / อื่นๆ'],
   };
   const m = n => 'm_' + n;
@@ -81,21 +81,6 @@ function seed() {
   P('rs', 4, 'ผลิตวิดีโอแนะนำ Roadshow', 'jadesalit', 11, 10, 'todo', [2], 'Multimedia');
   P('rs', 5, 'สรุปแผนเสนอ Management', 'pitcha', 23, 5, 'todo', [3, 4], 'Prime / Strategy', 'high');
 
-  /* RAM support requests */
-  const R = (title, area, req, ev, who, s, dur, st, type, recv, detail) => tasks.push(base({
-    title, assigneeId: m(who), start: D(s), duration: dur, status: st, type, source: 'ram', priority: 'med',
-    ram: { area, requester: req, eventDate: D(ev), receivedAt: D(recv), detail }, doneAt: st === 'done' ? D(s + dur) : null,
-  }));
-  R('สื่อประชาสัมพันธ์ Open House', 'ภาคเหนือ', 'RAM เชียงใหม่', 14, 'phirat', -3, 7, 'doing', 'Creative', -10, 'โปสเตอร์ A1, แบนเนอร์ Facebook และ Standee 2 ชุด');
-  R('ถ่ายภาพ + วิดีโอ Dealer Meeting', 'ภาคใต้', 'RAM หาดใหญ่', 9, 'jadesalit', 1, 5, 'todo', 'Multimedia', -6, 'ถ่ายภาพบรรยากาศและตัดวิดีโอไฮไลต์ 2 นาที');
-  R('จัดบูธ Roadshow อุบลราชธานี', 'ภาคอีสาน', 'RAM อุบลราชธานี', 30, 'patcharanan', 5, 10, 'todo', 'Event', -4, 'บูธ 3x6 เมตร พร้อมกิจกรรมหน้าบูธ');
-  R('ชุดสื่อ Social ต้อนรับปีใหม่', 'ภาคกลาง', 'RAM นครสวรรค์', 45, 'chayada', 10, 5, 'todo', 'Communication', -2, 'โพสต์ 6 ชิ้น พร้อม Caption');
-  R('วิดีโอสรุปงาน Partner Day', 'กรุงเทพฯ และปริมณฑล', 'RAM กรุงเทพฯ 1', -12, 'thanapon', -25, 8, 'done', 'Multimedia', -35, 'วิดีโอสรุป 3 นาที สำหรับส่งต่อ Partner');
-  R('แบนเนอร์และ Standee ร้านค้า', 'ภาคเหนือ', 'RAM เชียงราย', -5, 'nitikun', -20, 6, 'done', 'Creative', -30, 'ชุดสื่อหน้าร้านจำนวน 12 สาขา');
-  R('ประสานวิทยากรอบรมตัวแทน', 'ภาคกลาง', 'RAM อยุธยา', 20, 'butsaya', -6, 4, 'doing', 'Event', -9, 'ต้องการวิทยากร 2 ท่านและห้องอบรม 60 ที่นั่ง');
-  R('ออกแบบ Invitation งานเปิดสาขา', 'ภาคใต้', 'RAM ภูเก็ต', 16, 'tananchai', -1, 6, 'doing', 'Creative', -5, 'บัตรเชิญดิจิทัลและฉบับพิมพ์');
-  R('สรุป Presentation ผู้บริหารภาค', 'ส่วนกลาง', 'ส่วนกลาง', 6, 'sudarat', 0, 3, 'doing', 'Prime / Strategy', -3, 'ปรับเนื้อหา 15 สไลด์ให้เข้ากับธีมใหม่');
-
   /* Personal / meeting-origin */
   const Pe = (who, title, s, dur, st, prio, priv = false, extra = {}) => tasks.push(base({ title, assigneeId: m(who), start: D(s), duration: dur, status: st, priority: prio, source: 'personal', private: priv, createdBy: m(who), type: 'Admin / อื่นๆ', doneAt: st === 'done' ? D(s) : null, ...extra }));
   Pe('kaeng', 'ทบทวนงบประมาณ Q1 กับฝ่ายการเงิน', 2, 1, 'todo', 'high');
@@ -141,5 +126,18 @@ function seed() {
     ],
   }];
 
-  return { v: 1, settings, groups, members, projects, tasks, events, meetings };
+  /* Offsite work log */
+  const off = (title, type, area, a, b, who, note) => ({ id: uid('o_'), title, areaType: type, area, start: D(a), end: D(b), personIds: who.map(m_), note, createdBy: m_(who[0]) });
+  const offsite = [
+    off('อบรมตัวแทนจำหน่ายและติดตั้งสื่อ', 'DCAO', 'DCAO1', -34, -33, ['butsaya', 'patcharanan'], 'จัดห้องอบรมและดูแลลงทะเบียน'),
+    off('Roadshow เปิดตัวแคมเปญ', 'RAM', 'RAM03', -12, -10, ['phirat', 'jadesalit', 'thanapon'], 'ติดตั้งบูธ ถ่ายภาพและวิดีโอไฮไลต์'),
+    off('Dealer Meeting ภาคใต้', 'RAM', 'RAM07', -4, -4, ['jadesalit'], 'ถ่ายภาพบรรยากาศ'),
+    off('Open House สาขา', 'DCAO', 'DCAO2', 14, 15, ['butsaya', 'patcharanan', 'phirat'], 'ดูแลกิจกรรมหน้างานและป้ายสื่อ'),
+    off('ประสานวิทยากรอบรมตัวแทน', 'RAM', 'RAM05', 20, 20, ['butsaya'], ''),
+    off('บูธ Roadshow อุบลราชธานี', 'RAM', 'RAM09', 30, 32, ['patcharanan', 'nitikun'], ''),
+    off('ถ่ายทำสารคดีพาร์ตเนอร์', 'OTHER', 'โรงงานพาร์ตเนอร์ (ชลบุรี)', 6, 7, ['thanapon', 'jadesalit'], 'ถ่ายทำนอกพื้นที่ 2 วัน'),
+    off('สนับสนุนงานประชุมใหญ่ DCAO', 'DCAO', 'DCAO4', 40, 41, ['noravat', 'chayada'], ''),
+  ];
+
+  return { v: 2, settings, groups, members, projects, tasks, events, meetings, offsite };
 }

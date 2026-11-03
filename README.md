@@ -1,7 +1,7 @@
 # Agency Experience Team Hub
 
 ระบบกลางสำหรับวางแผนและติดตามงานของทีม Agency Experience — **บันทึกงานครั้งเดียว ดูได้หลายมุม**
-(Dashboard · Event & RAM Support Tracker · Major Event Calendar · Project/Squad · Gantt · Kanban · My To-Do · AI Meeting Hub · ทีมและสิทธิ์)
+(Dashboard · Offsite & Event Support log · Major Event Calendar · Project/Squad · Gantt · Kanban · My To-Do · AI Meeting Hub · ทีมและสิทธิ์)
 
 ## เริ่มใช้งาน
 ```bash
