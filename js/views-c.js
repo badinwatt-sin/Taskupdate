@@ -353,7 +353,7 @@ V.team = root => {
       <div id="accessBox"><p class="muted small">กำลังโหลด…</p></div></section>
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
-      <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
+      <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-ghost" data-act="startClean">เริ่มต้นใหม่ (ล้างงานตัวอย่าง เก็บรายชื่อทีม)</button><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
   loadAccessTable();
   const imp = $('#importIn'); if (imp) imp.onchange = () => {
     const file = imp.files[0]; if (!file) return;
@@ -381,6 +381,11 @@ ACT.addHoliday = () => { const d = $('#hDate').value, n = $('#hName').value.trim
 ACT.rmHoliday = el => { S().settings.holidays = S().settings.holidays.filter(h => h.date !== el.dataset.id); commit(); };
 ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
 ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify({ ...S(), auth: undefined }, null, 1)], { type: 'application/json' })); };
+ACT.startClean = async () => {
+  if (!await confirmBox('ล้าง <b>งาน, Project, Major Event, Offsite และการประชุมตัวอย่าง</b> ทั้งหมด โดยเก็บรายชื่อทีม สายบังคับบัญชา สิทธิ์ ไอคอน และรหัสผ่านไว้ — ควรสำรองข้อมูลก่อนถ้าไม่แน่ใจ ดำเนินการต่อหรือไม่?', 'ล้างข้อมูลตัวอย่าง', true, 'เริ่มต้นใหม่')) return;
+  const s = S(); s.tasks = []; s.projects = []; s.events = []; s.offsite = []; s.meetings = []; s.settings.holidays = [];
+  commit(); toast('ล้างข้อมูลตัวอย่างแล้ว — เริ่มเพิ่ม Project และงานจริงได้เลย');
+};
 ACT.resetDemo = async () => { if (await confirmBox('ลบข้อมูลทั้งหมดและกลับเป็นข้อมูลตัวอย่าง?', 'รีเซ็ต', true)) { Store.state = seed(); commit(); toast('รีเซ็ตแล้ว'); } };
 ACT.newMember = () => openMember(null);
 ACT.editMember = el => openMember(el.dataset.id);
