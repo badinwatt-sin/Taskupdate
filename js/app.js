@@ -76,8 +76,20 @@ document.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); if (Store.state && !modalStack.length) openSearch(); }
 });
 
+/* ---------- theme: Auto (follow device) / Light / Dark ---------- */
+const THEME_KEY = 'aex-theme', THEMES = [['auto', 'อัตโนมัติ', 'auto'], ['light', 'สว่าง', 'sun'], ['dark', 'มืด', 'moon']];
+const getTheme = () => { try { return localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) { return 'auto'; } };
+function applyTheme() {
+  const t = getTheme(), root = document.documentElement;
+  if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+  const [, label, icon] = THEMES.find(x => x[0] === t) || THEMES[0], b = $('#themeBtn');
+  if (b) { b.innerHTML = `${ico(icon, 14)} ${label}`; b.title = 'ธีม: ' + label + ' (กดเพื่อสลับ)'; }
+}
+function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); try { localStorage.setItem(THEME_KEY, THEMES[(i + 1) % 3][0]); } catch (e) { } applyTheme(); }
+
 /* ---------- boot ---------- */
 (async function boot() {
+  $('#themeBtn').onclick = cycleTheme; applyTheme();
   $('#menuBtn').onclick = () => document.body.classList.toggle('nav-open');
   $('#scrim').onclick = () => document.body.classList.remove('nav-open');
   $('#userBtn').onclick = () => pickUser(false);
