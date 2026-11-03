@@ -9,6 +9,14 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 ```
 หรือเปิด `index.html` / host เป็น static site ก็ได้ — ข้อมูลจะเก็บในเบราว์เซอร์เครื่องนั้นเท่านั้น (ไม่แชร์ข้ามคน)
 
+## Deploy บน Vercel (GitHub → Vercel)
+1. Merge branch นี้เข้า `main` ของ repo แล้ว Import repo ใน Vercel (Framework: **Other**, ไม่ต้องมี Build Command, Output = root)
+2. ใน Vercel โปรเจกต์ → **Storage → Create / Marketplace → Upstash Redis** → เชื่อมกับโปรเจกต์ (ระบบใส่ `KV_REST_API_URL` และ `KV_REST_API_TOKEN` ให้อัตโนมัติ)
+3. (แนะนำ) ตั้ง Environment Variable `HUB_DEFAULT_PASSWORD` = รหัสเริ่มต้นของทุกคน (ถ้าไม่ตั้ง ระบบสร้างให้และแสดงครั้งเดียวบนหน้า Login ของคนแรกที่เปิด)
+4. Redeploy → เปิดเว็บ → เข้าเป็น **Kaeng (Admin)** → Team & Access → เปลี่ยนรหัสเริ่มต้น/ตั้งรหัสรายบุคคล และตั้งสายบังคับบัญชา
+- ไฟล์แนบในโหมดนี้จำกัด 300 KB/ไฟล์ (ไฟล์ใหญ่ให้ใส่ Link) · แอปตรวจข้อมูลใหม่ทุก 60 วินาทีเฉพาะตอนเปิดหน้าไว้ เพื่อประหยัดโควตาฐานข้อมูล
+- ทดสอบในเครื่องโดยไม่ใช้ Vercel: `node server.js` (เก็บข้อมูลใน `data/`)
+
 ## การเข้าสู่ระบบ
 - เลือกชื่อ + ใส่รหัสผ่าน · Admin ตั้งรหัสเริ่มต้น/รายบุคคลที่ Team & Access · สมาชิกเปลี่ยนรหัสเองที่ “บัญชีของฉัน” · Admin เห็นรหัสของทุกคน (ตั้งใจให้เป็นแบบนี้ เพื่อช่วยคนลืมรหัส)
 - `node server.js` = ล็อกอินจริง (เซิร์ฟเวอร์ตรวจ token ทุก request, เก็บรหัสใน `data/auth.json` แบบ plain text — ต้องเก็บโฟลเดอร์ data เป็นความลับและใช้ HTTPS) · รหัสเริ่มต้นแสดงใน terminal ตอนเปิดเซิร์ฟเวอร์ครั้งแรก

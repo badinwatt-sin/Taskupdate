@@ -102,7 +102,7 @@ const Store = {
   async detect() {
     try {
       const r = await fetch('api/ping', { cache: 'no-store' });
-      if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; return; }
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; this.configured = j.configured !== false; return; }
     } catch (e) { /* static hosting / file:// → local mode */ }
     this.mode = 'local';
   },
@@ -119,10 +119,11 @@ const Store = {
     }
     if (!loaded) { this.state = seed(); if (this.mode === 'server') await this.push(true); else this.save(); }
     this.migrate();
-    if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => this.poll(), 10000); }
+    if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => { if (!document.hidden) this.poll(); }, 60000); }
     this.setSync();
     if (!this.hooked) {
       this.hooked = true;
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && this.mode === 'server') this.poll(); });
       addEventListener('pagehide', () => { if (this.pending && this.mode === 'server' && this.token) { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: this.headers(true), body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
     }
   },
@@ -141,7 +142,7 @@ const Store = {
     try {
       const r = await fetch('api/state', { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ state: this.state }) });
       if (r.status === 401) return Auth.expired();
-      const j = await r.json(); this.rev = j.rev; this.pending = false; this.setSync();
+      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'save failed'); this.rev = j.rev; if (j.initialPassword) this.initialPassword = j.initialPassword; this.pending = false; this.setSync();
     } catch (e) { this.setSync('err'); }
   },
   async poll() {

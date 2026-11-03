@@ -64,7 +64,7 @@ function openTask(taskOrId, preset) {
     <div class="full attach-box" id="attachBox">
     <label class="field full"><span>Link ที่เกี่ยวข้อง <small>(บรรทัดละ 1 ลิงก์ — รูปแบบ “ชื่อ | URL” หรือ URL เฉย ๆ)</small></span>
       <textarea name="links" rows="2" ${dis(1)} placeholder="Brief | https://drive.google.com/...">${esc((t.links || []).map(l => l.label && l.label !== l.url ? `${l.label} | ${l.url}` : l.url).join('\n'))}</textarea></label>
-    <div class="field full"><span>แนบไฟล์ <small>(ไม่เกิน 1 MB ต่อไฟล์)</small></span>
+    <div class="field full"><span>แนบไฟล์ <small>(ไม่เกิน ${Store.mode === 'server' ? '300 KB' : '1 MB'} ต่อไฟล์ — ไฟล์ใหญ่ให้ใส่เป็น Link)</small></span>
       <div id="fileList" class="file-list"></div>
       ${(full || limited) ? `<label class="btn btn-ghost btn-sm file-btn">${ico('paperclip', 15)} เลือกไฟล์<input type="file" id="fileIn" multiple hidden></label>` : ''}</div></div>
     <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน — ไม่ปรากฏบน Dashboard ของทีม)</label>
@@ -150,7 +150,7 @@ function openTask(taskOrId, preset) {
       const fin = $('#fileIn', m.el);
       if (fin) fin.onchange = () => {
         [...fin.files].forEach(file => {
-          if (file.size > 1048576) return toast(`${file.name} ใหญ่เกิน 1 MB — ใส่เป็น Link แทน`, 'error');
+          const cap = Store.mode === 'server' ? 300 * 1024 : 1048576; if (file.size > cap) return toast(`${file.name} ใหญ่เกิน ${Math.round(cap / 1024)} KB — ใส่เป็น Link แทน`, 'error');
           const r = new FileReader(); r.onload = () => { files.push({ name: file.name, size: file.size, type: file.type, data: r.result }); drawFiles(); };
           r.readAsDataURL(file);
         }); fin.value = '';

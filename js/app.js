@@ -84,7 +84,8 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
   await Store.detect();
   let id = null, note = '';
   if (Store.mode === 'server') {
-    if (!Store.hasState) { await Store.bootstrap(); note = 'เริ่มใช้งานครั้งแรก — รหัสผ่านเริ่มต้นของทุกคนแสดงในหน้าจอเซิร์ฟเวอร์ (terminal) ที่รัน node server.js'; }
+    if (Store.configured === false) { $('#view').innerHTML = `<div class="card" style="max-width:640px;margin:60px auto"><h3>ยังไม่ได้เชื่อมฐานข้อมูล</h3><p class="muted mt">เซิร์ฟเวอร์ทำงานแล้ว แต่ยังไม่พบการตั้งค่าที่เก็บข้อมูล (Upstash Redis) — ใน Vercel ไปที่ <b>Storage → Create → Upstash Redis</b> แล้วเชื่อมกับโปรเจกต์นี้ จากนั้นกด Redeploy และรีเฟรชหน้านี้</p></div>`; return; }
+    if (!Store.hasState) { await Store.bootstrap(); note = Store.initialPassword ? `เริ่มใช้งานครั้งแรก — รหัสผ่านเริ่มต้นของทุกคนคือ <b>${esc(Store.initialPassword)}</b> (แสดงครั้งเดียว กรุณาจดไว้ แล้วเข้าสู่ระบบเป็น Admin เพื่อเปลี่ยน)` : 'เริ่มใช้งานครั้งแรก — ใช้รหัสผ่านเริ่มต้นที่ตั้งไว้ในค่า HUB_DEFAULT_PASSWORD (หรือดูใน terminal)'; }
     id = await Auth.restore();
     if (!id) id = await showLogin(note);
     await Store.loadState();
