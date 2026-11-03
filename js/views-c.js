@@ -348,9 +348,13 @@ V.team = root => {
       <div class="card-h"><h3>ประเภทงาน</h3></div>
       <label class="field"><span class="sr">ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
       <button class="btn btn-primary btn-sm" data-act="saveLists">บันทึกรายการ</button></section></div>
+    <section class="card mt"><div class="card-h"><h3>รหัสผ่านเข้าใช้งาน (Admin เท่านั้น)</h3></div>
+      <p class="muted small mb">กำหนดรหัสเริ่มต้นหรือรหัสรายบุคคลให้สมาชิกเข้าใช้งานครั้งแรก สมาชิกเปลี่ยนรหัสของตัวเองได้ที่เมนู “บัญชีของฉัน” และ Admin เห็นรหัสปัจจุบันของทุกคนที่นี่เพื่อแจ้งเมื่อมีคนลืม</p>
+      <div id="accessBox"><p class="muted small">กำลังโหลด…</p></div></section>
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
       <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
+  loadAccessTable();
   const imp = $('#importIn'); if (imp) imp.onchange = () => {
     const file = imp.files[0]; if (!file) return;
     const r = new FileReader(); r.onload = async () => {
@@ -376,7 +380,7 @@ function orgTree(admin) {
 ACT.addHoliday = () => { const d = $('#hDate').value, n = $('#hName').value.trim(); if (!d || !n) return toast('ระบุวันที่และชื่อวันหยุด', 'error'); S().settings.holidays.push({ date: d, name: n }); commit(); };
 ACT.rmHoliday = el => { S().settings.holidays = S().settings.holidays.filter(h => h.date !== el.dataset.id); commit(); };
 ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
-ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify(S(), null, 1)], { type: 'application/json' })); };
+ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify({ ...S(), auth: undefined }, null, 1)], { type: 'application/json' })); };
 ACT.resetDemo = async () => { if (await confirmBox('ลบข้อมูลทั้งหมดและกลับเป็นข้อมูลตัวอย่าง?', 'รีเซ็ต', true)) { Store.state = seed(); commit(); toast('รีเซ็ตแล้ว'); } };
 ACT.newMember = () => openMember(null);
 ACT.editMember = el => openMember(el.dataset.id);

@@ -96,52 +96,69 @@ const EV_STATUS = {
 /* ---------- Store (localStorage, with optional shared server) ---------- */
 const LS_KEY = 'aex-hub-v2', LS_ME = 'aex-hub-me';
 const Store = {
-  state: null, mode: 'local', rev: 0, pending: false, timer: null,
-  async init() {
-    let loaded = false;
+  state: null, mode: 'local', rev: 0, pending: false, timer: null, token: null, hasState: true,
+  headers(json) { const h = this.token ? { Authorization: 'Bearer ' + this.token } : {}; if (json) h['Content-Type'] = 'application/json'; return h; },
+  /* 1) is there a TEAM Hub server behind this page? */
+  async detect() {
     try {
-      const r = await fetch('api/state', { cache: 'no-store' });
-      if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
-        const j = await r.json();
-        this.mode = 'server'; this.rev = j.rev || 0;
-        if (j.state) { this.state = j.state; loaded = true; }
-      }
+      const r = await fetch('api/ping', { cache: 'no-store' });
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; return; }
     } catch (e) { /* static hosting / file:// → local mode */ }
-    if (!loaded && this.mode !== 'server') {
+    this.mode = 'local';
+  },
+  /* 2) load data (server: needs a valid login token) */
+  async loadState() {
+    let loaded = false;
+    if (this.mode === 'server') {
+      const r = await fetch('api/state', { cache: 'no-store', headers: this.headers() });
+      if (r.status === 401) throw new Error('unauthorized');
+      const j = await r.json(); this.rev = j.rev || 0;
+      if (j.state) { this.state = j.state; loaded = true; }
+    } else {
       try { const raw = localStorage.getItem(LS_KEY); if (raw) { this.state = JSON.parse(raw); loaded = true; } } catch (e) { }
     }
-    if (!loaded) { this.state = seed(); this.save(); }
-    const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
-    if (this.mode === 'server') setInterval(() => this.poll(), 10000);
+    if (!loaded) { this.state = seed(); if (this.mode === 'server') await this.push(true); else this.save(); }
+    this.migrate();
+    if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => this.poll(), 10000); }
     this.setSync();
-    addEventListener('pagehide', () => { if (this.pending && this.mode === 'server') { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
+    if (!this.hooked) {
+      this.hooked = true;
+      addEventListener('pagehide', () => { if (this.pending && this.mode === 'server' && this.token) { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: this.headers(true), body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
+    }
+  },
+  /* server mode, first ever start: create the shared dataset (allowed once, before any login exists) */
+  async bootstrap() { this.state = seed(); this.migrate(); await this.push(true); this.hasState = true; },
+  migrate() {
+    const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
+    if (this.mode === 'local') st.auth ||= { defaultPassword: 'welcome1', pw: {} };   // demo-only: server mode keeps passwords out of the shared data
+    else delete st.auth;
   },
   save() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(this.state)); }
-    catch (e) { toast('พื้นที่จัดเก็บในเบราว์เซอร์เต็ม — ลองลบไฟล์แนบขนาดใหญ่', 'error'); }
+    if (this.mode === 'local') { try { localStorage.setItem(LS_KEY, JSON.stringify(this.state)); } catch (e) { toast('พื้นที่จัดเก็บในเบราว์เซอร์เต็ม — ลองลบไฟล์แนบขนาดใหญ่', 'error'); } }
     if (this.mode === 'server') { this.pending = true; this.setSync(); clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 500); }
   },
-  async push() {
+  async push(first) {
     try {
-      const r = await fetch('api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: this.state }) });
+      const r = await fetch('api/state', { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ state: this.state }) });
+      if (r.status === 401) return Auth.expired();
       const j = await r.json(); this.rev = j.rev; this.pending = false; this.setSync();
     } catch (e) { this.setSync('err'); }
   },
   async poll() {
-    if (this.pending) return;
+    if (this.pending || !this.token) return;
     try {
-      const r = await fetch('api/state?rev=' + this.rev, { cache: 'no-store' });
-      if (r.status === 304) return;
+      const r = await fetch('api/state?rev=' + this.rev, { cache: 'no-store', headers: this.headers() });
+      if (r.status === 304) return; if (r.status === 401) return Auth.expired();
       const j = await r.json();
-      if (j.state && j.rev !== this.rev) { this.rev = j.rev; this.state = j.state; AEX.onRemote && AEX.onRemote(); }
+      if (j.state && j.rev !== this.rev) { this.rev = j.rev; this.state = j.state; this.migrate(); AEX.onRemote && AEX.onRemote(); }
     } catch (e) { this.setSync('err'); }
   },
   setSync(err) {
     const el = document.getElementById('sync'); if (!el) return;
     if (err) { el.className = 'sync err'; el.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; return; }
     el.className = 'sync ' + (this.mode === 'server' ? 'ok' : 'local');
-    el.textContent = this.mode === 'server' ? (this.pending ? 'กำลังบันทึก…' : 'ซิงค์กับทีมแล้ว') : 'เก็บในเบราว์เซอร์นี้';
-    el.title = this.mode === 'server' ? 'ข้อมูลใช้ร่วมกันทั้งทีมผ่านเซิร์ฟเวอร์' : 'รัน "node server.js" เพื่อแชร์ข้อมูลร่วมกันทั้งทีม';
+    el.textContent = this.mode === 'server' ? (this.pending ? 'กำลังบันทึก…' : 'ซิงค์กับทีมแล้ว') : 'โหมดสาธิต (ในเบราว์เซอร์)';
+    el.title = this.mode === 'server' ? 'ข้อมูลใช้ร่วมกันทั้งทีมผ่านเซิร์ฟเวอร์' : 'รัน "node server.js" เพื่อแชร์ข้อมูลและใช้การล็อกอินจริง';
   },
 };
 const AEX = { meId: null, onRemote: null };

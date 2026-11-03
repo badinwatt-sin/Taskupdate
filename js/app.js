@@ -23,7 +23,7 @@ function render() {
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
   $('#nav').innerHTML = NAV.map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
-  $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · เปลี่ยนผู้ใช้</small></div>`;
+  $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · บัญชีของฉัน</small></div>`;
   const key = r.name + '/' + (r.id || '');
   const view = $('#view'), y = window.scrollY;
   view.className = 'view v-' + r.name;
@@ -33,21 +33,6 @@ function render() {
   Store.setSync();
 }
 window.addEventListener('hashchange', render);
-
-/* ---------- user switcher ---------- */
-function pickUser(first) {
-  modal({
-    title: first ? 'ยินดีต้อนรับ — คุณคือใคร?' : 'เปลี่ยนผู้ใช้', wide: true,
-    body: `<p class="muted">${first ? 'เลือกชื่อของคุณเพื่อเริ่มใช้งาน ระบบจะแสดงงานและสิทธิ์ตามบทบาท' : 'สลับมุมมองเพื่อดูสิทธิ์ของแต่ละบทบาท'} <small>(โหมดสาธิต — ใช้งานจริงควรเชื่อมระบบล็อกอินขององค์กร)</small></p>
-    <div class="user-grid">${S().members.map(m => `<button class="ubtn ${m.id === AEX.meId ? 'on' : ''}" data-act="setUser" data-id="${m.id}">${avatar(m, 40)}<b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : esc(group(m.group).short)}</small></button>`).join('')}</div>`,
-    actions: first ? [] : [{ label: 'ปิด' }],
-  });
-}
-ACT.setUser = el => {
-  AEX.meId = el.dataset.id; try { localStorage.setItem(LS_ME, AEX.meId); } catch (e) { }
-  ST.todo.user = null; modalStack.slice().forEach(m => m.close()); render();
-  toast(`เข้าใช้งานในนาม ${me().name}`);
-};
 
 /* ---------- global search (Ctrl/⌘+K) ---------- */
 function openSearch() {
@@ -93,14 +78,22 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
   $('#themeBtn').onclick = cycleTheme; applyTheme();
   $('#menuBtn').onclick = () => document.body.classList.toggle('nav-open');
   $('#scrim').onclick = () => document.body.classList.remove('nav-open');
-  $('#userBtn').onclick = () => pickUser(false);
+  $('#userBtn').onclick = openAccount;
   $('#searchBtn').onclick = openSearch;
   $('#addBtn').onclick = () => openTask(newTask('personal'));
-  await Store.init();
-  AEX.onRemote = () => { if (!modalStack.length) render(); };
-  try { AEX.meId = localStorage.getItem(LS_ME); } catch (e) { }
-  const known = member(AEX.meId);
-  if (!known) AEX.meId = S().members[0].id;
+  await Store.detect();
+  let id = null, note = '';
+  if (Store.mode === 'server') {
+    if (!Store.hasState) { await Store.bootstrap(); note = 'เริ่มใช้งานครั้งแรก — รหัสผ่านเริ่มต้นของทุกคนแสดงในหน้าจอเซิร์ฟเวอร์ (terminal) ที่รัน node server.js'; }
+    id = await Auth.restore();
+    if (!id) id = await showLogin(note);
+    await Store.loadState();
+  } else {
+    await Store.loadState();
+    id = await Auth.restore();
+    if (!id) id = await showLogin();
+  }
+  AEX.meId = id; AEX.onRemote = () => { if (!modalStack.length) render(); };
+  if (!member(AEX.meId)) AEX.meId = S().members[0].id;
   render();
-  if (!known) pickUser(true);
 })();
