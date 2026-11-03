@@ -34,6 +34,10 @@ const Auth = {
     try { localStorage.setItem(LS_ME, id); } catch (e) { }
     return id;
   },
+  async recover(code, id, password) {
+    const r = await fetch('api/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, id, password }) });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'กู้คืนไม่สำเร็จ');
+  },
   async logout() {
     if (Store.mode === 'server') { try { await fetch('api/logout', { method: 'POST', headers: Store.headers() }); } catch (e) { } try { localStorage.removeItem(LS_TOKEN); } catch (e) { } }
     else { try { localStorage.removeItem(LS_ME); } catch (e) { } }
@@ -77,10 +81,26 @@ function showLogin(bootMsg) {
         <label class="field"><span>รหัสผ่าน</span><input type="password" id="lgPw" autocomplete="current-password" placeholder="รหัสผ่านที่ Admin ให้ หรือที่คุณตั้งเอง"></label>
         <div class="lg-err" id="lgErr" role="alert"></div><button class="btn btn-primary lg-go" id="lgGo">เข้าสู่ระบบ</button>
         <p class="muted small center">ลืมรหัสผ่าน? ติดต่อ Admin เพื่อขอรหัส</p></form>
+      <form id="lgRec" hidden autocomplete="off"><div class="lg-who"><button type="button" class="icon-btn" id="lgRecBack" aria-label="ย้อนกลับ">${ico('left')}</button><span>กู้คืนบัญชี Admin</span></div>
+        <label class="field"><span>บัญชี Admin</span><select id="rcWho">${list.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('')}</select></label>
+        <label class="field"><span>รหัสกู้คืน (HUB_RECOVERY_CODE)</span><input type="password" id="rcCode" autocomplete="off"></label>
+        <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</span><input type="password" id="rcPw" minlength="4" autocomplete="new-password"></label>
+        <div class="lg-err" id="rcErr" role="alert"></div><button class="btn btn-primary lg-go">ตั้งรหัสผ่านใหม่</button></form>
+      ${Store.mode === 'server' && Store.recovery ? '<p class="center mt"><button type="button" class="link-btn" id="lgForgot">ลืมรหัส Admin? กู้คืนด้วยรหัสกู้คืน</button></p>' : ''}
       ${demo ? `<div class="note warn lg-demo">โหมดสาธิต: รหัสผ่านเก็บในเบราว์เซอร์นี้ ไม่ใช่ความปลอดภัยจริง · รหัสเริ่มต้นของทุกคนคือ <b>${esc(S().auth.defaultPassword)}</b></div>` : ''}${bootMsg ? `<div class="note lg-demo">${bootMsg}</div>` : ''}</div>`;
     let cur = null; const form = $('#lgForm', el), pw = $('#lgPw', el), err = $('#lgErr', el);
     el.addEventListener('click', e => { const t = e.target.closest('.lg-tile'); if (!t) return; cur = list.find(m => m.id === t.dataset.id); $('#lgPick', el).hidden = true; form.hidden = false; $('#lgName', el).textContent = cur.name; err.textContent = ''; pw.value = ''; pw.focus(); });
     $('#lgBack', el).onclick = () => { form.hidden = true; $('#lgPick', el).hidden = false; };
+    const rec = $('#lgRec', el), forgot = $('#lgForgot', el);
+    if (forgot) {
+      forgot.onclick = () => { $('#lgPick', el).hidden = true; form.hidden = true; rec.hidden = false; forgot.parentElement.hidden = true; $('#rcCode', el).focus(); };
+      $('#lgRecBack', el).onclick = () => { rec.hidden = true; $('#lgPick', el).hidden = false; forgot.parentElement.hidden = false; };
+      rec.onsubmit = async e => {
+        e.preventDefault(); const err = $('#rcErr', el); err.textContent = '';
+        try { await Auth.recover($('#rcCode', el).value, $('#rcWho', el).value, $('#rcPw', el).value); const id = await Auth.login($('#rcWho', el).value, $('#rcPw', el).value); el.remove(); document.body.classList.remove('no-scroll'); toast('ตั้งรหัสใหม่แล้ว — แนะนำให้ลบ HUB_RECOVERY_CODE ออกจาก Vercel'); resolve(id); }
+        catch (x) { err.textContent = x.message; }
+      };
+    }
     form.onsubmit = async e => {
       e.preventDefault(); const go = $('#lgGo', el); go.disabled = true; err.textContent = '';
       try { const id = await Auth.login(cur.id, pw.value); el.remove(); document.body.classList.remove('no-scroll'); resolve(id); }

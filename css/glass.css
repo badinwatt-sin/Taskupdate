@@ -242,3 +242,6 @@ input:disabled,select:disabled,textarea:disabled{background:var(--fill2)}
 .lg-demo{margin:18px 0 0;text-align:left}
 code.pwc{background:var(--fill);border-radius:8px;padding:3px 9px;font-size:13.5px;letter-spacing:.04em}
 .acct{padding:4px 0}
+
+#lgRec{text-align:left;display:flex;flex-direction:column;gap:14px}#lgRec[hidden]{display:none}
+.link-btn{border:0;background:none;color:var(--accent-d);font-weight:500;font-size:13.5px;text-decoration:underline;text-underline-offset:3px;padding:4px}
