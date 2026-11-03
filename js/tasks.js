@@ -9,7 +9,8 @@ function setStatus(t, st) {
   const prev = t.status, prevDone = t.doneAt;
   t.status = st; t.doneAt = st === 'done' ? today() : null;
   commit();
-  toast(`อัปเดตเป็น “${STATUS[st].th}”`, 'ok', () => { t.status = prev; t.doneAt = prevDone; commit(); });
+  if (st === 'done' && prev !== 'done') celebrate();
+  toast(st === 'done' ? 'เยี่ยมมาก! เสร็จอีกหนึ่งงาน' : `อัปเดตเป็น “${STATUS[st].th}”`, 'ok', () => { t.status = prev; t.doneAt = prevDone; commit(); });
 }
 function deleteTask(t) {
   const i = S().tasks.indexOf(t); if (i < 0) return;
@@ -39,35 +40,38 @@ function openTask(taskOrId, preset) {
   const files = (t.files || []).slice();
   const st = S().settings;
   const dis = (lim) => (full || (limited && lim)) ? '' : 'disabled';
-  const kindSel = isNew && !preset?.source
-    ? `<label class="field"><span>ประเภทรายการ</span><select name="source">${['project', 'personal'].map(k => opt(k, KINDS[k], t.source)).join('')}</select></label>`
-    : `<div class="field"><span>ประเภทรายการ</span><div class="static">${esc(KINDS[t.source])}${t.private ? ' · ' + ico('lock', 13) + ' ส่วนตัว' : ''}</div><input type="hidden" name="source" value="${t.source}"></div>`;
-
-  const body = `<form id="taskForm" class="form-grid" autocomplete="off">
-    ${ro ? '<div class="note warn full">คุณดูงานนี้ได้อย่างเดียว — อัปเดตได้เฉพาะผู้รับผิดชอบ, Project Manager หรือ Admin</div>' : ''}
-    ${limited ? '<div class="note full">คุณเป็นผู้รับผิดชอบ — อัปเดตสถานะและแนบไฟล์/Link ได้</div>' : ''}
-    <label class="field full"><span>ชื่องาน *</span><input name="title" required maxlength="140" value="${esc(t.title)}" placeholder="เช่น ออกแบบโปสเตอร์ Open House" ${dis()}></label>
-    ${kindSel}
-    <label class="field"><span>Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— ไม่ผูกกับ Project —')}</select></label>
-    <label class="field"><span>ผู้รับผิดชอบ *</span><select name="assigneeId" ${dis()}></select></label>
-    <label class="field" id="grpBox"><span>กลุ่มงานใน Project</span><select name="groupId" ${dis()}></select></label>
-    <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
-    <div class="field full"><div class="triad">
-      <label class="field"><span>วันเริ่ม</span><input type="date" name="start" value="${t.start}" ${dis()}></label>
-      <label class="field"><span>วันเสร็จ</span><input type="date" name="end" value="" ${dis()}></label>
-      <label class="field"><span>ระยะเวลา (วัน)</span><input type="number" name="duration" min="1" max="999" value="${t.duration}" ${dis()}></label></div>
-      <small class="muted" id="modeOut"></small></div>
-    <label class="field"><span>ความสำคัญ</span><select name="priority" ${dis()}>${Object.keys(PRIO).map(k => opt(k, PRIO[k].th, t.priority)).join('')}</select></label>
-    <label class="field"><span>สถานะ</span><select name="status" ${dis(1)}>${Object.keys(STATUS).map(k => opt(k, `${STATUS[k].label} · ${STATUS[k].th}`, t.status)).join('')}</select></label>
-    <div class="field full" id="depsBox"><span>ต้องทำหลังจากงาน (Dependency)</span><div class="deps" id="depsList"></div></div>
-    <label class="field full"><span>รายละเอียด / หมายเหตุ</span><textarea name="desc" rows="2" ${dis()}>${esc(t.desc)}</textarea></label>
-    <div class="full attach-box" id="attachBox">
-    <label class="field full"><span>Link ที่เกี่ยวข้อง <small>(บรรทัดละ 1 ลิงก์ — รูปแบบ “ชื่อ | URL” หรือ URL เฉย ๆ)</small></span>
-      <textarea name="links" rows="2" ${dis(1)} placeholder="Brief | https://drive.google.com/...">${esc((t.links || []).map(l => l.label && l.label !== l.url ? `${l.label} | ${l.url}` : l.url).join('\n'))}</textarea></label>
-    <div class="field full"><span>แนบไฟล์ <small>(ไม่เกิน ${Store.mode === 'server' ? '300 KB' : '1 MB'} ต่อไฟล์ — ไฟล์ใหญ่ให้ใส่เป็น Link)</small></span>
-      <div id="fileList" class="file-list"></div>
-      ${(full || limited) ? `<label class="btn btn-ghost btn-sm file-btn">${ico('paperclip', 15)} เลือกไฟล์<input type="file" id="fileIn" multiple hidden></label>` : ''}</div></div>
-    <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน — ไม่ปรากฏบน Dashboard ของทีม)</label>
+  const hasExtra = !!(t.desc || (t.deps || []).length || (t.links || []).length || (t.files || []).length || t.type || t.groupId);
+  const DUE = [['today', 'วันนี้'], ['tomorrow', 'พรุ่งนี้'], ['fri', 'ศุกร์นี้'], ['nextweek', 'ศุกร์หน้า']];
+  const body = `<form id="taskForm" class="tform" autocomplete="off">
+    ${ro ? '<div class="note warn">คุณดูงานนี้ได้อย่างเดียว — อัปเดตได้เฉพาะผู้รับผิดชอบ, Project Manager หรือ Admin</div>' : ''}
+    ${limited ? '<div class="note">คุณเป็นผู้รับผิดชอบ — อัปเดตสถานะและแนบไฟล์/Link ได้</div>' : ''}
+    <input class="t-title" name="title" required maxlength="140" value="${esc(t.title)}" placeholder="ชื่องาน เช่น ออกแบบโปสเตอร์ Open House" aria-label="ชื่องาน" ${dis()}>
+    <input type="hidden" name="source" value="${t.source}">
+    <div class="seg-pills" role="radiogroup" aria-label="สถานะ">${Object.keys(STATUS).map(k => `<label class="sp sp-${k}"><input type="radio" name="status" value="${k}" ${t.status === k ? 'checked' : ''} ${dis(1)}><span>${STATUS[k].th}</span></label>`).join('')}</div>
+    <div class="form-grid">
+      <label class="field"><span>${ico('users', 14)} ผู้รับผิดชอบ</span><select name="assigneeId" ${dis()}></select></label>
+      <label class="field"><span>${ico('folder', 14)} Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— งานส่วนตัว (ไม่ผูก Project) —')}</select></label>
+      <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน)</label>
+      <div class="field full"><span>${ico('calendar', 14)} ช่วงเวลา</span><div class="triad">
+        <label class="field"><small>เริ่ม</small><input type="date" name="start" value="${t.start}" ${dis()}></label>
+        <label class="field"><small>เสร็จ</small><input type="date" name="end" value="" ${dis()}></label>
+        <label class="field"><small>วัน</small><input type="number" name="duration" min="1" max="999" value="${t.duration}" ${dis()}></label></div>
+        <div class="quick-due">${full ? DUE.map(([k, l]) => `<button type="button" class="chip-s" data-due="${k}">${l}</button>`).join('') : ''}<small class="muted" id="modeOut"></small></div></div>
+      <div class="field full"><span>ความสำคัญ</span><div class="seg-pills prio-pills">${['high', 'med', 'low'].map(k => `<label class="sp"><input type="radio" name="priority" value="${k}" ${t.priority === k ? 'checked' : ''} ${dis()}><span><i class="prio p-${k}"></i>${PRIO[k].th}</span></label>`).join('')}</div></div>
+    </div>
+    <details class="more-box" ${hasExtra ? 'open' : ''}><summary>${ico('down', 15)}<span>รายละเอียดเพิ่มเติม</span><small class="muted">กลุ่มงาน · ประเภท · ทำหลังจาก · หมายเหตุ · ไฟล์</small></summary>
+      <div class="form-grid">
+        <label class="field" id="grpBox"><span>กลุ่มงานใน Project</span><select name="groupId" ${dis()}></select></label>
+        <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
+        <div class="field full" id="depsBox"><span>ต้องทำหลังจากงาน (Dependency)</span><div class="deps" id="depsList"></div></div>
+        <label class="field full"><span>รายละเอียด / หมายเหตุ</span><textarea name="desc" rows="2" ${dis()}>${esc(t.desc)}</textarea></label>
+        <div class="full attach-box" id="attachBox">
+        <label class="field full"><span>Link ที่เกี่ยวข้อง <small>(บรรทัดละ 1 ลิงก์ — “ชื่อ | URL” หรือ URL)</small></span>
+          <textarea name="links" rows="2" ${dis(1)} placeholder="Brief | https://drive.google.com/...">${esc((t.links || []).map(l => l.label && l.label !== l.url ? `${l.label} | ${l.url}` : l.url).join('\n'))}</textarea></label>
+        <div class="field full"><span>แนบไฟล์ <small>(ไม่เกิน ${Store.mode === 'server' ? '300 KB' : '1 MB'} ต่อไฟล์ — ไฟล์ใหญ่ให้ใส่เป็น Link)</small></span>
+          <div id="fileList" class="file-list"></div>
+          ${(full || limited) ? `<label class="btn btn-ghost btn-sm file-btn">${ico('paperclip', 15)} เลือกไฟล์<input type="file" id="fileIn" multiple hidden></label>` : ''}</div></div>
+      </div></details>
   </form>`;
 
   const actions = [];
@@ -116,7 +120,9 @@ function openTask(taskOrId, preset) {
         ['start', 'end', 'duration'].forEach(k => e[k].closest('.field').classList.toggle('auto', k === third));
       };
       const refresh = () => {
-        const src = f.elements.source.value, pid = f.elements.projectId.value;
+        const pid = f.elements.projectId.value, srcEl = f.elements.source;
+        if (['personal', 'project'].includes(srcEl.value)) srcEl.value = pid ? 'project' : 'personal';   // kind follows the Project choice
+        const src = srcEl.value;
         $('#privRow', m.el).hidden = !(src === 'personal' && !pid);
         $('#attachBox', m.el).hidden = src !== 'project';
         const gs = f.elements.groupId, gcur = gs.value || t.groupId || '', gl = (pid && project(pid)?.taskGroups) || [];
@@ -127,7 +133,7 @@ function openTask(taskOrId, preset) {
         if (pj && canManageProject(pj)) pool = [...new Map([...pool, ...[pj.pmId, ...pj.squad].map(member).filter(Boolean)].map(x => [x.id, x])).values()];
         if (curA && !pool.find(x => x.id === curA) && member(curA)) pool = [...pool, member(curA)];
         as.innerHTML = opt('', '— ยังไม่ระบุ —', curA) + pool.map(x => opt(x.id, x.name, curA)).join('');
-        $('em[data-req]', m.el).textContent = src === 'project' ? '*' : '(ไม่บังคับ)';
+        $('em[data-req]', m.el).textContent = '';
         const p = pid && project(pid); const mode = (p && p.dayMode) || st.dayMode;
         recalc();
         $('#modeOut', m.el).textContent = (mode === 'working' ? 'นับเฉพาะวันทำงาน (ข้ามเสาร์–อาทิตย์/วันหยุด)' : 'นับตามวันปฏิทิน') + ' · กรอกอย่างน้อย 2 ใน 3 ช่อง ระบบคำนวณช่องที่เหลือให้';
@@ -147,6 +153,16 @@ function openTask(taskOrId, preset) {
       f.addEventListener('input', ev => { if (['start', 'end', 'duration'].includes(ev.target.name)) recalc(ev.target.name); else refresh(); });
       f.addEventListener('change', ev => { if (!['start', 'end', 'duration'].includes(ev.target.name)) refresh(); });
       f.addEventListener('submit', e => e.preventDefault());
+      $$('[data-due]', m.el).forEach(b => b.onclick = () => {
+        const t0 = today(), d = parse(t0), fri = addDays(t0, (5 - d.getDay() + 7) % 7);
+        const end = { today: t0, tomorrow: addDays(t0, 1), fri, nextweek: addDays(weekStartOf(1), 4) }[b.dataset.due];
+        const e = f.elements;
+        if (!e.start.value || e.start.value > end) e.start.value = t0 <= end ? t0 : end;
+        recalc('start');            // start becomes a fixed input …
+        e.end.value = end; recalc('end');   // … together with the chosen end → duration is calculated
+        $$('[data-due]', m.el).forEach(x => x.classList.toggle('on', x === b));
+      });
+      if (isNew) setTimeout(() => f.elements.title.focus(), 60);
       const fin = $('#fileIn', m.el);
       if (fin) fin.onchange = () => {
         [...fin.files].forEach(file => {

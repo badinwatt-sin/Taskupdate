@@ -26,8 +26,11 @@ function render() {
   $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · บัญชีของฉัน</small></div>`;
   const key = r.name + '/' + (r.id || '');
   const view = $('#view'), y = window.scrollY;
-  view.className = 'view v-' + r.name;
+  document.body.dataset.route = r.name;
+  view.className = 'view v-' + r.name + (key !== lastRoute ? ' enter' : '');
   V[r.name](view, r.id);
+  renderTabbar(r);
+  const tu = $('#tbUser'); if (tu) tu.innerHTML = avatar(m, 32);
   document.title = (NAV.find(n => n[0] === r.name)?.[1] || 'Hub') + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
   Store.setSync();
@@ -80,7 +83,8 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
   $('#scrim').onclick = () => document.body.classList.remove('nav-open');
   $('#userBtn').onclick = openAccount;
   $('#searchBtn').onclick = openSearch;
-  $('#addBtn').onclick = () => openTask(newTask('personal'));
+  $('#addBtn').onclick = openQuickCreate; $('#fab').onclick = openQuickCreate; $('#tbUser').onclick = openMore;
+  if (innerWidth < 720) ST.cal.mode = 'agenda';
   await Store.detect();
   let id = null, note = '';
   if (Store.mode === 'server') {

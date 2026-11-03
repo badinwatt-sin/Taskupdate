@@ -98,11 +98,11 @@ V.todo = root => {
     return `<article class="kcard wcard ${late ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
       <b class="kc-title">${esc(t.title)}</b>
       <div class="wc-dates"><span>${fmtD(taskStart(t))}</span><i></i><span class="${late ? 'late' : ''}">${fmtD(taskEnd(t))}</span><small class="muted">${late ? 'เลยกำหนด' : 'Start → Target'}</small></div>
-      ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>
+      ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>${advBtn(t)}
         ${full && own ? `<button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="-7" title="เลื่อนไปสัปดาห์ก่อน" aria-label="เลื่อนไปสัปดาห์ก่อน">${ico('left', 13)}</button><button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="7" title="เลื่อนไปสัปดาห์ถัดไป" aria-label="เลื่อนไปสัปดาห์ถัดไป">${ico('right', 13)}</button>` : ''}
         ${canSubmit(t) && own ? (t.submitted ? `<button class="mini-btn on" data-act="unsubmit" data-id="${t.id}" title="อยู่บน Kanban ทีม (กดเพื่อเอาออก)">${ico('check', 13)} บนบอร์ด</button>` : `<button class="mini-btn" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}</div></article>`;
   };
-  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, 'แผนงานรายสัปดาห์ — วางงาน กำหนดวันเริ่มและวันเป้าหมาย แล้วลากเพื่ออัปเดตความคืบหน้า',
+  root.innerHTML = pageHead(own ? 'My Weekly Plan' : `แผนของ ${who.name}`, 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า',
     `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} Assign Task</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} Post-it & Icon</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
   <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
     <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
@@ -111,7 +111,7 @@ V.todo = root => {
     <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
     <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
   <div class="kanban three">${col('todo', 'To do')}${col('doing', 'Doing')}${col('done', 'Done')}</div>
-  <p class="muted small kb-hint">ลากการ์ดไปคอลัมน์ถัดไปเมื่อคืบหน้า · ลูกศรบนการ์ดเลื่อนงานไปสัปดาห์อื่น (เฉพาะงานที่คุณแก้ไขได้) · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด · งานที่มอบหมายจาก Project เข้ามาในแผนอัตโนมัติ</p>`;
+  <p class="muted small kb-hint">ลากการ์ด หรือแตะ “เริ่มทำ / เสร็จ” บนการ์ดเมื่อคืบหน้า · ลูกศรบนการ์ดเลื่อนงานไปสัปดาห์อื่น (เฉพาะงานที่คุณแก้ไขได้) · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด · งานที่มอบหมายจาก Project เข้ามาในแผนอัตโนมัติ</p>`;
   const qa = $('#quickAdd');
   if (qa) qa.onsubmit = e => {
     e.preventDefault(); const v = qa.elements, title = v.title.value.trim(); if (!title) { v.title.focus(); return; }

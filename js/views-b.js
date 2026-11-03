@@ -40,7 +40,7 @@ function postitCard(t) {
   return `<article class="kcard postit pat-${st.pattern} ${late ? 'is-late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
     <div class="pi-who">${avatar(m, 26)}<span>${esc(m?.name || '–')}</span></div>
     <div class="pi-title">${esc(t.title)}</div>
-    <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span></div></article>`;
+    <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span>${advBtn(t)}</div></article>`;
 }
 function kcard(t) {
   if (isPostit(t)) return postitCard(t);
@@ -50,7 +50,7 @@ function kcard(t) {
     <b class="kc-title">${esc(t.title)}</b>
     <div class="kc-meta"><span class="${isDelayed(t) ? 'late' : 'muted'}">${ico('clock', 13)} ${fmtD(taskEnd(t))}</span>
       ${risks.length ? `<span class="risk" title="ติดงานก่อนหน้าที่ยังไม่เสร็จ/ล่าช้า">${ico('alert', 13)}</span>` : ''}${t.private ? ico('lock', 13) : ''}
-      <span class="grow"></span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}${avatar(member(t.assigneeId), 24)}</div></article>`;
+      <span class="grow"></span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}${advBtn(t)}${avatar(member(t.assigneeId), 24)}</div></article>`;
 }
 function bindKanban(root) {
   let dragId = null;
@@ -75,7 +75,7 @@ const GZ = { day: 30, week: 14, month: 6 };
 function ganttHTML(tasks, zoom, hideDone, opts) {
   if (hideDone) tasks = tasks.filter(t => isActive(t));
   if (!tasks.length) return empty('gantt', 'ไม่มีงานให้แสดง', 'ลองปรับตัวกรอง หรือเพิ่มงานใน Project');
-  const px = GZ[zoom] || 30, LW = 270, RH = 40, HH = 52;
+  const px = GZ[zoom] || 30, LW = innerWidth < 720 ? 150 : 270, RH = 40, HH = 52;
   let min = null, max = null;
   tasks.forEach(t => { const a = taskStart(t), b = taskEnd(t); if (!min || a < min) min = a; if (!max || b > max) max = b; });
   const t0 = today(); if (t0 < min) min = t0; if (t0 > max) max = t0;
@@ -192,15 +192,15 @@ function taskListHTML(p, f) {
     const full = canFullEdit(t), d = full ? '' : 'disabled', risk = depRisks(t).length, g = projGroupOf(t);
     return `<tr data-id="${t.id}" class="${isDelayed(t) ? 'is-late' : ''} ${t.status === 'done' ? 'is-done' : ''}">
       <td class="rn">${idx.get(t.id)}</td>
-      <td><input class="c-title" value="${esc(t.title)}" placeholder="ชื่องาน" ${d}></td>
-      <td><select class="c-grp" ${d} ${g ? `style="--gc:${g.color}"` : ''}>${grpOpts(t.groupId)}</select></td>
-      <td><select class="c-type" ${d}>${typeOpts(t.type)}</select></td>
-      <td><select class="c-who" ${d}>${whoOpts(t.assigneeId)}</select></td>
-      <td><input type="date" class="c-start" value="${taskStart(t)}" ${d}></td>
-      <td><input type="date" class="c-end" value="${taskEnd(t)}" ${d}></td>
-      <td><input type="number" min="1" class="c-dur" value="${t.duration}" ${d}></td>
-      <td><select class="c-status st-${t.status}" ${canStatus(t) ? '' : 'disabled'}>${Object.keys(STATUS).map(k => opt(k, STATUS[k].th, t.status)).join('')}</select></td>
-      <td><input class="c-dep" value="${(t.deps || []).map(x => idx.get(x)).filter(Boolean).join(', ')}" placeholder="เช่น 1, 2" ${d}></td>
+      <td data-l="งาน"><input class="c-title" value="${esc(t.title)}" placeholder="ชื่องาน" ${d}></td>
+      <td data-l="กลุ่มงาน"><select class="c-grp" ${d} ${g ? `style="--gc:${g.color}"` : ''}>${grpOpts(t.groupId)}</select></td>
+      <td data-l="ประเภท"><select class="c-type" ${d}>${typeOpts(t.type)}</select></td>
+      <td data-l="ผู้รับผิดชอบ"><select class="c-who" ${d}>${whoOpts(t.assigneeId)}</select></td>
+      <td data-l="เริ่ม"><input type="date" class="c-start" value="${taskStart(t)}" ${d}></td>
+      <td data-l="สิ้นสุด"><input type="date" class="c-end" value="${taskEnd(t)}" ${d}></td>
+      <td data-l="วัน"><input type="number" min="1" class="c-dur" value="${t.duration}" ${d}></td>
+      <td data-l="สถานะ"><select class="c-status st-${t.status}" ${canStatus(t) ? '' : 'disabled'}>${Object.keys(STATUS).map(k => opt(k, STATUS[k].th, t.status)).join('')}</select></td>
+      <td data-l="ทำหลังแถว"><input class="c-dep" value="${(t.deps || []).map(x => idx.get(x)).filter(Boolean).join(', ')}" placeholder="เช่น 1, 2" ${d}></td>
       <td class="acts">${risk ? `<span class="risk" title="อาจกระทบกำหนดการจากงานก่อนหน้า">${ico('alert', 14)}</span>` : ''}<button class="icon-btn" data-act="openTask" data-id="${t.id}" title="รายละเอียด" aria-label="รายละเอียด">${ico('edit', 15)}</button>${full ? `<button class="icon-btn" data-act="delRow" data-id="${t.id}" title="ลบ" aria-label="ลบ">${ico('trash', 15)}</button>` : ''}</td></tr>`;
   };
   const canAdd = canManageProject(p);

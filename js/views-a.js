@@ -29,57 +29,85 @@ function segList(rows, emptyMsg = 'ยังไม่มีข้อมูล') 
 /* ============================ DASHBOARD ============================ */
 /* Admin → whole team · Leader → self + reports · Staff → own work + own projects. Events are visible to everyone. */
 V.dashboard = root => {
-  const f = ST.dash, t0 = today(), t7 = addDays(t0, 7);
-  const scope = scopeMembers().filter(m => !f.group || m.group === f.group), ids = new Set(scope.map(m => m.id));
+  const f = ST.dash, t0 = today(), m = me(), now = new Date();
   const team = scopeMembers().length > 1;
+  const scope = scopeMembers().filter(x => !f.group || x.group === f.group), ids = new Set(scope.map(x => x.id));
   const live = visibleTasks().filter(t => ids.has(t.assigneeId) && t.status !== 'cancelled');
-  const c = { doing: 0, todo: 0, done: 0, delayed: 0 };
-  live.forEach(t => { if (t.status === 'done') c.done++; else { if (isDelayed(t)) c.delayed++; c[t.status === 'doing' ? 'doing' : 'todo']++; } });
-  const kpi = (n, l, cls = '') => `<div class="kpi2 ${cls}"><b>${n}</b><span>${l}</span></div>`;
-  const attention = sortBy(live.filter(t => isActive(t) && taskEnd(t) <= t7), t => taskEnd(t)).slice(0, 5);
-  const evs = sortBy(S().events.filter(e => e.status !== 'cancelled' && e.end >= t0), e => e.start).slice(0, 3);
-  const off = sortBy(S().offsite.filter(o => o.end >= t0), o => o.start).slice(0, 3);
-  const lvl = { high: ['หนัก', 'lv-high'], ok: ['ปกติ', 'lv-ok'], low: ['เบา', 'lv-low'] };
+  /* ---- me ---- */
+  const mine = visibleTasks().filter(t => t.assigneeId === m.id && t.status !== 'cancelled');
+  const ws = weekStartOf(0), we = addDays(ws, 6);
+  const myWeek = [...new Set(mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws).concat(mine.filter(t => isActive(t) && taskEnd(t) < ws)))];
+  const H = weekHealth(myWeek, 0), hLabel = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
+  const focus = sortBy(mine.filter(t => isActive(t) && taskStart(t) <= t0), t => taskEnd(t));
+  const doneToday = mine.filter(t => t.status === 'done' && t.doneAt === t0);
+  const overdue = mine.filter(isDelayed).length;
+  const hr = now.getHours(), greet = hr < 12 ? 'สวัสดีตอนเช้า' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
+  const evs = sortBy(S().events.filter(e => e.status !== 'cancelled' && e.end >= t0), e => e.start), nextEv = evs[0];
+  const upcoming = sortBy([
+    ...evs.slice(nextEv ? 1 : 0).map(e => ({ act: 'openEvent', id: e.id, d: e.start, title: e.name, sub: 'Major Event' + (e.venue ? ' · ' + e.venue : ''), alt: false })),
+    ...S().offsite.filter(o => o.end >= t0).map(o => ({ act: 'openOffsite', id: o.id, d: o.start, title: o.title, sub: `${offArea(o)} · ${offNames(o)}`, alt: true })),
+  ], x => x.d).slice(0, 4);
 
-  const rows = scope.map(m => ({ m, w: workload(m.id) })).sort((a, b) => b.w.active - a.w.active);
-  const teamTable = `<div class="table-wrap"><table class="tbl"><thead><tr><th>สมาชิก</th><th>กำลังทำ</th><th>ส่งถัดไป</th><th>ภาระงาน</th></tr></thead><tbody>${rows.map(({ m, w }) => `<tr data-act="goTodo" data-id="${m.id}" class="clickable">
-    <td><div class="person">${avatar(m, 28)}<div><b>${esc(m.name)}</b><small>${esc(group(m.group).short)}</small></div></div></td>
-    <td>${w.doing[0] ? `<div class="cell-task">${esc(w.doing[0].title)}</div>${w.doing.length > 1 ? `<small class="muted">+${w.doing.length - 1} งาน</small>` : ''}` : '<span class="muted">–</span>'}</td>
-    <td>${w.next ? `<span class="${isDelayed(w.next) ? 'late' : ''}">${fmtD(taskEnd(w.next))}</span> <small class="muted">${fmtRel(taskEnd(w.next))}</small>` : '<span class="muted">–</span>'}</td>
-    <td><span class="load-dot ${lvl[w.level][1]}"></span>${w.active} งาน${w.delayed ? ` <span class="late small">· ล่าช้า ${w.delayed}</span>` : ''}</td></tr>`).join('')}</tbody></table></div>`;
+  const focusRow = t => { const p = t.projectId && project(t.projectId), done = t.status === 'done';
+    return `<li class="${done ? 'is-done' : ''}"><button class="tick ${done ? 'on' : ''}" data-act="toggleDone" data-id="${t.id}" aria-label="${done ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายเสร็จ'}" ${canStatus(t) ? '' : 'disabled'}>${done ? ico('check', 14) : ''}</button>
+      <div class="grow clickable" data-act="openTask" data-id="${t.id}"><b class="clip">${esc(t.title)}</b><small class="muted">${p ? esc(p.name) : KINDS[t.source] || 'งาน'}${done ? '' : ` · <span class="${isDelayed(t) ? 'late' : ''}">${fmtRel(taskEnd(t))}</span>`}</small></div>${done ? '' : advBtn(t)}</li>`; };
 
-  const myList = sortBy(live.filter(isActive), t => taskEnd(t)).slice(0, 6);
-  const staffMain = myList.length ? `<ul class="list">${myList.map(t => `<li data-act="openTask" data-id="${t.id}" class="clickable"><div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${t.projectId ? esc(project(t.projectId)?.name) : KINDS[t.source]}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}</span></li>`).join('')}</ul>` : empty('check', 'ไม่มีงานค้าง', 'งานที่ได้รับมอบหมายทั้งหมดเสร็จแล้ว');
+  const hero = `<section class="hero">
+    <div class="hero-main"><span class="hero-date">วัน${TH_DOW_FULL[now.getDay()]}ที่ ${now.getDate()} ${TH_MON_FULL[now.getMonth()]} ${now.getFullYear() + 543}</span>
+      <h1>${greet}, ${esc(m.name)}</h1>
+      <p>${focus.length ? `วันนี้มี <b>${focus.length}</b> งานให้โฟกัส${overdue ? ` · <b class="hl-late">${overdue}</b> งานเลยกำหนด` : ''}` : (doneToday.length ? `เคลียร์งานวันนี้ครบแล้ว ${doneToday.length} งาน` : 'วันนี้ยังไม่มีงานค้าง')}</p></div>
+    <a class="hero-ring h-${H.level}" href="#/todo" style="--p:${H.pct}" aria-label="ความคืบหน้าสัปดาห์นี้ ${H.pct} เปอร์เซ็นต์"><span class="ring-in"><b>${H.pct}%</b><span>สัปดาห์นี้</span></span><small>${hLabel} · ${H.done}/${H.total}</small></a>
+    <div class="hero-actions">${quickActions().slice(0, 4).map(([k, i, t, s2, c]) => `<button type="button" class="hq" data-act="quick" data-id="${k}">${ico(i, 16)}<span>${t}</span></button>`).join('')}</div>
+  </section>`;
 
+  const focusCard = `<section class="card"><div class="card-h"><h3>วันนี้ของฉัน</h3><a class="link" href="#/todo">แผนรายสัปดาห์</a></div>
+    ${focus.length || doneToday.length ? `<ul class="focus-list">${focus.slice(0, 6).map(focusRow).join('')}${doneToday.slice(0, 3).map(focusRow).join('')}</ul>${focus.length > 6 ? `<a class="link small" href="#/todo">ดูอีก ${focus.length - 6} งาน</a>` : ''}`
+      : `<div class="empty small-empty">${ico('check', 30)}<h4>วันนี้ว่าง</h4><p>เพิ่มงานแรกของวันได้จากปุ่มด้านล่าง</p><button class="btn btn-primary btn-sm" data-act="quick" data-id="task">${ico('plus', 14)} งานใหม่</button></div>`}</section>`;
+
+  const nextCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">ปฏิทิน</a></div>
+    ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้!' : 'วัน'}</span><span class="cd-t"><small>Major Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
+    ${upcoming.length ? `<ul class="list">${upcoming.map(x => `<li data-act="${x.act}" data-id="${x.id}" class="clickable"><div class="datebox ${x.alt ? 'alt' : ''}"><b>${parse(x.d).getDate()}</b><span>${TH_MON[parse(x.d).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(x.title)}</b><small class="muted clip">${esc(x.sub)}</small></div></li>`).join('')}</ul>` : (nextEv ? '' : '<p class="muted small">ยังไม่มีกิจกรรมที่กำลังจะมาถึง</p>')}</section>`;
+
+  /* ---- team (admin / leader) ---- */
+  let teamHTML = '';
+  if (team) {
+    const c = { doing: 0, todo: 0, done: 0, delayed: 0 };
+    live.forEach(t => { if (t.status === 'done') c.done++; else { if (isDelayed(t)) c.delayed++; c[t.status === 'doing' ? 'doing' : 'todo']++; } });
+    const kpi = (n, l, cls = '') => `<div class="kpi2 ${cls}"><b>${n}</b><span>${l}</span></div>`;
+    const lvl = { high: ['หนัก', 'lv-high'], ok: ['ปกติ', 'lv-ok'], low: ['เบา', 'lv-low'] };
+    const rows = scope.map(x => ({ x, w: workload(x.id) })).sort((p, q) => q.w.active - p.w.active);
+    const attention = sortBy(live.filter(t => isActive(t) && taskEnd(t) <= addDays(t0, 7)), t => taskEnd(t)).slice(0, 5);
+    teamHTML = `<div class="sec-row"><h2 class="sec-h2">ทีม${isAdmin() ? '' : 'ที่ดูแล'}</h2>${isAdmin() ? `<select data-f="dash.group" aria-label="หน้าที่">${groupOptions(f.group, 'ทุกหน้าที่')}</select>` : ''}</div>
+    <div class="kpi-row">${kpi(c.doing, 'กำลังทำ', 'doing')}${kpi(c.todo, 'ยังไม่เริ่ม')}${kpi(c.done, 'เสร็จแล้ว', 'done')}${kpi(c.delayed, 'ล่าช้า', c.delayed ? 'late' : '')}</div>
+    <div class="dash-main">
+      <section class="card flushy"><div class="card-h"><h3>ทีมกำลังทำอะไร</h3><small class="muted">แตะชื่อเพื่อดูแผนของคนนั้น</small></div><div class="trows">${rows.map(({ x, w }) => `<button type="button" class="trow" data-act="goTodo" data-id="${x.id}">
+        <span class="av">${avatar(x, 34)}</span><span class="who"><b>${esc(x.name)}</b><small>${esc(group(x.group).short)}</small></span>
+        <span class="now">${w.doing[0] ? esc(w.doing[0].title) + (w.doing.length > 1 ? ` <small>+${w.doing.length - 1}</small>` : '') : '<span class="muted">–</span>'}</span>
+        <span class="nxt">${w.next ? `<span class="${isDelayed(w.next) ? 'late' : ''}">${fmtD(taskEnd(w.next))}</span> <small>${fmtRel(taskEnd(w.next))}</small>` : '<span class="muted">–</span>'}</span>
+        <span class="ld"><span class="load-dot ${lvl[w.level][1]}"></span>${w.active} งาน${w.delayed ? ` <span class="late small">· ${w.delayed} ล่าช้า</span>` : ''}</span></button>`).join('')}</div></section>
+      <div class="stack">${attention.length ? `<section class="card"><div class="card-h"><h3>ต้องจับตา</h3><small class="muted">ภายใน 7 วัน</small></div><ul class="list">${attention.map(t => `<li data-act="openTask" data-id="${t.id}" class="clickable">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '–')}</small></div><span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}</span></li>`).join('')}</ul></section>` : `<section class="card"><div class="empty small-empty">${ico('check', 28)}<h4>ไม่มีงานต้องจับตา</h4><p>ทุกงานในทีมยังอยู่ในกำหนด</p></div></section>`}</div>
+    </div>`;
+  }
+
+  /* ---- projects strip ---- */
   const projs = visibleProjects().map(p => ({ p, s: projectStats(p) }));
-  const projCard = projs.length ? `<section class="card"><div class="card-h"><h3>Project ของฉัน</h3><a class="link" href="#/projects">ทั้งหมด</a></div><ul class="plist">${projs.map(({ p, s }) => `<li><a href="#/projects/${p.id}"><span class="grow clip"><i style="background:${p.color}"></i>${esc(p.name)}</span><small class="muted">${s.pct}%</small></a>${progressBar(s.pct, p.color)}</li>`).join('')}</ul></section>` : '';
+  const projHTML = projs.length ? `<div class="sec-row"><h2 class="sec-h2">Projects</h2><a class="link" href="#/projects">ทั้งหมด</a></div>
+    <div class="pstrip">${projs.map(({ p, s }) => `<a class="pc2" href="#/projects/${p.id}" style="--c:${p.color}"><span class="pc2-top"><b class="clip2">${esc(p.name)}</b>${s.delayed ? `<span class="badge st-delayed">${s.delayed} ล่าช้า</span>` : ''}</span>
+      <span class="pc2-ring" style="--p:${s.pct}"><span>${s.pct}%</span></span><small class="muted">${s.done}/${s.total} งาน · ${s.end ? 'ถึง ' + fmtD(s.end) : '–'}</small><span class="squad">${p.squad.slice(0, 5).map(id => avatar(member(id), 22)).join('')}</span></a>`).join('')}</div>` : '';
 
+  /* ---- breakdown ---- */
   const by = (!team && ['group', 'offsite'].includes(f.by || 'group')) ? 'project' : (f.by || 'group');
   const dataBy = { group: aggregate(live.filter(t => t.assigneeId), t => member(t.assigneeId)?.group, k => group(k).short), project: aggregate(live.filter(t => t.projectId), t => t.projectId, k => project(k)?.name || k), type: aggregate(live, t => t.type) }[by];
   let breakdown;
   if (by === 'offsite') {
     const days = {}; S().offsite.forEach(o => { days[o.area] = (days[o.area] || 0) + diffDays(o.start, o.end) + 1; });
-    const rowsO = Object.entries(days).sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, done: 0, active: v, delayed: 0 }));
-    breakdown = segList(rowsO, 'ยังไม่มีบันทึก Offsite') + '<p class="muted small">จำนวนวัน Offsite แยกตามพื้นที่</p>';
+    breakdown = segList(Object.entries(days).sort((p, q) => q[1] - p[1]).map(([k, v]) => ({ label: k, done: 0, active: v, delayed: 0 })), 'ยังไม่มีบันทึก Offsite') + '<p class="muted small">จำนวนวัน Offsite แยกตามพื้นที่</p>';
   } else breakdown = segList(dataBy);
   const byTabs = (team ? [['group', 'หน้าที่'], ['project', 'Project'], ['type', 'ประเภทงาน'], ['offsite', 'Offsite']] : [['project', 'Project'], ['type', 'ประเภทงาน']]).map(([k, l]) => `<button class="${by === k ? 'on' : ''}" data-act="dashBy" data-id="${k}">${l}</button>`).join('');
 
-  const evCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">ปฏิทิน</a></div>
-    ${(evs.length || off.length) ? `<ul class="list">${evs.map(e => `<li data-act="openEvent" data-id="${e.id}" class="clickable"><div class="datebox"><b>${parse(e.start).getDate()}</b><span>${TH_MON[parse(e.start).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(e.name)}</b><small class="muted">Major Event · ${fmtRel(e.start)}</small></div></li>`).join('')}
-    ${off.map(o => `<li data-act="openOffsite" data-id="${o.id}" class="clickable"><div class="datebox alt"><b>${parse(o.start).getDate()}</b><span>${TH_MON[parse(o.start).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(o.title)}</b><small class="muted">${esc(o.area)} · ${o.personIds.map(i => member(i)?.name).filter(Boolean).join(', ')}</small></div></li>`).join('')}</ul>` : '<p class="muted small">ไม่มีกิจกรรมที่กำลังจะมาถึง</p>'}</section>`;
-
-  root.innerHTML = pageHead(team ? 'Dashboard' : `สวัสดี ${esc(me().name)}`, team ? (isAdmin() ? 'ภาพรวมทั้งทีม' : 'ภาพรวมของคุณและทีมที่ดูแล') : 'งานของคุณและ Project ที่คุณอยู่', `${isAdmin() ? `<select data-f="dash.group" aria-label="หน้าที่">${groupOptions(f.group, 'ทุกหน้าที่')}</select>` : ''}`) + `
-  <div class="kpi-row">${kpi(c.doing, 'กำลังทำ', 'doing')}${kpi(c.todo, 'ยังไม่เริ่ม')}${kpi(c.done, 'เสร็จแล้ว', 'done')}${kpi(c.delayed, 'ล่าช้า', c.delayed ? 'late' : '')}</div>
-  <div class="dash-main">
-    <section class="card flushy"><div class="card-h"><h3>${team ? 'ทีมกำลังทำอะไร' : 'งานของฉันที่ต้องทำ'}</h3>${team ? '' : '<a class="link" href="#/todo">แผนรายสัปดาห์</a>'}</div>${team ? teamTable : staffMain}</section>
-    <div class="stack">
-      ${attention.length && team ? `<section class="card"><div class="card-h"><h3>ต้องจับตา</h3><small class="muted">ภายใน 7 วัน</small></div><ul class="list">${attention.map(t => `<li data-act="openTask" data-id="${t.id}" class="clickable"><div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '–')}</small></div><span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}</span></li>`).join('')}</ul></section>` : ''}
-      ${evCard}${team ? '' : projCard}
-    </div>
-  </div>
-  <section class="card mt"><div class="card-h"><h3>สัดส่วนงาน</h3><div class="seg-ctl sm">${byTabs}</div></div>
-    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span><i class="x"></i>ล่าช้า</span></div>${breakdown}</section>
-  ${team && projs.length ? `<section class="card mt">${projCard.replace(/^<section class="card">/, '').replace(/<\/section>$/, '')}</section>` : ''}`;
+  root.innerHTML = hero + `<div class="home-grid">${focusCard}${nextCard}</div>` + teamHTML + projHTML + `
+  <section class="card mt"><div class="card-h"><h3>สัดส่วนงาน${team ? 'ของทีม' : 'ของฉัน'}</h3><div class="seg-ctl sm">${byTabs}</div></div>
+    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span><i class="x"></i>ล่าช้า</span></div>${breakdown}</section>`;
 };
 ACT.dashBy = el => { ST.dash.by = el.dataset.id; render(); };
 ACT.goTodo = el => { ST.todo.user = el.dataset.id; ST.todo.week = 0; location.hash = '#/todo'; };
@@ -235,7 +263,7 @@ function itemsOnDay(d) {
 }
 function calHeader(title) {
   const c = ST.cal;
-  return `<div class="cal-bar"><div class="seg-ctl"><button class="${c.mode === 'month' ? 'on' : ''}" data-act="calMode" data-id="month">รายเดือน</button><button class="${c.mode === 'year' ? 'on' : ''}" data-act="calMode" data-id="year">ภาพรวมทั้งปี</button></div>
+  return `<div class="cal-bar"><div class="seg-ctl"><button class="${c.mode === 'agenda' ? 'on' : ''}" data-act="calMode" data-id="agenda">รายการ</button><button class="${c.mode === 'month' ? 'on' : ''}" data-act="calMode" data-id="month">รายเดือน</button><button class="${c.mode === 'year' ? 'on' : ''}" data-act="calMode" data-id="year">ภาพรวมทั้งปี</button></div>
     <div class="cal-nav"><button class="icon-btn" data-act="calPrev" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="calNext" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="calToday">วันนี้</button></div>
     <div class="cal-opts"><label class="check"><input type="checkbox" data-f="cal.ram" ${c.ram ? 'checked' : ''}> Event Support (RAM/Other)</label></div></div>`;
 }
@@ -249,7 +277,15 @@ V.calendar = root => {
     ${evs.map(e => `<tr class="clickable" data-act="openEvent" data-id="${e.id}"><td><b>${esc(e.name)}</b></td><td>${fmtRange(e.start, e.end)}</td><td>${esc(e.venue)}</td><td>${personChip(member(e.ownerId))}</td><td>${esc(e.audience)}</td><td><span class="badge ${EV_STATUS[e.status].cls}">${EV_STATUS[e.status].th}</span></td>
     <td class="small">${e.milestones.length ? `${e.milestones.filter(m => m.done).length}/${e.milestones.length} เสร็จ` : '–'}</td></tr>`).join('')}</tbody></table></div>` : empty('calendar', 'ยังไม่มี Major Event', 'เพิ่มงานสำคัญเพื่อดูภาพรวมทั้งปี');
 
-  if (c.mode === 'month') {
+  if (c.mode === 'agenda') {
+    const t0 = today(), first = iso(new Date(c.y, c.m, 1)), from = first.slice(0, 7) === t0.slice(0, 7) ? t0 : first, days = [];
+    const COL = { 'ev-planning': '#ff9500', 'ev-confirmed': '#007aff', 'ev-done': '#34c759', 'ev-cancelled': '#8e8e93', ms: '#af52de', 'ms-done': '#c7c7cc', ram: '#30b0c7' };
+    for (let i = 0; i < 92; i++) { const d = addDays(from, i), items = itemsOnDay(d), hol = holidayOf(d); if (items.length || hol) days.push({ d, items, hol }); }
+    root.innerHTML = pageHead('Event Calendar', 'กิจกรรม วันเตรียมงาน Offsite และวันหยุด เรียงตามวัน (3 เดือน)', actions) + calHeader(`ตั้งแต่ ${fmtDY(from)}`) +
+      (days.length ? `<div class="agenda">${days.map(({ d, items, hol }) => { const dt = parse(d); return `<div class="ag-day ${d === t0 ? 'today' : ''}"><button type="button" class="ag-date" data-act="openDay" data-id="${d}"><b>${dt.getDate()}</b><span>${TH_DOW[dt.getDay()]}</span><small>${TH_MON[dt.getMonth()]}</small></button>
+        <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Major Event'}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
+        : empty('calendar', 'ไม่มีกิจกรรมใน 3 เดือนนี้', 'ลองเลื่อนไปเดือนถัดไป หรือเพิ่ม Major Event'));
+  } else if (c.mode === 'month') {
     const first = new Date(c.y, c.m, 1), startOff = first.getDay(), dim = new Date(c.y, c.m + 1, 0).getDate();
     const cells = []; const t0 = today();
     for (let i = 0; i < Math.ceil((startOff + dim) / 7) * 7; i++) {
