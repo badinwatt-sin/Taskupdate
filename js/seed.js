@@ -45,13 +45,16 @@ function seed() {
   const projects = [
     { id: 'p_ye', name: 'Customer Appreciation Night 2026', pmId: m('noravat'), dayMode: null, start: D(-14), color: '#0891b2',
       goal: 'จัดงานขอบคุณลูกค้าและพาร์ตเนอร์ประจำปี ผู้เข้าร่วม 300 คน สร้างประสบการณ์ที่จดจำและเก็บ Feedback ≥ 4.5/5',
-      squad: ['noravat', 'butsaya', 'phirat', 'nitikun', 'jadesalit', 'chayada', 'jariya', 'tananchai'].map(m) },
+      squad: ['noravat', 'butsaya', 'phirat', 'nitikun', 'jadesalit', 'chayada', 'jariya', 'tananchai'].map(m),
+      taskGroups: [{ id: 'g_plan', name: 'วางแผน & Concept', color: '#5856d6' }, { id: 'g_prod', name: 'Production & Creative', color: '#ff2d92' }, { id: 'g_comm', name: 'Communication & RSVP', color: '#34c759' }, { id: 'g_event', name: 'Event Day & Wrap-up', color: '#ff9500' }] },
     { id: 'p_kit', name: 'Agency Experience Toolkit', pmId: m('jariya'), dayMode: null, start: D(-20), color: '#4f46e5',
       goal: 'รวบรวม Template และ Guideline กลางให้ทุกหน้าที่ใช้ทำงานได้เร็วและเป็นมาตรฐานเดียวกัน',
-      squad: ['jariya', 'praphatsorn', 'sudarat', 'tananchai', 'chayada', 'butsaya'].map(m) },
+      squad: ['jariya', 'praphatsorn', 'sudarat', 'tananchai', 'chayada', 'butsaya'].map(m),
+      taskGroups: [{ id: 'g_res', name: 'Research & Framework', color: '#5856d6' }, { id: 'g_tpl', name: 'Template & Guideline', color: '#007aff' }, { id: 'g_launch', name: 'Pilot & Launch', color: '#34c759' }] },
     { id: 'p_rs', name: 'RAM Roadshow Q1 2027', pmId: m('pitcha'), dayMode: 'calendar', start: D(-7), color: '#d97706',
       goal: 'จัด Roadshow ให้ RAM ทุกภาค พร้อมชุดสื่อกลาง นับระยะเวลาเป็นวันปฏิทิน (รวมเสาร์–อาทิตย์)',
-      squad: ['pitcha', 'jadesalit', 'thanapon', 'patcharanan', 'nitikun', 'chayada'].map(m) },
+      squad: ['pitcha', 'jadesalit', 'thanapon', 'patcharanan', 'nitikun', 'chayada'].map(m),
+      taskGroups: [{ id: 'g_survey', name: 'Survey & Planning', color: '#5856d6' }, { id: 'g_kit', name: 'Creative Kit & Video', color: '#ff2d92' }, { id: 'g_logi', name: 'Logistics', color: '#ff9500' }] },
   ];
   const P = (pid, key, title, who, s, dur, st, deps, type, prio = 'med') => {
     tasks.push(base({ id: pid + '_' + key, projectId: 'p_' + pid, title, assigneeId: m(who), start: D(s), duration: dur, status: st, deps: deps.map(d => pid + '_' + d), type, priority: prio, doneAt: st === 'done' ? D(s + dur) : null }));
@@ -80,6 +83,10 @@ function seed() {
   P('rs', 3, 'วางแผนเส้นทางและ Logistics', 'patcharanan', 0, 12, 'todo', [1], 'Event');
   P('rs', 4, 'ผลิตวิดีโอแนะนำ Roadshow', 'jadesalit', 11, 10, 'todo', [2], 'Multimedia');
   P('rs', 5, 'สรุปแผนเสนอ Management', 'pitcha', 23, 5, 'todo', [3, 4], 'Prime / Strategy', 'high');
+
+  const tg = { ye_1: 'g_plan', ye_2: 'g_plan', ye_3: 'g_prod', ye_4: 'g_event', ye_5: 'g_prod', ye_6: 'g_prod', ye_7: 'g_comm', ye_8: 'g_prod', ye_9: 'g_event', ye_10: 'g_event', ye_11: 'g_event',
+    kit_1: 'g_res', kit_2: 'g_res', kit_3: 'g_tpl', kit_4: 'g_tpl', kit_5: 'g_launch', kit_6: 'g_launch', rs_1: 'g_survey', rs_5: 'g_survey', rs_2: 'g_kit', rs_4: 'g_kit', rs_3: 'g_logi' };
+  tasks.forEach(t => { if (tg[t.id]) t.groupId = tg[t.id]; });
 
   /* Personal / meeting-origin */
   const Pe = (who, title, s, dur, st, prio, priv = false, extra = {}) => tasks.push(base({ title, assigneeId: m(who), start: D(s), duration: dur, status: st, priority: prio, source: 'personal', private: priv, createdBy: m(who), type: 'Admin / อื่นๆ', doneAt: st === 'done' ? D(s) : null, ...extra }));

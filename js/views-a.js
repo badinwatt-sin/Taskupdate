@@ -87,48 +87,99 @@ ACT.goTodo = el => { ST.todo.user = el.dataset.id; ST.todo.week = 0; location.ha
 /* ===================== OFFSITE & EVENT SUPPORT LOG ===================== */
 const offDays = o => diffDays(o.start, o.end) + 1;
 const areaOptions = (sel, blank) => (blank ? opt('', blank, sel) : '') + OFFSITE_AREAS.filter(g => g.items.length).map(g => `<optgroup label="${g.label}">${g.items.map(a => opt(a, a, sel)).join('')}</optgroup>`).join('') + opt('__OTHER', 'อื่น ๆ', sel);
+function offRange() {
+  const f = ST.tracker; if (f.view === 'list') return null;
+  const d = parse(f.cur);
+  if (f.view === 'week') { const ws = addDays(f.cur, -((d.getDay() + 6) % 7)); return [ws, addDays(ws, 6)]; }
+  return [iso(new Date(d.getFullYear(), d.getMonth(), 1)), iso(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+}
 function offsiteRows() {
-  const f = ST.tracker, q = f.q.trim().toLowerCase();
+  const f = ST.tracker, q = f.q.trim().toLowerCase(), rg = offRange();
   return sortBy(S().offsite, o => o.start).reverse().filter(o =>
     (!f.area || (f.area === '__OTHER' ? o.areaType === 'OTHER' : o.area === f.area)) && (!f.who || o.personIds.includes(f.who))
-    && (!f.month || o.start.startsWith(f.month) || o.end.startsWith(f.month))
+    && (rg ? (o.start <= rg[1] && o.end >= rg[0]) : (!f.month || o.start.startsWith(f.month) || o.end.startsWith(f.month)))
     && (!q || (o.title + o.area + o.note).toLowerCase().includes(q)));
 }
-function offsiteSummary(rows, month) {
+function offsiteSummary(rows, from, to) {
   const map = new Map();
   rows.forEach(o => o.personIds.forEach(id => {
     const r = map.get(id) || { id, days: new Set(), acts: 0, areas: new Set() }; r.acts++; r.areas.add(o.area);
-    for (let d = o.start, n = 0; d <= o.end && n < 400; d = addDays(d, 1), n++) if (!month || d.startsWith(month)) r.days.add(d);
+    for (let d = o.start, n = 0; d <= o.end && n < 400; d = addDays(d, 1), n++) if ((!from || d >= from) && (!to || d <= to)) r.days.add(d);
     map.set(id, r);
   }));
-  return [...map.values()].filter(r => member(r.id)).sort((a, b) => b.days.size - a.days.size);
+  return [...map.values()].filter(r => member(r.id) && r.days.size).sort((a, b) => b.days.size - a.days.size);
+}
+const offArea = o => o.areaType === 'OTHER' ? 'อื่นๆ' : o.area;
+const offNames = o => o.personIds.map(i => member(i)?.name).filter(Boolean).join(', ');
+const offOn = (rows, d) => rows.filter(o => o.start <= d && d <= o.end);
+function offCalendar(rows, rg) {
+  const f = ST.tracker, t0 = today();
+  if (f.view === 'month') {
+    const first = new Date(parse(f.cur).getFullYear(), parse(f.cur).getMonth(), 1), dim = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate(), lead = first.getDay();
+    const cells = [];
+    for (let i = 0; i < Math.ceil((lead + dim) / 7) * 7; i++) {
+      const dt = new Date(first.getFullYear(), first.getMonth(), 1 - lead + i), d = iso(dt), inM = dt.getMonth() === first.getMonth(), items = offOn(rows, d), hol = holidayOf(d);
+      cells.push(`<div class="day ${inM ? '' : 'out'} ${d === t0 ? 'today' : ''} ${isOff(d) ? 'off' : ''}" data-act="offDay" data-id="${d}" tabindex="0"><span class="dn">${dt.getDate()}</span>${hol ? `<small class="hol ${hol.kind}" title="${esc(hol.name)}">${esc(hol.name)}</small>` : ''}
+        ${items.slice(0, 3).map(o => `<div class="cev ram off" data-act="openOffsite" data-id="${o.id}" title="${esc(o.area)} · ${esc(o.title)} · ${esc(offNames(o))}"><b>${esc(offArea(o))}</b> ${esc(o.title)}</div>`).join('')}${items.length > 3 ? `<small class="more">+${items.length - 3} เพิ่มเติม</small>` : ''}</div>`);
+    }
+    return `<div class="cal"><div class="cal-dow">${TH_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div></div>`;
+  }
+  const cols = [];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(rg[0], i), dt = parse(d), items = offOn(rows, d), hol = holidayOf(d);
+    cols.push(`<div class="wk-col ${d === t0 ? 'today' : ''} ${isOff(d) ? 'off' : ''}"><div class="wk-head" data-act="offDay" data-id="${d}"><small>${TH_DOW[dt.getDay()]}</small><b>${dt.getDate()}</b><span>${TH_MON[dt.getMonth()]}</span>${hol ? `<em class="hol ${hol.kind}" title="${esc(hol.name)}">${esc(hol.name)}</em>` : ''}</div>
+      <div class="wk-body">${items.map(o => `<div class="wk-card" data-act="openOffsite" data-id="${o.id}"><span class="area-tag" title="${esc(o.area)}">${esc(offArea(o))}</span><b>${esc(o.title)}</b>${o.areaType === 'OTHER' ? `<small class="muted">${esc(o.area)}</small>` : ''}<div class="squad">${o.personIds.map(i => avatar(member(i), 22)).join('')}</div><small class="muted">${esc(offNames(o))}</small></div>`).join('') || '<p class="wk-empty">–</p>'}</div></div>`);
+  }
+  return `<div class="wk-grid">${cols.join('')}</div>`;
 }
 V.support = root => {
-  const f = ST.tracker, rows = offsiteRows(), sum = offsiteSummary(rows, f.month), totalDays = sum.reduce((a, r) => a + r.days.size, 0);
+  const f = ST.tracker, rg = offRange(), rows = offsiteRows();
+  const from = rg ? rg[0] : (f.month ? f.month + '-01' : null), to = rg ? rg[1] : (f.month ? f.month + '-31' : null);
+  const sum = offsiteSummary(rows, from, to), totalDays = sum.reduce((a, r) => a + r.days.size, 0);
+  const cd = parse(f.cur), title = f.view === 'month' ? `${TH_MON_FULL[cd.getMonth()]} ${cd.getFullYear() + 543}` : f.view === 'week' ? `${fmtD(rg[0])} – ${fmtD(rg[1])} ${parse(rg[1]).getFullYear() + 543}` : '';
+  const periodLabel = rg ? (f.view === 'week' ? 'สัปดาห์นี้ที่เลือก' : 'เดือน' + TH_MON_FULL[cd.getMonth()]) : (f.month ? 'เดือน ' + TH_MON_FULL[+f.month.slice(5) - 1] : 'ทุกช่วงเวลา');
   root.innerHTML = pageHead('Offsite & Event Support', 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
     `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button><button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`) + `
+  <div class="cal-bar"><div class="seg-ctl">${[['list', 'รายการ'], ['week', 'ปฏิทินสัปดาห์'], ['month', 'ปฏิทินเดือน']].map(([k, l]) => `<button class="${f.view === k ? 'on' : ''}" data-act="offView" data-id="${k}">${l}</button>`).join('')}</div>
+    ${f.view !== 'list' ? `<div class="cal-nav"><button class="icon-btn" data-act="offNav" data-d="-1" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="offNav" data-d="1" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="offNav" data-d="0">วันนี้</button></div>` : ''}</div>
   <div class="filters">
     <label class="search">${ico('search', 16)}<input type="search" placeholder="ค้นหากิจกรรม / พื้นที่" value="${esc(f.q)}" data-f-live="tracker.q"></label>
     <select data-f="tracker.area" aria-label="พื้นที่">${areaOptions(f.area, 'ทุกพื้นที่')}</select>
     <select data-f="tracker.who" aria-label="บุคคล">${memberOptions(f.who, 'ทุกคน')}</select>
-    <input type="month" data-f="tracker.month" value="${f.month}" aria-label="เดือน" title="เดือน (เว้นว่าง = ทั้งหมด)">
+    ${f.view === 'list' ? `<input type="month" data-f="tracker.month" value="${f.month}" aria-label="เดือน" title="เดือน (เว้นว่าง = ทั้งหมด)">` : ''}
     ${(f.q || f.area || f.who || f.month) ? '<button class="btn btn-ghost btn-sm" data-act="clearTracker">ล้างตัวกรอง</button>' : ''}</div>
-  <section class="card"><div class="card-h"><h3>สรุปรายบุคคล</h3><small class="muted">${f.month ? 'เดือน ' + TH_MON_FULL[+f.month.slice(5) - 1] : 'ทุกช่วงเวลา'} · แสดงเฉพาะคนที่มีการปฏิบัติงาน</small></div>
+  ${f.view !== 'list' ? offCalendar(rows, rg) + '<div class="mt"></div>' : ''}
+  <section class="card ${f.view !== 'list' ? '' : ''}"><div class="card-h"><h3>สรุปรายบุคคล</h3><small class="muted">${periodLabel} · แสดงเฉพาะคนที่มีการปฏิบัติงาน</small></div>
     ${sum.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>ชื่อ</th><th class="num">วัน Offsite</th><th class="num">กิจกรรม</th><th>พื้นที่</th></tr></thead><tbody>
     ${sum.map(r => `<tr><td><div class="person">${avatar(member(r.id), 26)}<b>${esc(member(r.id).name)}</b></div></td><td class="num"><b>${r.days.size}</b></td><td class="num">${r.acts}</td><td>${[...r.areas].map(a => `<span class="area-tag">${esc(a)}</span>`).join('')}</td></tr>`).join('')}
     <tr class="total"><td>รวม</td><td class="num"><b>${totalDays}</b> <small>คน-วัน</small></td><td class="num">${rows.length}</td><td></td></tr></tbody></table></div>` : '<p class="muted small">ยังไม่มีการบันทึกในช่วงนี้</p>'}</section>
-  <section class="card flush mt"><div class="card-h pad"><h3>รายการบันทึก</h3><small class="muted">${rows.length} รายการ</small></div>
+  ${f.view === 'list' ? `<section class="card flush mt"><div class="card-h pad"><h3>รายการบันทึก</h3><small class="muted">${rows.length} รายการ</small></div>
   ${rows.length ? `<div class="table-wrap"><table class="tbl tracker"><thead><tr><th>วันที่</th><th>กิจกรรม</th><th>พื้นที่</th><th>ผู้ปฏิบัติงาน</th><th>หมายเหตุ</th></tr></thead><tbody>
   ${rows.map(o => `<tr class="clickable" data-act="openOffsite" data-id="${o.id}"><td class="nw">${fmtRange(o.start, o.end)}<small class="muted">${offDays(o)} วัน</small></td><td class="main"><b>${esc(o.title)}</b></td><td><span class="area-tag">${esc(o.area)}</span></td>
-  <td><span class="squad">${o.personIds.map(i => avatar(member(i), 26)).join('')}</span><small class="muted names">${o.personIds.map(i => member(i)?.name).filter(Boolean).join(', ')}</small></td><td class="small muted">${esc(o.note || '–')}</td></tr>`).join('')}</tbody></table></div>`
-    : empty('inbox', 'ยังไม่มีบันทึก', 'บันทึกเมื่อทีมไปปฏิบัติงานนอกสำนักงาน', `<button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`)}</section>`;
+  <td><span class="squad">${o.personIds.map(i => avatar(member(i), 26)).join('')}</span><small class="muted names">${esc(offNames(o))}</small></td><td class="small muted">${esc(o.note || '–')}</td></tr>`).join('')}</tbody></table></div>`
+    : empty('inbox', 'ยังไม่มีบันทึก', 'บันทึกเมื่อทีมไปปฏิบัติงานนอกสำนักงาน', `<button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`)}</section>` : ''}`;
 };
-ACT.clearTracker = () => { ST.tracker = { q: '', area: '', who: '', status: '', month: '' }; render(); };
+ACT.offView = el => { ST.tracker.view = el.dataset.id; render(); };
+ACT.offNav = el => {
+  const f = ST.tracker, d = +el.dataset.d;
+  if (d === 0) f.cur = today();
+  else if (f.view === 'week') f.cur = addDays(f.cur, d * 7);
+  else { const x = parse(f.cur); f.cur = iso(new Date(x.getFullYear(), x.getMonth() + d, 1)); }
+  render();
+};
+ACT.offDay = el => {
+  const d = el.dataset.id, items = offOn(offsiteRows(), d), hol = holidayOf(d);
+  modal({
+    title: fmtDY(d), body: `${hol ? `<div class="note">${esc(hol.name)} (${hol.kind === 'public' ? 'วันหยุดราชการ' : 'วันหยุดบริษัท'})</div>` : ''}${items.length ? `<ul class="list">${items.map(o => `<li class="clickable" data-act="openOffsite" data-id="${o.id}"><span class="area-tag">${esc(o.area)}</span><div class="grow"><b>${esc(o.title)}</b><small class="muted">${esc(offNames(o))}</small></div></li>`).join('')}</ul>` : '<p class="muted">ไม่มีการปฏิบัติงานนอกสำนักงานในวันนี้</p>'}`,
+    actions: [{ label: 'ปิด' }, { label: ico('plus', 15) + ' บันทึก Offsite วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openOffsite(null, d)); } }],
+  });
+};
+ACT.clearTracker = () => { Object.assign(ST.tracker, { q: '', area: '', who: '', status: '', month: '' }); render(); };
 ACT.exportOffsite = () => {
   const rows = [['วันเริ่ม', 'วันสิ้นสุด', 'จำนวนวัน', 'กิจกรรม', 'ประเภทพื้นที่', 'พื้นที่', 'ผู้ปฏิบัติงาน', 'หมายเหตุ']];
   offsiteRows().reverse().forEach(o => rows.push([o.start, o.end, offDays(o), o.title, o.areaType, o.area, o.personIds.map(i => member(i)?.name).join(', '), o.note]));
   rows.push([], ['สรุปรายบุคคล'], ['ชื่อ', 'วัน Offsite', 'จำนวนกิจกรรม', 'พื้นที่']);
-  offsiteSummary(offsiteRows(), ST.tracker.month).forEach(r => rows.push([member(r.id).name, r.days.size, r.acts, [...r.areas].join(' / ')]));
+  offsiteSummary(offsiteRows(), (offRange() || [ST.tracker.month ? ST.tracker.month + '-01' : null])[0], (offRange() || [0, ST.tracker.month ? ST.tracker.month + '-31' : null])[1]).forEach(r => rows.push([member(r.id).name, r.days.size, r.acts, [...r.areas].join(' / ')]));
   downloadCSV(`offsite-${today()}.csv`, rows); toast('ดาวน์โหลดไฟล์ CSV แล้ว (เปิดด้วย Excel ได้)');
 };
 const canEditOffsite = o => isAdmin() || o.createdBy === me().id || o.personIds.includes(me().id);

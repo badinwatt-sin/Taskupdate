@@ -111,7 +111,7 @@ const Store = {
       try { const raw = localStorage.getItem(LS_KEY); if (raw) { this.state = JSON.parse(raw); loaded = true; } } catch (e) { }
     }
     if (!loaded) { this.state = seed(); this.save(); }
-    const st = this.state; st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
+    const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
     if (this.mode === 'server') setInterval(() => this.poll(), 10000);
     this.setSync();
     addEventListener('pagehide', () => { if (this.pending && this.mode === 'server') { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
@@ -172,6 +172,20 @@ const scopeMembers = () => S().members.filter(m => inScope(m.id));
 /* who can I assign work to? Admin -> everyone, Leader -> own reports, Staff -> nobody else */
 const canAssign = () => isAdmin() || subordinates(me().id).size > 0;
 const assignablePeople = () => isAdmin() ? S().members : S().members.filter(m => subordinates(me().id).has(m.id));
+/* ----- project task groups (phases / work streams) ----- */
+const TYPE_COLORS = ['#5856d6', '#ff2d92', '#ff9500', '#34c759', '#007aff', '#8e8e93'];
+function groupTasks(tasks, p, by, keepEmpty) {
+  if (!p || by === 'none') return [{ key: '', name: null, color: '', tasks }];
+  let defs;
+  if (by === 'group') defs = (p.taskGroups || []).map(g => ({ key: g.id, name: g.name, color: g.color })).concat([{ key: '', name: 'ไม่ระบุกลุ่มงาน', color: '#a1a1aa', soft: true }]);
+  else if (by === 'type') defs = S().settings.types.map((t, i) => ({ key: t, name: t, color: TYPE_COLORS[i % TYPE_COLORS.length] })).concat([{ key: '', name: 'ไม่ระบุประเภท', color: '#a1a1aa', soft: true }]);
+  else defs = [...new Set([p.pmId, ...p.squad])].map(id => ({ key: id, name: member(id)?.name || '–', color: group(member(id)?.group).color })).concat([{ key: '', name: 'ยังไม่ระบุผู้รับผิดชอบ', color: '#a1a1aa', soft: true }]);
+  const keyOf = t => by === 'group' ? (t.groupId || '') : by === 'type' ? (t.type || '') : (t.assigneeId || '');
+  const known = new Set(defs.map(d => d.key)); defs.forEach(d => { d.tasks = []; });
+  tasks.forEach(t => { let k = keyOf(t); if (!known.has(k)) k = ''; defs.find(d => d.key === k).tasks.push(t); });
+  return defs.filter(d => d.tasks.length || (keepEmpty && !d.soft));
+}
+const projGroupOf = t => (project(t.projectId)?.taskGroups || []).find(g => g.id === t.groupId);
 const isLeader = () => !isAdmin() && subordinates(me().id).size > 0;
 const inProject = p => isAdmin() || p.pmId === me().id || p.squad.includes(me().id);
 const visibleProjects = () => S().projects.filter(p => inProject(p) || (myScope() && [p.pmId, ...p.squad].some(inScope)));

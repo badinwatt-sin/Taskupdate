@@ -50,6 +50,7 @@ function openTask(taskOrId, preset) {
     ${kindSel}
     <label class="field"><span>Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— ไม่ผูกกับ Project —')}</select></label>
     <label class="field"><span>ผู้รับผิดชอบ *</span><select name="assigneeId" ${dis()}></select></label>
+    <label class="field" id="grpBox"><span>กลุ่มงานใน Project</span><select name="groupId" ${dis()}></select></label>
     <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
     <div class="field full"><div class="triad">
       <label class="field"><span>วันเริ่ม</span><input type="date" name="start" value="${t.start}" ${dis()}></label>
@@ -82,7 +83,7 @@ function openTask(taskOrId, preset) {
         if (src === 'project' && !v('projectId')) { toast('งาน Project ต้องเลือก Project', 'error'); return false; }
         Object.assign(t, {
           title: v('title').trim(), source: src, projectId: v('projectId') || null, assigneeId: v('assigneeId'), type: v('type'),
-          start: v('start'), duration: Math.max(1, parseInt(v('duration'), 10) || 1), priority: v('priority'), desc: v('desc'),
+          groupId: v('groupId') || '', start: v('start'), duration: Math.max(1, parseInt(v('duration'), 10) || 1), priority: v('priority'), desc: v('desc'),
           private: !v('projectId') && src === 'personal' && f.elements.private.checked,
           deps: $$('#depsList input:checked').map(i => i.value),
         });
@@ -117,7 +118,9 @@ function openTask(taskOrId, preset) {
       const refresh = () => {
         const src = f.elements.source.value, pid = f.elements.projectId.value;
         $('#privRow', m.el).hidden = !(src === 'personal' && !pid);
-        $('#attachBox', m.el).hidden = src !== 'project';   // To-Do items: no links / files
+        $('#attachBox', m.el).hidden = src !== 'project';
+        const gs = f.elements.groupId, gcur = gs.value || t.groupId || '', gl = (pid && project(pid)?.taskGroups) || [];
+        $('#grpBox', m.el).hidden = !gl.length; gs.innerHTML = opt('', '— ไม่ระบุกลุ่ม —', gcur) + gl.map(g => opt(g.id, g.name, gcur)).join('');   // To-Do items: no links / files
         const as = f.elements.assigneeId, curA = as.value || t.assigneeId;
         let pool = isAdmin() ? S().members : [me(), ...assignablePeople().filter(x => x.id !== me().id)];
         const pj = pid && project(pid);
