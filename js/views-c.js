@@ -210,7 +210,7 @@ V.meetings = root => {
   if (f.sel && !ms.find(m => m.id === f.sel)) f.sel = null;
   if (!f.sel && ms.length && !f.draft) f.sel = ms[0].id;
   const cur = f.draft || ms.find(m => m.id === f.sel);
-  root.innerHTML = pageHead('AI Meeting Hub', 'เปลี่ยนบันทึกประชุมให้เป็นข้อสรุป การตัดสินใจ และ Action Items — ตรวจสอบก่อนสร้างเป็น Task ของทีม',
+  root.innerHTML = pageHead('Meeting Hub', 'เปลี่ยนบันทึกประชุมให้เป็นข้อสรุป การตัดสินใจ และ Action Items — ตรวจสอบก่อนสร้างเป็น Task ของทีม',
     `<button class="btn btn-primary" data-act="newMeeting">${ico('plus', 16)} ประชุมใหม่</button>`) + `
   <div class="meet-grid"><aside class="card meet-list"><div class="card-h"><h3>การประชุม (${ms.length})</h3></div>
     ${ms.length ? ms.map(m => `<button class="mi ${cur && cur.id === m.id ? 'on' : ''}" data-act="selMeeting" data-id="${m.id}"><b>${esc(m.title)}</b><small>${fmtDY(m.date)} · ${m.status === 'confirmed' ? 'ยืนยันแล้ว' : 'ฉบับร่าง'} · ${m.actions.length} action</small></button>`).join('') : '<p class="muted small pad">ยังไม่มีบันทึกการประชุม</p>'}</aside>
@@ -329,7 +329,7 @@ V.team = root => {
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
       <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
-  root.innerHTML = pageHead('ทีมและการตั้งค่า', `สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
+  root.innerHTML = pageHead('Team & Access', `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
   <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
   <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Major Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>

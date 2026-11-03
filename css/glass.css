@@ -197,3 +197,10 @@ input:disabled,select:disabled,textarea:disabled{background:var(--fill2)}
   *{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 }
 @media print{body{background:#fff}.card,.cal,.mini{box-shadow:none;background:#fff}}
+
+/* two-line menu: English name + Thai gloss */
+#nav a{align-items:center;padding:8px 12px}
+#nav .nl{display:flex;flex-direction:column;line-height:1.2;min-width:0}
+#nav .nl b{font-weight:600;font-size:14.5px;letter-spacing:-.01em}
+#nav .nl small{font-size:11.5px;color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+#nav a.on .nl small{color:color-mix(in srgb,var(--accent-d) 70%,var(--muted))}

@@ -2,10 +2,15 @@
 /* ============================================================
    App shell: router, navigation, search, user switcher
    ============================================================ */
-const NAV = [
-  ['dashboard', 'Dashboard', 'dashboard'], ['support', 'Offsite & Event Support', 'inbox'], ['calendar', 'Major Event Calendar', 'calendar'],
-  ['projects', 'Project & Squad', 'folder'], ['board', 'Gantt & Kanban', 'board'], ['todo', 'My To-Do', 'check'],
-  ['meetings', 'AI Meeting Hub', 'mic'], ['team', 'ทีมและการตั้งค่า', 'users'],
+const NAV = [   // [route, English name, Thai gloss, icon]
+  ['dashboard', 'Dashboard', 'ภาพรวมทีม', 'dashboard'],
+  ['support', 'Offsite Support', 'งานนอกสถานที่ / สนับสนุน Event', 'inbox'],
+  ['calendar', 'Event Calendar', 'ปฏิทินงานสำคัญประจำปี', 'calendar'],
+  ['projects', 'Projects', 'โครงการและ Squad', 'folder'],
+  ['board', 'Timeline & Board', 'Gantt และ Kanban ทุก Project', 'board'],
+  ['todo', 'My Weekly Plan', 'แผนงานรายสัปดาห์ของฉัน', 'check'],
+  ['meetings', 'Meeting Hub', 'สรุปประชุมและ Action Items', 'mic'],
+  ['team', 'Team & Access', 'ทีม สิทธิ์ และการตั้งค่า', 'users'],
 ];
 let lastRoute = '';
 function route() { const h = location.hash.replace(/^#\/?/, '').split('/'); return { name: h[0] || 'dashboard', id: h[1] }; }
@@ -15,14 +20,14 @@ function render() {
   const r = route();
   if (!V[r.name]) { location.hash = '#/dashboard'; return; }
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
-  $('#nav').innerHTML = NAV.map(([k, l, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''}>${ico(i, 19)}<span>${l}</span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
+  $('#nav').innerHTML = NAV.map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
   $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · เปลี่ยนผู้ใช้</small></div>`;
   const key = r.name + '/' + (r.id || '');
   const view = $('#view'), y = window.scrollY;
   view.className = 'view v-' + r.name;
   V[r.name](view, r.id);
-  document.title = (NAV.find(n => n[0] === r.name)?.[1] || 'Hub') + ' · Agency Experience Hub';
+  document.title = (NAV.find(n => n[0] === r.name)?.[1] || 'Hub') + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
   Store.setSync();
 }

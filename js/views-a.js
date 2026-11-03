@@ -138,7 +138,7 @@ V.support = root => {
   const sum = offsiteSummary(rows, from, to), totalDays = sum.reduce((a, r) => a + r.days.size, 0);
   const cd = parse(f.cur), title = f.view === 'month' ? `${TH_MON_FULL[cd.getMonth()]} ${cd.getFullYear() + 543}` : f.view === 'week' ? `${fmtD(rg[0])} – ${fmtD(rg[1])} ${parse(rg[1]).getFullYear() + 543}` : '';
   const periodLabel = rg ? (f.view === 'week' ? 'สัปดาห์นี้ที่เลือก' : 'เดือน' + TH_MON_FULL[cd.getMonth()]) : (f.month ? 'เดือน ' + TH_MON_FULL[+f.month.slice(5) - 1] : 'ทุกช่วงเวลา');
-  root.innerHTML = pageHead('Offsite & Event Support', 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
+  root.innerHTML = pageHead('Offsite Support', 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
     `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button><button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`) + `
   <div class="cal-bar"><div class="seg-ctl">${[['list', 'รายการ'], ['week', 'ปฏิทินสัปดาห์'], ['month', 'ปฏิทินเดือน']].map(([k, l]) => `<button class="${f.view === k ? 'on' : ''}" data-act="offView" data-id="${k}">${l}</button>`).join('')}</div>
     ${f.view !== 'list' ? `<div class="cal-nav"><button class="icon-btn" data-act="offNav" data-d="-1" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="offNav" data-d="1" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="offNav" data-d="0">วันนี้</button></div>` : ''}</div>
@@ -261,7 +261,7 @@ V.calendar = root => {
         ${items.length > 3 ? `<small class="more">+${items.length - 3} เพิ่มเติม</small>` : ''}</div>`);
     }
     const monthEv = sortBy(S().events.filter(e => e.start <= iso(new Date(c.y, c.m + 1, 0)) && e.end >= iso(first)), e => e.start);
-    root.innerHTML = pageHead('Major Event Calendar', 'ปฏิทินงานสำคัญประจำปี พร้อมวันเตรียมงานและวันหยุดราชการ', actions) + calHeader(`${TH_MON_FULL[c.m]} ${c.y + 543}`) + legend +
+    root.innerHTML = pageHead('Event Calendar', 'ปฏิทินงานสำคัญประจำปี พร้อมวันเตรียมงานและวันหยุดราชการ', actions) + calHeader(`${TH_MON_FULL[c.m]} ${c.y + 543}`) + legend +
       `<div class="cal"><div class="cal-dow">${TH_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div></div>
       <section class="card flush mt"><div class="card-h pad"><h3>งานในเดือน${TH_MON_FULL[c.m]}</h3></div>${list(monthEv)}</section>`;
   } else {
@@ -277,7 +277,7 @@ V.calendar = root => {
       const n = S().events.filter(e => e.start.startsWith(`${c.y}-${pad(mo + 1)}`)).length;
       mini.push(`<div class="mini" data-act="calGoMonth" data-id="${mo}" tabindex="0"><h4>${TH_MON_FULL[mo]}${n ? `<em>${n}</em>` : ''}</h4><div class="mini-grid">${cells}</div></div>`);
     }
-    root.innerHTML = pageHead('Major Event Calendar', 'ภาพรวมงานสำคัญทั้งปี — คลิกเดือนเพื่อดูรายละเอียด', actions) + calHeader(`พ.ศ. ${c.y + 543}`) + legend +
+    root.innerHTML = pageHead('Event Calendar', 'ภาพรวมงานสำคัญทั้งปี — คลิกเดือนเพื่อดูรายละเอียด', actions) + calHeader(`พ.ศ. ${c.y + 543}`) + legend +
       `<div class="year-grid">${mini.join('')}</div><section class="card flush mt"><div class="card-h pad"><h3>รายการทั้งหมดในปี ${c.y + 543} (${evYear.length} งาน)</h3></div>${list(evYear)}</section>`;
   }
 };

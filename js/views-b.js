@@ -263,7 +263,7 @@ V.board = root => {
   const f = ST.board, tasks = boardTasks(f);
   const tabs = `<div class="seg-ctl"><button class="${f.tab === 'kanban' ? 'on' : ''}" data-act="boardTab" data-id="board:kanban">${ico('board', 15)} Kanban</button><button class="${f.tab === 'gantt' ? 'on' : ''}" data-act="boardTab" data-id="board:gantt">${ico('gantt', 15)} Gantt Chart</button></div>`;
   const extra = f.tab === 'gantt' ? zoomCtl('board') + `<label class="check"><input type="checkbox" data-f="board.hideDone" ${f.hideDone ? 'checked' : ''}> ซ่อนงานที่เสร็จแล้ว</label>` : '';
-  root.innerHTML = pageHead('Gantt & Kanban', 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
+  root.innerHTML = pageHead('Timeline & Board', 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
     + filterBar('board', null, extra) + (f.tab === 'kanban' ? kanbanHTML(tasks) : ganttHTML(tasks, f.zoom, f.hideDone));
   if (f.tab === 'kanban') bindKanban(root); else bindGantt(root);
 };
@@ -273,7 +273,7 @@ ACT.boardTab = el => { const [k, t] = el.dataset.id.split(':'); ST[k].tab = t; r
 V.projects = (root, id) => {
   if (id) return projectDetail(root, id);
   const ps = visibleProjects();
-  root.innerHTML = pageHead('Project & Squad Planning', 'สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
+  root.innerHTML = pageHead('Projects', 'โครงการและ Squad — สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
     (isAdmin() || isPM() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} สร้าง Project</button>` : '')) +
     (ps.length ? `<div class="pcards">${ps.map(p => {
       const s = projectStats(p), pm = member(p.pmId);
@@ -289,7 +289,7 @@ ACT.newProject = () => openProject(null);
 function projectDetail(root, id) {
   const p = project(id); if (!p || !visibleProjects().includes(p)) { location.hash = '#/projects'; return; }
   const f = ST.proj, s = projectStats(p), pm = member(p.pmId), can = canManageProject(p);
-  const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'ภาพรวม & Squad']];
+  const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'Overview & Squad']];
   const mode = p.dayMode || S().settings.dayMode;
   const tasks = boardTasks(f, p.id);
   let content = '';
