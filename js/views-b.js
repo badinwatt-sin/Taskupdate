@@ -5,9 +5,10 @@
 
 /* ---------------- shared board filters ---------------- */
 function boardTasks(f, fixedProject) {
-  let ts = visibleTasks().filter(t => t.projectId || t.source === 'ram');
+  let ts = visibleTasks().filter(t => t.projectId || t.source === 'ram' || isPostit(t));
   const pj = fixedProject || f.project;
   if (pj === '__ram') ts = ts.filter(t => t.source === 'ram');
+  else if (pj === '__postit') ts = ts.filter(isPostit);
   else if (pj) ts = ts.filter(t => t.projectId === pj);
   if (f.group) ts = ts.filter(t => member(t.assigneeId)?.group === f.group);
   if (f.who) ts = ts.filter(t => t.assigneeId === f.who);
@@ -15,7 +16,7 @@ function boardTasks(f, fixedProject) {
 }
 function filterBar(key, fixedProject, extra = '') {
   const f = ST[key];
-  const projOpts = opt('', 'ทุก Project', f.project) + S().projects.map(p => opt(p.id, p.name, f.project)).join('') + opt('__ram', 'งานสนับสนุน RAM', f.project);
+  const projOpts = opt('', 'ทุก Project', f.project) + S().projects.map(p => opt(p.id, p.name, f.project)).join('') + opt('__ram', 'งานสนับสนุน RAM', f.project) + opt('__postit', '📝 Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
   return `<div class="filters">
     ${fixedProject ? '' : `<select data-f="${key}.project" aria-label="Project">${projOpts}</select>`}
     <select data-f="${key}.group" aria-label="Squad">${groupOptions(f.group, 'ทุก Squad / หน้าที่')}</select>
@@ -31,9 +32,18 @@ function kanbanHTML(tasks) {
     const ts = sortBy(tasks.filter(t => t.status === c), t => taskEnd(t));
     return `<div class="kcol k-${c}" data-col="${c}"><div class="kcol-h"><b>${STATUS[c].label}</b><span>${STATUS[c].th}</span><em>${ts.length}</em></div>
       <div class="kcol-body" data-drop="${c}">${ts.map(kcard).join('') || '<p class="kempty">ลากงานมาวางที่นี่</p>'}</div></div>`;
-  }).join('')}</div><p class="muted small kb-hint">ลากการ์ดเพื่อเปลี่ยนสถานะ · หรือกดการ์ดแล้วเลือกสถานะ · งานที่เลยกำหนดจะติดป้าย “ล่าช้า” แต่ยังอยู่ในสถานะจริงของมัน</p>`;
+  }).join('')}</div><p class="muted small kb-hint">ลากการ์ด / Post-it เพื่อเปลี่ยนสถานะ · หรือกดการ์ดแล้วเลือกสถานะ · งานที่เลยกำหนดจะติดป้าย “ล่าช้า” แต่ยังอยู่ในสถานะจริงของมัน</p>`;
+}
+const isPostit = t => t.submitted && !t.projectId && t.source !== 'ram' && !t.private;
+function postitCard(t) {
+  const m = member(t.assigneeId), st = postitOf(m), late = isDelayed(t);
+  return `<article class="kcard postit pat-${st.pattern} ${late ? 'late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
+    <div class="pi-who">${avatar(m, 26)}<span>${esc(m?.name || '–')}</span></div>
+    <div class="pi-title">${esc(t.title)}</div>
+    <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span></div></article>`;
 }
 function kcard(t) {
+  if (isPostit(t)) return postitCard(t);
   const p = t.projectId && project(t.projectId), risks = depRisks(t);
   return `<article class="kcard ${isDelayed(t) ? 'late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
     <div class="kc-top">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : `<span class="pchip ram">${esc(t.ram?.area || 'RAM')}</span>`}${prioDot(t.priority)}</div>
@@ -74,7 +84,7 @@ function ganttHTML(tasks, zoom, hideDone) {
   const groups = []; // [{p, tasks}]
   const byKey = new Map();
   sortBy(tasks, t => taskStart(t)).forEach(t => {
-    const k = t.projectId || '__ram'; if (!byKey.has(k)) { byKey.set(k, []); groups.push(k); }
+    const k = t.projectId || (t.source === 'ram' ? '__ram' : '__postit'); if (!byKey.has(k)) { byKey.set(k, []); groups.push(k); }
     byKey.get(k).push(t);
   });
   // header
@@ -93,9 +103,9 @@ function ganttHTML(tasks, zoom, hideDone) {
 
   const rowIdx = new Map(); let r = 0, rows = '';
   groups.forEach(k => {
-    const p = k === '__ram' ? null : project(k);
+    const p = k === '__ram' || k === '__postit' ? null : project(k);
     if (groups.length > 1 || true) {
-      rows += `<div class="g-row g-group"><div class="g-label" style="width:${LW}px"><i style="background:${p ? p.color : '#d97706'}"></i><b>${esc(p ? p.name : 'งานสนับสนุน RAM')}</b></div><div class="g-track" style="width:${W}px"></div></div>`; r++;
+      rows += `<div class="g-row g-group"><div class="g-label" style="width:${LW}px"><i style="background:${p ? p.color : k === '__postit' ? '#f59e0b' : '#d97706'}"></i><b>${esc(p ? p.name : k === '__postit' ? '📝 Post-it ของทีม' : 'งานสนับสนุน RAM')}</b></div><div class="g-track" style="width:${W}px"></div></div>`; r++;
     }
     byKey.get(k).forEach(t => {
       const a = taskStart(t), b = taskEnd(t), left = diffDays(min, a) * px, w = (diffDays(a, b) + 1) * px;

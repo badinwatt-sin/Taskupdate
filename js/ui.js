@@ -91,8 +91,18 @@ const confirmBox = (msg, ok = 'ยืนยัน', danger = false, title = 'ย
 /* ---------- Components ---------- */
 function avatar(m, size = 28) {
   if (!m) return `<span class="avatar" style="--s:${size}px;background:#cbd5e1" title="ยังไม่ระบุ">?</span>`;
+  if (m.emoji) return `<span class="avatar emo" title="${esc(m.name)}" style="--s:${size}px;background:color-mix(in srgb,${group(m.group).color} 22%,#fff);box-shadow:0 0 0 2px ${group(m.group).color}">${esc(m.emoji)}</span>`;
   return `<span class="avatar" title="${esc(m.name)}" style="--s:${size}px;background:${group(m.group).color}">${esc(initials(m))}</span>`;
 }
+/* ---------- Post-it style & emoji ---------- */
+const POSTIT_COLORS = ['#fde68a', '#fbcfe8', '#bfdbfe', '#bbf7d0', '#fed7aa', '#ddd6fe', '#99f6e4', '#e5e7eb'];
+const POSTIT_PATTERNS = { plain: 'เรียบ', lines: 'เส้นบรรทัด', dots: 'จุด', grid: 'ตาราง', stripes: 'ริ้วเฉียง', stars: 'ดาว' };
+const EMOJIS = '😀 😎 🤓 🥳 😺 🐶 🦊 🐼 🐨 🦁 🐯 🐸 🐵 🐧 🦄 🐝 🦋 🐢 🐙 🐬 🦖 🌵 🌻 🌸 🍀 🍄 🌈 ⭐ 🔥 ⚡ 🌙 ☀️ 🍎 🍉 🍓 🍕 🍔 🍩 🍪 ☕ 🧋 🎧 🎨 🎬 📸 🎮 🚀 ✈️ ⚽ 🏀 🎸 🎯 💡 📚 💎 👑 🧩 🪄 🧸'.split(' ');
+function postitOf(m) {
+  const n = m ? [...m.id].reduce((a, c) => a + c.charCodeAt(0), 0) : 0;
+  return { color: m?.postit?.color || POSTIT_COLORS[n % POSTIT_COLORS.length], pattern: m?.postit?.pattern || 'plain' };
+}
+const emojiOwner = (e, exceptId) => S().members.find(x => x.id !== exceptId && x.emoji && x.emoji === e);
 const personChip = (m, size = 22) => m ? `<span class="person">${avatar(m, size)}<span>${esc(m.name)}</span></span>` : '<span class="muted">ยังไม่ระบุ</span>';
 function statusBadge(t) {
   const s = STATUS[t.status];

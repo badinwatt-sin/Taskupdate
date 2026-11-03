@@ -108,6 +108,10 @@ function seed() {
   Pe('jariya', 'อ่านสรุป Insight ลูกค้าไตรมาสนี้', 0, 1, 'todo', 'low');
   Pe('chayada', 'ร่าง Calendar เนื้อหาเดือนหน้า', 1, 2, 'todo', 'med');
 
+  tasks.forEach(t => { if (t.source === 'personal' && !t.private && !t.projectId && ['เตรียม Agenda','ร่าง Calendar','อ่านสรุป','ตอบอีเมล','ส่ง OKR'].some(k => t.title.includes(k))) { t.submitted = true; t.submittedAt = T; } });
+  const sty = { kaeng: ['🦁', '#fde68a', 'plain'], chayada: ['🦋', '#fbcfe8', 'dots'], jariya: ['🌻', '#bbf7d0', 'lines'], phirat: ['🎨', '#ddd6fe', 'stars'] };
+  members.forEach(mm => { const x = sty[mm.id.slice(2)]; if (x) { mm.emoji = x[0]; mm.postit = { color: x[1], pattern: x[2] }; } });
+
   /* Major events */
   const ev = (name, a, b, venue, owner, audience, status, milestones = [], projectId = null) => ({
     id: uid('e_'), name, start: D(a), end: D(b), venue, ownerId: m(owner), audience, status, projectId,

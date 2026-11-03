@@ -14,6 +14,59 @@ function todoBuckets(uid_) {
     done: sortBy(mine.filter(t => t.status === 'done'), t => t.doneAt || '').reverse(),
   };
 }
+const canSubmit = t => !t.projectId && t.source !== 'ram' && t.assigneeId === me().id && t.status !== 'cancelled';
+ACT.submitTask = async el => {
+  const t = S().tasks.find(x => x.id === el.dataset.id); if (!t) return;
+  if (t.private && !await confirmBox('งานนี้ตั้งเป็นส่วนตัวอยู่ — เมื่อ Submit จะเปลี่ยนเป็นเปิดเผยและทุกคนในทีมเห็นบน Kanban ต้องการดำเนินการต่อหรือไม่?', 'Submit ขึ้นบอร์ด')) return;
+  t.private = false; t.submitted = true; t.submittedAt = today(); commit();
+  toast('ส่งขึ้น Kanban เป็น Post-it แล้ว 📌', 'ok', () => { t.submitted = false; commit(); });
+};
+ACT.unsubmit = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) { t.submitted = false; commit(); toast('เอา Post-it ออกจากบอร์ดแล้ว'); } };
+ACT.submitAll = () => {
+  const ts = S().tasks.filter(t => canSubmit(t) && !t.submitted && !t.private && isActive(t));
+  ts.forEach(t => { t.submitted = true; t.submittedAt = today(); }); commit(); toast(`ส่ง ${ts.length} งานขึ้นบอร์ดแล้ว 📌`);
+};
+ACT.myStyle = el => openMyStyle(el.dataset.id || me().id);
+function openMyStyle(id) {
+  const m = member(id); if (!m || (id !== me().id && !isAdmin())) return toast('ปรับแต่งได้เฉพาะโปรไฟล์ของตัวเอง', 'error');
+  let emoji = m.emoji || '', { color, pattern } = postitOf(m);
+  const prev = () => {
+    const fake = { ...m, emoji };
+    return `<div class="kcard postit pat-${pattern}" style="--pc:${color};cursor:default;transform:rotate(-1.5deg)"><div class="pi-who">${avatar(fake, 28)}<span>${esc(m.name)}</span></div><div class="pi-title">ตัวอย่างงานของฉัน</div><div class="pi-foot"><span class="badge st-doing">กำลังทำ</span><span class="grow"></span><span>${ico('clock', 12)} ${fmtD(today())}</span></div></div>`;
+  };
+  modal({
+    title: `ปรับแต่ง Post-it & Icon — ${m.name}`, wide: true,
+    body: `<div class="style-grid"><div>
+      <div class="field"><span>Icon / Emoji ประจำตัว <small>(ห้ามซ้ำกับเพื่อนร่วมทีม)</small></span>
+        <div class="emoji-grid" id="emGrid">${EMOJIS.map(e => { const o = emojiOwner(e, m.id); return `<button type="button" data-e="${e}" ${o ? `disabled title="${esc(o.name)} ใช้อยู่"` : ''} class="${e === emoji ? 'on' : ''}">${e}</button>`; }).join('')}</div></div>
+      <div class="field"><span>หรือสร้าง icon ของคุณเอง <small>(พิมพ์ emoji หรืออักษร 1–3 ตัว)</small></span>
+        <div class="inline-add" style="grid-template-columns:140px auto 1fr"><input id="emCustom" maxlength="6" placeholder="เช่น 🦦 / KG" value="${esc(emoji && !EMOJIS.includes(emoji) ? emoji : '')}"><button type="button" class="btn btn-ghost btn-sm" id="emClear">ใช้ตัวอักษรย่อ</button><span class="dup-msg" id="dupMsg"></span></div></div>
+      <div class="field"><span>สี Post-it</span><div class="swatches" id="swatches">${POSTIT_COLORS.map(c => `<button type="button" class="swatch ${c === color ? 'on' : ''}" data-c="${c}" style="background:${c}" aria-label="สี ${c}"></button>`).join('')}</div></div>
+      <div class="field"><span>ลาย</span><div class="pat-pick" id="pats">${Object.entries(POSTIT_PATTERNS).map(([k, l]) => `<button type="button" class="pat-${k} ${k === pattern ? 'on' : ''}" data-p="${k}" style="--pc:${color}">${l}</button>`).join('')}</div></div>
+    </div><div><span class="muted small">ตัวอย่างบน Kanban</span><div class="preview-board" id="pv">${prev()}</div></div></div>`,
+    actions: [{ label: 'ยกเลิก' }, {
+      label: 'บันทึก', cls: 'btn-primary', onClick: () => {
+        const dup = emoji && emojiOwner(emoji, m.id);
+        if (dup) { toast(`icon นี้ ${dup.name} ใช้อยู่แล้ว`, 'error'); return false; }
+        m.emoji = emoji; m.postit = { color, pattern }; commit(); toast('บันทึกสไตล์ของคุณแล้ว ✨');
+      },
+    }],
+    onOpen(md) {
+      const refresh = () => {
+        $('#pv', md.el).innerHTML = prev();
+        $$('#emGrid button', md.el).forEach(b => b.classList.toggle('on', b.dataset.e === emoji));
+        $$('#swatches .swatch', md.el).forEach(b => b.classList.toggle('on', b.dataset.c === color));
+        $$('#pats button', md.el).forEach(b => { b.classList.toggle('on', b.dataset.p === pattern); b.style.setProperty('--pc', color); });
+        const dup = emoji && emojiOwner(emoji, m.id); $('#dupMsg', md.el).textContent = dup ? `${dup.name} ใช้ icon นี้แล้ว — เลือกอันอื่น` : '';
+      };
+      $('#emGrid', md.el).onclick = e => { const b = e.target.closest('button[data-e]'); if (b && !b.disabled) { emoji = b.dataset.e; $('#emCustom', md.el).value = ''; refresh(); } };
+      $('#emCustom', md.el).oninput = e => { emoji = e.target.value.trim(); refresh(); };
+      $('#emClear', md.el).onclick = () => { emoji = ''; $('#emCustom', md.el).value = ''; refresh(); };
+      $('#swatches', md.el).onclick = e => { const b = e.target.closest('[data-c]'); if (b) { color = b.dataset.c; refresh(); } };
+      $('#pats', md.el).onclick = e => { const b = e.target.closest('[data-p]'); if (b) { pattern = b.dataset.p; refresh(); } };
+    },
+  });
+}
 V.todo = root => {
   const f = ST.todo;
   if (!f.user || !member(f.user) || (!isAdmin() && f.user !== me().id)) f.user = me().id;
@@ -31,10 +84,11 @@ V.todo = root => {
           ${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : ''}${t.source === 'ram' ? `<span class="pchip ram">RAM · ${esc(t.ram?.area || '')}</span>` : ''}${t.source === 'meeting' ? '<span class="pchip ram">ประชุม</span>' : ''}${t.private ? `<span class="muted">${ico('lock', 12)} ส่วนตัว</span>` : ''}
           ${linkList(t) ? '<span class="muted">' + ico('paperclip', 12) + ' มีไฟล์/ลิงก์</span>' : ''}</div></div>
       <div class="due ${late ? 'late' : ''}">${done ? 'เสร็จ ' + fmtD(t.doneAt) : `${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small>`}</div>
+      ${canSubmit(t) ? (t.submitted ? `<button class="btn btn-ghost btn-sm" data-act="unsubmit" data-id="${t.id}" title="เอา Post-it ออกจากบอร์ด"><span class="submitted-tag">${ico('check', 12)} อยู่บนบอร์ด</span></button>` : `<button class="btn btn-primary btn-sm" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">📌 Submit</button>`) : ''}
       ${isActive(t) && t.status === 'todo' ? `<button class="btn btn-ghost btn-sm" data-act="startTask" data-id="${t.id}" ${canStatus(t) ? '' : 'disabled'}>เริ่มทำ</button>` : isActive(t) ? '<span class="badge st-doing">กำลังทำ</span>' : ''}</li>`;
   };
   root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, own ? `สวัสดี ${esc(me().name)} — ${B.today.length ? `วันนี้มี <b>${B.today.length}</b> งานที่ต้องโฟกัส` : 'วันนี้ว่าง ไม่มีงานที่ต้องทำ 🎉'}` : 'คุณกำลังดูในฐานะ Admin',
-    isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '') + `
+    `<button class="btn btn-ghost" data-act="myStyle">🎨 ปรับแต่ง Post-it & Icon</button>` + (isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '')) + `
   ${B.overdue.length && f.tab !== 'overdue' ? `<button class="banner late" data-act="todoTab" data-id="overdue">${ico('alert', 18)} มีงานเกินกำหนด ${B.overdue.length} รายการ — กดเพื่อดู</button>` : ''}
   ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานใหม่… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
     <input type="date" name="due" value="${today()}" aria-label="กำหนดส่ง"><select name="prio" aria-label="ความสำคัญ">${Object.keys(PRIO).map(k => opt(k, 'สำคัญ: ' + PRIO[k].th, k === 'med' ? 'med' : '')).join('')}</select>
@@ -42,6 +96,7 @@ V.todo = root => {
     <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
   <div class="todo-grid"><div>
     <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" class="${f.tab === k ? 'on' : ''} ${k === 'overdue' && n ? 'warn' : ''}" data-act="todoTab" data-id="${k}">${l}<em>${n}</em></button>`).join('')}</div>
+    ${own && (B.today.concat(B.upcoming, B.overdue)).some(t => canSubmit(t) && !t.submitted && !t.private) ? `<div class="submit-bar"><span>📌 งานส่วนตัวที่ยังไม่ได้ Submit จะยังไม่แสดงบน Kanban ของทีม</span><button class="btn btn-primary btn-sm" data-act="submitAll">Submit ทั้งหมดขึ้นบอร์ด</button></div>` : ''}
     ${list.length ? `<ul class="todolist">${list.map(row).join('')}</ul>` : empty(f.tab === 'done' ? 'check' : 'clock', { today: 'ไม่มีงานสำหรับวันนี้', upcoming: 'ยังไม่มีงานที่กำลังจะถึง', overdue: 'ไม่มีงานเกินกำหนด', done: 'ยังไม่มีงานที่เสร็จ' }[f.tab], f.tab === 'overdue' ? 'เยี่ยมมาก ทุกอย่างทันกำหนด' : 'พิมพ์ชื่องานในช่องด้านบนเพื่อเพิ่มได้ทันที')}
   </div>
   <aside class="card side"><div class="card-h"><h3>ความคืบหน้าวันนี้</h3></div>
@@ -227,7 +282,7 @@ V.team = root => {
   const memberCard = m => {
     const w = workload(m.id), pms = S().projects.filter(p => p.pmId === m.id);
     return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
-      ${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
+      ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">🎨</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
       <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p><div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
