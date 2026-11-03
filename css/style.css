@@ -607,3 +607,6 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,v
 .tg-row{display:grid;grid-template-columns:44px 1fr auto auto;gap:8px;align-items:center}.tg-row input[type=color]{width:44px;height:38px}
 .g-group .g-label small{margin-left:auto}
 .tbl.grid .c-type{min-width:132px}
+
+/* the hidden attribute must always win over component display rules */
+[hidden]{display:none!important}
