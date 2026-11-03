@@ -5,7 +5,7 @@
    date interpretation (Excel serials, Thai/English months, BE years,
    ranges). Runs entirely in the browser — nothing is uploaded.
    ============================================================ */
-const XLSX_SRC = 'js/vendor/xlsx.full.min.js';
+const XLSX_SRC = window.XLSX_SRC || 'js/vendor/xlsx.full.min.js';
 function loadXlsx() {
   if (window.XLSX) return Promise.resolve();
   return new Promise((res, rej) => {
