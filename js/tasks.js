@@ -49,7 +49,7 @@ function openTask(taskOrId, preset) {
     <label class="field full"><span>ชื่องาน *</span><input name="title" required maxlength="140" value="${esc(t.title)}" placeholder="เช่น ออกแบบโปสเตอร์ Open House" ${dis()}></label>
     ${kindSel}
     <label class="field"><span>Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— ไม่ผูกกับ Project —')}</select></label>
-    <label class="field"><span>ผู้รับผิดชอบ *</span><select name="assigneeId" ${dis()}>${memberOptions(t.assigneeId)}</select></label>
+    <label class="field"><span>ผู้รับผิดชอบ *</span><select name="assigneeId" ${dis()}></select></label>
     <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
     <div class="field full"><div class="triad">
       <label class="field"><span>วันเริ่ม</span><input type="date" name="start" value="${t.start}" ${dis()}></label>
@@ -60,11 +60,12 @@ function openTask(taskOrId, preset) {
     <label class="field"><span>สถานะ</span><select name="status" ${dis(1)}>${Object.keys(STATUS).map(k => opt(k, `${STATUS[k].label} · ${STATUS[k].th}`, t.status)).join('')}</select></label>
     <div class="field full" id="depsBox"><span>ต้องทำหลังจากงาน (Dependency)</span><div class="deps" id="depsList"></div></div>
     <label class="field full"><span>รายละเอียด / หมายเหตุ</span><textarea name="desc" rows="2" ${dis()}>${esc(t.desc)}</textarea></label>
+    <div class="full attach-box" id="attachBox">
     <label class="field full"><span>Link ที่เกี่ยวข้อง <small>(บรรทัดละ 1 ลิงก์ — รูปแบบ “ชื่อ | URL” หรือ URL เฉย ๆ)</small></span>
       <textarea name="links" rows="2" ${dis(1)} placeholder="Brief | https://drive.google.com/...">${esc((t.links || []).map(l => l.label && l.label !== l.url ? `${l.label} | ${l.url}` : l.url).join('\n'))}</textarea></label>
     <div class="field full"><span>แนบไฟล์ <small>(ไม่เกิน 1 MB ต่อไฟล์)</small></span>
       <div id="fileList" class="file-list"></div>
-      ${(full || limited) ? `<label class="btn btn-ghost btn-sm file-btn">${ico('paperclip', 15)} เลือกไฟล์<input type="file" id="fileIn" multiple hidden></label>` : ''}</div>
+      ${(full || limited) ? `<label class="btn btn-ghost btn-sm file-btn">${ico('paperclip', 15)} เลือกไฟล์<input type="file" id="fileIn" multiple hidden></label>` : ''}</div></div>
     <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน — ไม่ปรากฏบน Dashboard ของทีม)</label>
   </form>`;
 
@@ -116,6 +117,13 @@ function openTask(taskOrId, preset) {
       const refresh = () => {
         const src = f.elements.source.value, pid = f.elements.projectId.value;
         $('#privRow', m.el).hidden = !(src === 'personal' && !pid);
+        $('#attachBox', m.el).hidden = src !== 'project';   // To-Do items: no links / files
+        const as = f.elements.assigneeId, curA = as.value || t.assigneeId;
+        let pool = isAdmin() ? S().members : [me(), ...assignablePeople().filter(x => x.id !== me().id)];
+        const pj = pid && project(pid);
+        if (pj && canManageProject(pj)) pool = [...new Map([...pool, ...[pj.pmId, ...pj.squad].map(member).filter(Boolean)].map(x => [x.id, x])).values()];
+        if (curA && !pool.find(x => x.id === curA) && member(curA)) pool = [...pool, member(curA)];
+        as.innerHTML = opt('', '— ยังไม่ระบุ —', curA) + pool.map(x => opt(x.id, x.name, curA)).join('');
         $('em[data-req]', m.el).textContent = src === 'project' ? '*' : '(ไม่บังคับ)';
         const p = pid && project(pid); const mode = (p && p.dayMode) || st.dayMode;
         recalc();

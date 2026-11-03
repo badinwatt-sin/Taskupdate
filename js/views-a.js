@@ -189,7 +189,7 @@ function calHeader(title) {
 }
 V.calendar = root => {
   const c = ST.cal;
-  const actions = `<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>${canManageEvents() ? `<button class="btn btn-primary" data-act="newEvent">${ico('plus', 16)} เพิ่ม Major Event</button>` : ''}`;
+  const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>${canManageEvents() ? `<button class="btn btn-primary" data-act="newEvent">${ico('plus', 16)} เพิ่ม Major Event</button>` : ''}`;
   const year = c.mode === 'year' ? c.y : c.y;
   const evYear = sortBy(S().events.filter(e => e.start.startsWith(year) || e.end.startsWith(year) || (e.start.slice(0, 4) <= String(year) && e.end.slice(0, 4) >= String(year))), e => e.start);
   const legend = `<div class="legend cal-legend">${Object.values(EV_STATUS).map(s => `<span><i class="${s.cls}"></i>${s.th}</span>`).join('')}<span><i class="ram"></i>Event Support (RAM/Other)</span><span><i class="hol"></i>วันหยุด</span></div>`;

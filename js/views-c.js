@@ -98,12 +98,12 @@ V.todo = root => {
     return `<article class="kcard wcard ${late ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
       <b class="kc-title">${esc(t.title)}</b>
       <div class="wc-dates"><span>${fmtD(taskStart(t))}</span><i></i><span class="${late ? 'late' : ''}">${fmtD(taskEnd(t))}</span><small class="muted">${late ? 'เลยกำหนด' : 'Start → Target'}</small></div>
-      <div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>
+      ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>
         ${full && own ? `<button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="-7" title="เลื่อนไปสัปดาห์ก่อน" aria-label="เลื่อนไปสัปดาห์ก่อน">${ico('left', 13)}</button><button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="7" title="เลื่อนไปสัปดาห์ถัดไป" aria-label="เลื่อนไปสัปดาห์ถัดไป">${ico('right', 13)}</button>` : ''}
         ${canSubmit(t) && own ? (t.submitted ? `<button class="mini-btn on" data-act="unsubmit" data-id="${t.id}" title="อยู่บน Kanban ทีม (กดเพื่อเอาออก)">${ico('check', 13)} บนบอร์ด</button>` : `<button class="mini-btn" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}</div></article>`;
   };
   root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, 'แผนงานรายสัปดาห์ — วางงาน กำหนดวันเริ่มและวันเป้าหมาย แล้วลากเพื่ออัปเดตความคืบหน้า',
-    `<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} Post-it & Icon</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
+    `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} Assign Task</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} Post-it & Icon</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
   <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
     <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
   ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานในแผนสัปดาห์นี้… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
@@ -123,6 +123,31 @@ V.todo = root => {
   };
   bindKanban(root);
 };
+/* ---------------- Assign Task (leaders / admin only) ---------------- */
+function openAssign(preset) {
+  if (!canAssign()) return toast('เฉพาะหัวหน้าทีมเท่านั้นที่มอบหมายงานให้ผู้อื่นได้', 'error');
+  const ppl = assignablePeople();
+  modal({
+    title: 'Assign Task', wide: true,
+    body: `<form id="asForm" class="form-grid" autocomplete="off">
+      <label class="field full"><span>งานที่มอบหมาย *</span><input name="title" required maxlength="140" placeholder="เช่น ทำสรุปผลสำรวจลูกค้า"></label>
+      <label class="field"><span>มอบหมายให้ *</span><select name="who" required>${opt('', '— เลือกคนในทีม —', preset || '')}${ppl.map(m => opt(m.id, `${m.name} · ${group(m.group).short}`, preset || '')).join('')}</select></label>
+      <label class="field"><span>Project (ถ้ามี)</span><select name="pid">${projectOptions('', '— ไม่ผูก Project —')}</select></label>
+      <label class="field"><span>วันเริ่ม</span><input type="date" name="start" value="${today()}"></label>
+      <label class="field"><span>Target date (วันที่ต้องเสร็จ)</span><input type="date" name="end" value="${today()}"></label>
+      <label class="field"><span>ความสำคัญ</span><select name="prio">${Object.keys(PRIO).map(k => opt(k, PRIO[k].th, 'med')).join('')}</select></label>
+      <label class="field full"><span>รายละเอียด / สิ่งที่คาดหวัง</span><textarea name="note" rows="3"></textarea></label></form>`,
+    actions: [{ label: 'ยกเลิก' }, { label: 'มอบหมายงาน', cls: 'btn-primary', onClick: () => {
+      const f = $('#asForm'); if (!f.reportValidity()) return false; const e = f.elements;
+      if (e.end.value < e.start.value) { toast('Target date ต้องไม่ก่อนวันเริ่ม', 'error'); return false; }
+      const t = newTask(e.pid.value ? 'project' : 'assigned', { title: e.title.value.trim(), assigneeId: e.who.value, start: e.start.value, priority: e.prio.value, desc: e.note.value, projectId: e.pid.value || null, assignedBy: me().id, type: 'Admin / อื่นๆ' });
+      t.duration = countDays(t.start, e.end.value, taskMode(t)) || 1; S().tasks.push(t); commit();
+      toast(`มอบหมายให้ ${member(t.assigneeId).name} แล้ว`);
+    } }],
+    onOpen(m) { $('#asForm', m.el).addEventListener('submit', ev => ev.preventDefault()); },
+  });
+}
+ACT.assignTask = el => openAssign(el.dataset.id || (ST.todo.user !== me().id ? ST.todo.user : ''));
 ACT.weekGo = el => { const d = +el.dataset.d; ST.todo.week = d === 0 ? 0 : (ST.todo.week || 0) + d; render(); };
 ACT.shiftTask = el => {
   const t = S().tasks.find(x => x.id === el.dataset.id); if (!t || !canFullEdit(t)) return;

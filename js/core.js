@@ -85,7 +85,7 @@ const STATUS = {
   cancelled: { label: 'Cancelled', th: 'ยกเลิก' },
 };
 const PRIO = { high: { th: 'สูง' }, med: { th: 'กลาง' }, low: { th: 'ต่ำ' } };
-const KINDS = { project: 'งาน Project', ram: 'งานสนับสนุน RAM', personal: 'งานส่วนตัว', meeting: 'จากการประชุม' };
+const KINDS = { project: 'งาน Project', ram: 'งานสนับสนุน RAM', personal: 'งานส่วนตัว', meeting: 'จากการประชุม', assigned: 'งานที่มอบหมาย' };
 const EV_STATUS = {
   planning: { th: 'วางแผน', cls: 'ev-planning' },
   confirmed: { th: 'ยืนยันแล้ว', cls: 'ev-confirmed' },
@@ -114,6 +114,7 @@ const Store = {
     const st = this.state; st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
     if (this.mode === 'server') setInterval(() => this.poll(), 10000);
     this.setSync();
+    addEventListener('pagehide', () => { if (this.pending && this.mode === 'server') { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
   },
   save() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(this.state)); }
@@ -168,6 +169,9 @@ function subordinates(id, acc = new Set()) {
 const myScope = () => { if (isAdmin()) return null; const s = subordinates(me().id); s.add(me().id); return s; };
 const inScope = id => { const s = myScope(); return !s || s.has(id); };
 const scopeMembers = () => S().members.filter(m => inScope(m.id));
+/* who can I assign work to? Admin -> everyone, Leader -> own reports, Staff -> nobody else */
+const canAssign = () => isAdmin() || subordinates(me().id).size > 0;
+const assignablePeople = () => isAdmin() ? S().members : S().members.filter(m => subordinates(me().id).has(m.id));
 const isLeader = () => !isAdmin() && subordinates(me().id).size > 0;
 const inProject = p => isAdmin() || p.pmId === me().id || p.squad.includes(me().id);
 const visibleProjects = () => S().projects.filter(p => inProject(p) || (myScope() && [p.pmId, ...p.squad].some(inScope)));
