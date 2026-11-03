@@ -9,16 +9,17 @@ const NAV = [   // [route, English name, Thai gloss, icon]
   ['projects', 'Projects', 'โครงการและ Squad', 'folder'],
   ['board', 'Timeline & Board', 'Gantt และ Kanban ทุก Project', 'board'],
   ['todo', 'My Weekly Plan', 'แผนงานรายสัปดาห์ของฉัน', 'check'],
-  ['meetings', 'Meeting Hub', 'สรุปประชุมและ Action Items', 'mic'],
   ['team', 'Team & Access', 'ทีม สิทธิ์ และการตั้งค่า', 'users'],
 ];
+/* Feature flags — Meeting Hub is parked until the AI part is decided (code kept in views-c.js) */
+const FEATURES = { meetings: false };
 let lastRoute = '';
 function route() { const h = location.hash.replace(/^#\/?/, '').split('/'); return { name: h[0] || 'dashboard', id: h[1] }; }
 
 function render() {
   if (!Store.state) return;
   const r = route();
-  if (!V[r.name]) { location.hash = '#/dashboard'; return; }
+  if (!V[r.name] || (r.name === 'meetings' && !FEATURES.meetings)) { location.hash = '#/dashboard'; return; }
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
   $('#nav').innerHTML = NAV.map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
@@ -61,7 +62,7 @@ function openSearch() {
         visibleTasks().filter(t => has(t.title) || has(t.ram?.requester) || has(t.desc)).slice(0, 8).forEach(t => rows.push(['งาน', t.title, `${member(t.assigneeId)?.name || '–'} · ${STATUS[t.status].th}`, 'openTask', t.id]));
         visibleProjects().filter(p => has(p.name) || has(p.goal)).forEach(p => rows.push(['Project', p.name, `PM: ${member(p.pmId)?.name || '–'}`, 'goProject', p.id]));
         S().events.filter(e => has(e.name) || has(e.venue)).forEach(e => rows.push(['Event', e.name, fmtRange(e.start, e.end), 'openEvent', e.id]));
-        S().meetings.filter(x => has(x.title) || has(x.summary)).forEach(x => rows.push(['ประชุม', x.title, fmtDY(x.date), 'goMeeting', x.id]));
+        if (FEATURES.meetings) S().meetings.filter(x => has(x.title) || has(x.summary)).forEach(x => rows.push(['ประชุม', x.title, fmtDY(x.date), 'goMeeting', x.id]));
         S().members.filter(x => has(x.name) || has(x.alias)).forEach(x => rows.push(['สมาชิก', x.name, x.position, 'goTodo', x.id]));
         out.innerHTML = rows.length ? rows.map(r => `<button class="gr" data-act="${r[3]}" data-id="${r[4]}" data-close-search><span class="badge">${r[0]}</span><div class="grow"><b>${esc(r[1])}</b><small>${esc(r[2])}</small></div></button>`).join('') : '<p class="muted pad">ไม่พบผลลัพธ์</p>';
       };
