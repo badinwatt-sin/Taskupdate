@@ -213,8 +213,9 @@ function openOffsite(id, date) {
         },
       }] : []),
     onOpen(m) {
-      const f = $('#ofForm', m.el), sync = () => { $('#otherBox', m.el).hidden = f.elements.area.value !== '__OTHER'; };
-      f.elements.area.onchange = sync; sync(); f.addEventListener('submit', e => e.preventDefault());
+      const f = $('#ofForm', m.el), inp = f.elements.areaOther;
+      const sync = focus => { const other = f.elements.area.value === '__OTHER'; $('#otherBox', m.el).hidden = !other; inp.required = other; if (other && focus) inp.focus(); };
+      f.elements.area.onchange = () => sync(true); sync(false); f.addEventListener('submit', e => e.preventDefault());
     },
   });
 }
