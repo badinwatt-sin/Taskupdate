@@ -19,12 +19,12 @@ ACT.submitTask = async el => {
   const t = S().tasks.find(x => x.id === el.dataset.id); if (!t) return;
   if (t.private && !await confirmBox('งานนี้ตั้งเป็นส่วนตัวอยู่ — เมื่อ Submit จะเปลี่ยนเป็นเปิดเผยและทุกคนในทีมเห็นบน Kanban ต้องการดำเนินการต่อหรือไม่?', 'Submit ขึ้นบอร์ด')) return;
   t.private = false; t.submitted = true; t.submittedAt = today(); commit();
-  toast('ส่งขึ้น Kanban เป็น Post-it แล้ว 📌', 'ok', () => { t.submitted = false; commit(); });
+  toast('ส่งขึ้น Kanban เป็น Post-it แล้ว', 'ok', () => { t.submitted = false; commit(); });
 };
 ACT.unsubmit = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) { t.submitted = false; commit(); toast('เอา Post-it ออกจากบอร์ดแล้ว'); } };
 ACT.submitAll = () => {
   const ts = S().tasks.filter(t => canSubmit(t) && !t.submitted && !t.private && isActive(t));
-  ts.forEach(t => { t.submitted = true; t.submittedAt = today(); }); commit(); toast(`ส่ง ${ts.length} งานขึ้นบอร์ดแล้ว 📌`);
+  ts.forEach(t => { t.submitted = true; t.submittedAt = today(); }); commit(); toast(`ส่ง ${ts.length} งานขึ้นบอร์ดแล้ว`);
 };
 ACT.myStyle = el => openMyStyle(el.dataset.id || me().id);
 function openMyStyle(id) {
@@ -48,7 +48,7 @@ function openMyStyle(id) {
       label: 'บันทึก', cls: 'btn-primary', onClick: () => {
         const dup = emoji && emojiOwner(emoji, m.id);
         if (dup) { toast(`icon นี้ ${dup.name} ใช้อยู่แล้ว`, 'error'); return false; }
-        m.emoji = emoji; m.postit = { color, pattern }; commit(); toast('บันทึกสไตล์ของคุณแล้ว ✨');
+        m.emoji = emoji; m.postit = { color, pattern }; commit(); toast('บันทึกสไตล์ของคุณแล้ว');
       },
     }],
     onOpen(md) {
@@ -84,11 +84,11 @@ V.todo = root => {
           ${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : ''}${t.source === 'ram' ? `<span class="pchip ram">RAM · ${esc(t.ram?.area || '')}</span>` : ''}${t.source === 'meeting' ? '<span class="pchip ram">ประชุม</span>' : ''}${t.private ? `<span class="muted">${ico('lock', 12)} ส่วนตัว</span>` : ''}
           ${linkList(t) ? '<span class="muted">' + ico('paperclip', 12) + ' มีไฟล์/ลิงก์</span>' : ''}</div></div>
       <div class="due ${late ? 'late' : ''}">${done ? 'เสร็จ ' + fmtD(t.doneAt) : `${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small>`}</div>
-      ${canSubmit(t) ? (t.submitted ? `<button class="btn btn-ghost btn-sm" data-act="unsubmit" data-id="${t.id}" title="เอา Post-it ออกจากบอร์ด"><span class="submitted-tag">${ico('check', 12)} อยู่บนบอร์ด</span></button>` : `<button class="btn btn-primary btn-sm" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">📌 Submit</button>`) : ''}
+      ${canSubmit(t) ? (t.submitted ? `<button class="btn btn-ghost btn-sm" data-act="unsubmit" data-id="${t.id}" title="เอา Post-it ออกจากบอร์ด"><span class="submitted-tag">${ico('check', 12)} อยู่บนบอร์ด</span></button>` : `<button class="btn btn-primary btn-sm" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}
       ${isActive(t) && t.status === 'todo' ? `<button class="btn btn-ghost btn-sm" data-act="startTask" data-id="${t.id}" ${canStatus(t) ? '' : 'disabled'}>เริ่มทำ</button>` : isActive(t) ? '<span class="badge st-doing">กำลังทำ</span>' : ''}</li>`;
   };
-  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, own ? `สวัสดี ${esc(me().name)} — ${B.today.length ? `วันนี้มี <b>${B.today.length}</b> งานที่ต้องโฟกัส` : 'วันนี้ว่าง ไม่มีงานที่ต้องทำ 🎉'}` : 'คุณกำลังดูในฐานะ Admin',
-    `<button class="btn btn-ghost" data-act="myStyle">🎨 ปรับแต่ง Post-it & Icon</button>` + (isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '')) + `
+  root.innerHTML = pageHead(own ? 'My To-Do' : `To-Do ของ ${who.name}`, own ? `สวัสดี ${esc(me().name)} — ${B.today.length ? `วันนี้มี <b>${B.today.length}</b> งานที่ต้องโฟกัส` : 'วันนี้ว่าง ไม่มีงานที่ต้องทำ'}` : 'คุณกำลังดูในฐานะ Admin',
+    `<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} ปรับแต่ง Post-it & Icon</button>` + (isAdmin() ? `<select data-f="todo.user" aria-label="ดูของ">${memberOptions(f.user)}</select>` : '')) + `
   ${B.overdue.length && f.tab !== 'overdue' ? `<button class="banner late" data-act="todoTab" data-id="overdue">${ico('alert', 18)} มีงานเกินกำหนด ${B.overdue.length} รายการ — กดเพื่อดู</button>` : ''}
   ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานใหม่… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
     <input type="date" name="due" value="${today()}" aria-label="กำหนดส่ง"><select name="prio" aria-label="ความสำคัญ">${Object.keys(PRIO).map(k => opt(k, 'สำคัญ: ' + PRIO[k].th, k === 'med' ? 'med' : '')).join('')}</select>
@@ -96,7 +96,7 @@ V.todo = root => {
     <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
   <div class="todo-grid"><div>
     <div class="tabs" role="tablist">${tabs.map(([k, l, n]) => `<button role="tab" class="${f.tab === k ? 'on' : ''} ${k === 'overdue' && n ? 'warn' : ''}" data-act="todoTab" data-id="${k}">${l}<em>${n}</em></button>`).join('')}</div>
-    ${own && (B.today.concat(B.upcoming, B.overdue)).some(t => canSubmit(t) && !t.submitted && !t.private) ? `<div class="submit-bar"><span>📌 งานส่วนตัวที่ยังไม่ได้ Submit จะยังไม่แสดงบน Kanban ของทีม</span><button class="btn btn-primary btn-sm" data-act="submitAll">Submit ทั้งหมดขึ้นบอร์ด</button></div>` : ''}
+    ${own && (B.today.concat(B.upcoming, B.overdue)).some(t => canSubmit(t) && !t.submitted && !t.private) ? `<div class="submit-bar"><span>งานส่วนตัวที่ยังไม่ได้ Submit จะยังไม่แสดงบน Kanban ของทีม</span><button class="btn btn-primary btn-sm" data-act="submitAll">Submit ทั้งหมดขึ้นบอร์ด</button></div>` : ''}
     ${list.length ? `<ul class="todolist">${list.map(row).join('')}</ul>` : empty(f.tab === 'done' ? 'check' : 'clock', { today: 'ไม่มีงานสำหรับวันนี้', upcoming: 'ยังไม่มีงานที่กำลังจะถึง', overdue: 'ไม่มีงานเกินกำหนด', done: 'ยังไม่มีงานที่เสร็จ' }[f.tab], f.tab === 'overdue' ? 'เยี่ยมมาก ทุกอย่างทันกำหนด' : 'พิมพ์ชื่องานในช่องด้านบนเพื่อเพิ่มได้ทันที')}
   </div>
   <aside class="card side"><div class="card-h"><h3>ความคืบหน้าวันนี้</h3></div>
@@ -282,7 +282,7 @@ V.team = root => {
   const memberCard = m => {
     const w = workload(m.id), pms = S().projects.filter(p => p.pmId === m.id);
     return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
-      ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">🎨</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
+      ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">${ico('sparkles', 16)}</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
       <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p><div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };

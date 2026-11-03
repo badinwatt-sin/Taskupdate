@@ -16,7 +16,7 @@ function boardTasks(f, fixedProject) {
 }
 function filterBar(key, fixedProject, extra = '') {
   const f = ST[key];
-  const projOpts = opt('', 'ทุก Project', f.project) + S().projects.map(p => opt(p.id, p.name, f.project)).join('') + opt('__ram', 'งานสนับสนุน RAM', f.project) + opt('__postit', '📝 Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
+  const projOpts = opt('', 'ทุก Project', f.project) + S().projects.map(p => opt(p.id, p.name, f.project)).join('') + opt('__ram', 'งานสนับสนุน RAM', f.project) + opt('__postit', 'Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
   return `<div class="filters">
     ${fixedProject ? '' : `<select data-f="${key}.project" aria-label="Project">${projOpts}</select>`}
     <select data-f="${key}.group" aria-label="Squad">${groupOptions(f.group, 'ทุก Squad / หน้าที่')}</select>
@@ -37,7 +37,7 @@ function kanbanHTML(tasks) {
 const isPostit = t => t.submitted && !t.projectId && t.source !== 'ram' && !t.private;
 function postitCard(t) {
   const m = member(t.assigneeId), st = postitOf(m), late = isDelayed(t);
-  return `<article class="kcard postit pat-${st.pattern} ${late ? 'late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
+  return `<article class="kcard postit pat-${st.pattern} ${late ? 'is-late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
     <div class="pi-who">${avatar(m, 26)}<span>${esc(m?.name || '–')}</span></div>
     <div class="pi-title">${esc(t.title)}</div>
     <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span></div></article>`;
@@ -45,7 +45,7 @@ function postitCard(t) {
 function kcard(t) {
   if (isPostit(t)) return postitCard(t);
   const p = t.projectId && project(t.projectId), risks = depRisks(t);
-  return `<article class="kcard ${isDelayed(t) ? 'late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
+  return `<article class="kcard ${isDelayed(t) ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
     <div class="kc-top">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : `<span class="pchip ram">${esc(t.ram?.area || 'RAM')}</span>`}${prioDot(t.priority)}</div>
     <b class="kc-title">${esc(t.title)}</b>
     <div class="kc-meta"><span class="${isDelayed(t) ? 'late' : 'muted'}">${ico('clock', 13)} ${fmtD(taskEnd(t))}</span>
@@ -105,7 +105,7 @@ function ganttHTML(tasks, zoom, hideDone) {
   groups.forEach(k => {
     const p = k === '__ram' || k === '__postit' ? null : project(k);
     if (groups.length > 1 || true) {
-      rows += `<div class="g-row g-group"><div class="g-label" style="width:${LW}px"><i style="background:${p ? p.color : k === '__postit' ? '#f59e0b' : '#d97706'}"></i><b>${esc(p ? p.name : k === '__postit' ? '📝 Post-it ของทีม' : 'งานสนับสนุน RAM')}</b></div><div class="g-track" style="width:${W}px"></div></div>`; r++;
+      rows += `<div class="g-row g-group"><div class="g-label" style="width:${LW}px"><i style="background:${p ? p.color : k === '__postit' ? '#f59e0b' : '#d97706'}"></i><b>${esc(p ? p.name : k === '__postit' ? 'Post-it ของทีม' : 'งานสนับสนุน RAM')}</b></div><div class="g-track" style="width:${W}px"></div></div>`; r++;
     }
     byKey.get(k).forEach(t => {
       const a = taskStart(t), b = taskEnd(t), left = diffDays(min, a) * px, w = (diffDays(a, b) + 1) * px;
@@ -181,7 +181,7 @@ function projectDetail(root, id) {
       <dl class="facts"><div><dt>Project Manager</dt><dd>${personChip(pm)}</dd></div><div><dt>ช่วงเวลา</dt><dd>${s.end ? fmtRange(s.start, s.end) : '–'}</dd></div><div><dt>การนับวัน</dt><dd>${mode === 'working' ? 'วันทำงาน (ไม่รวมเสาร์–อาทิตย์/วันหยุดบริษัท)' : 'วันปฏิทิน'}${p.dayMode ? '' : ' <small class="muted">(ค่าเริ่มต้นของทีม)</small>'}</dd></div><div><dt>ความคืบหน้า</dt><dd>${progressBar(s.pct, p.color)}<small>${s.done}/${s.total} งาน · ${s.pct}%</small></dd></div></dl></section>
       <section class="card"><div class="card-h"><h3>Squad (${p.squad.length} คน)</h3>${can ? `<button class="btn btn-ghost btn-sm" data-act="editProject" data-id="${p.id}">จัด Squad</button>` : ''}</div>
       ${sq.map(x => `<div class="squad-g"><div>${groupChip(x.g)}</div><div class="squad-m">${x.ms.map(m => `<span class="person">${avatar(m, 26)}<span>${esc(m.name)}${m.id === p.pmId ? ' <span class="pm">PM</span>' : ''}</span></span>`).join('')}</div></div>`).join('') || '<p class="muted pad">ยังไม่มีสมาชิก</p>'}</section></div>
-      <section class="card mt"><div class="card-h"><h3>งานที่ใกล้ถึงกำหนด</h3></div>${upcoming.length ? `<ul class="list">${upcoming.map(t => `<li class="clickable" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '')}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small></span></li>`).join('')}</ul>` : '<p class="muted pad">ไม่มีงานค้าง 🎉</p>'}</section>`;
+      <section class="card mt"><div class="card-h"><h3>งานที่ใกล้ถึงกำหนด</h3></div>${upcoming.length ? `<ul class="list">${upcoming.map(t => `<li class="clickable" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '')}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small></span></li>`).join('')}</ul>` : '<p class="muted pad">ไม่มีงานค้าง</p>'}</section>`;
   } else if (f.tab === 'tasks') {
     const ts = sortBy(tasks, t => taskStart(t));
     content = filterBar('proj', p.id) + (ts.length ? `<section class="card flush"><div class="table-wrap"><table class="tbl"><thead><tr><th>งาน</th><th>ผู้รับผิดชอบ</th><th>เริ่ม</th><th>ระยะเวลา</th><th>เสร็จ (คำนวณ)</th><th>ต้องทำหลัง</th><th>สถานะ</th></tr></thead><tbody>
