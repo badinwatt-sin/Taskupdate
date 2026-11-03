@@ -4,5 +4,5 @@
   "private": true,
   "description": "TEAM Hub — Agency Experience team planning app",
   "scripts": { "start": "node server.js" },
-  "engines": { "node": ">=18" }
+  "engines": { "node": "22.x" }
 }
