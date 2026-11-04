@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>TEAM Hub</title>
+<meta name="description" content="ศูนย์กลางงาน โปรเจกต์ ปฏิทิน และ Event ของทีม Agency Experience บันทึกครั้งเดียว ดูได้หลายมุม">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,6 +20,7 @@
 <link rel="stylesheet" href="css/style.css">
 <link rel="stylesheet" href="css/glass.css">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/polish.css">
 </head>
 <body>
 <a class="skip" href="#view">ข้ามไปยังเนื้อหา</a>
@@ -38,7 +40,7 @@
     <button id="addBtn" class="btn btn-primary"><svg class="ico" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span>New</span></button>
     <button id="tbUser" class="tb-user" type="button" aria-label="เมนูและบัญชีของฉัน"></button>
   </header>
-  <main id="view" class="view" tabindex="-1"><div class="loading">กำลังโหลด…</div></main>
+  <main id="view" class="view" tabindex="-1"><div class="skeleton" role="status" aria-label="กำลังโหลด"><div class="sk sk-title"></div><div class="sk sk-hero"></div><div class="sk-row"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div></div></main>
 </div>
 <nav id="tabbar" class="tabbar" aria-label="เมนูหลัก"></nav>
 <button id="fab" class="fab" type="button" aria-label="New"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
