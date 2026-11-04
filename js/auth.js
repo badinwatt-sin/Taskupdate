@@ -119,7 +119,8 @@ function openAccount() {
         <label class="field full"><span>รหัสผ่านปัจจุบัน</span><input type="password" name="cur" autocomplete="current-password" required></label>
         <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</span><input type="password" name="n1" minlength="4" autocomplete="new-password" required></label>
         <label class="field"><span>ยืนยันรหัสผ่านใหม่</span><input type="password" name="n2" minlength="4" autocomplete="new-password" required></label>
-        <div class="full muted small">หมายเหตุ: Admin สามารถเห็นรหัสผ่านของทุกคนได้ เพื่อช่วยเหลือกรณีลืมรหัส จึงไม่ควรใช้รหัสเดียวกับที่อื่น</div></form>`,
+        <div class="full muted small">หมายเหตุ: Admin สามารถเห็นรหัสผ่านของทุกคนได้ เพื่อช่วยเหลือกรณีลืมรหัส จึงไม่ควรใช้รหัสเดียวกับที่อื่น</div></form>
+      <p class="muted small center mt">TEAM Hub · เวอร์ชัน <b>${esc(Store.version || (Store.mode === 'local' ? 'สาธิต' : '–'))}</b></p>`,
     actions: [{ label: ico('left', 15) + ' ออกจากระบบ', cls: 'btn-danger-ghost', left: true, onClick: () => { Auth.logout(); return false; } }, { label: 'ปิด' }, {
       label: 'บันทึกรหัสใหม่', cls: 'btn-primary', onClick: async () => {
         const f = $('#pwForm'); if (!f.reportValidity()) return false;

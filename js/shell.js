@@ -46,7 +46,8 @@ function openMore() {
       <button type="button" class="more-it" data-mi="search">${ico('search', 20)}<div><b>${ACTION.search[0]}</b><small>${ACTION.search[1]}</small></div>${ico('right', 16)}</button>
       <button type="button" class="more-it" data-mi="theme">${ico('auto', 20)}<div><b>${ACTION.theme[0]}</b><small id="miTheme">${themeLabel()}</small></div><span class="muted small">แตะเพื่อสลับ</span></button>
       <button type="button" class="more-it" data-mi="style">${ico('edit', 20)}<div><b>${ACTION.style[0]}</b><small>${ACTION.style[1]}</small></div>${ico('right', 16)}</button>
-      <button type="button" class="more-it" data-mi="account">${ico('lock', 20)}<div><b>${ACTION.account[0]}</b><small>${ACTION.account[1]}</small></div>${ico('right', 16)}</button></div>`,
+      <button type="button" class="more-it" data-mi="account">${ico('lock', 20)}<div><b>${ACTION.account[0]}</b><small>${ACTION.account[1]}</small></div>${ico('right', 16)}</button></div>
+      <p class="muted small center mt">TEAM Hub · เวอร์ชัน <b>${esc(Store.version || (Store.mode === 'local' ? 'สาธิต' : '–'))}</b></p>`,
     onOpen(md) {
       md.el.addEventListener('click', e => {
         const b = e.target.closest('[data-mi]'); if (!b) return; const k = b.dataset.mi;

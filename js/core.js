@@ -102,7 +102,7 @@ const Store = {
   async detect() {
     try {
       const r = await fetch('api/ping', { cache: 'no-store' });
-      if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; this.configured = j.configured !== false; this.recovery = !!j.recovery; return; }
+      if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; this.configured = j.configured !== false; this.recovery = !!j.recovery; this.version = j.version || ''; return; }
     } catch (e) { /* static hosting / file:// → local mode */ }
     this.mode = 'local';
   },
