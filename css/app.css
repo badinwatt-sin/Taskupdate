@@ -215,13 +215,12 @@
 /* home already has quick actions in the hero → no floating button there */
 @media (max-width:860px){ body[data-route="dashboard"] .fab{display:none} }
 @media (max-width:600px){
-  /* quick add: one line until you tap into it */
-  .quick{grid-template-columns:minmax(0,1fr) auto}
-  .quick input[name=title],.quick .btn{grid-column:auto}
-  .quick .qd,.quick select,.quick .check{display:none}
-  .quick:focus-within{grid-template-columns:1fr 1fr}
-  .quick:focus-within .qd,.quick:focus-within select,.quick:focus-within .check{display:flex}
-  .quick:focus-within input[name=title],.quick:focus-within .btn{grid-column:1/-1}
+  /* quick add: always fully visible — hiding fields until focus made the dropdowns impossible to open on iOS */
+  .quick{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .quick>*{min-width:0}
+  .quick input[name=title],.quick .btn{grid-column:1/-1}
+  .quick .qd input,.quick select{width:100%;min-width:0;max-width:100%}
+  .quick .check{justify-self:start}
   .quick .btn{padding:9px 14px}
   .v-todo .head-actions [data-act=myStyle]{display:none}
 }
