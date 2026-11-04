@@ -35,3 +35,21 @@ p,.note,.muted,small{text-wrap:pretty}
 @media (prefers-reduced-motion:reduce){
   .sk::after{animation:none;transform:none;opacity:.5}
 }
+
+/* ---------- date inputs: fit the theme ---------- */
+input[type=date]{min-height:40px;font-variant-numeric:tabular-nums;cursor:pointer}
+input[type=date]::-webkit-datetime-edit-fields-wrapper{padding:0}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:.6;cursor:pointer;border-radius:6px;padding:2px;
+  transition:opacity .3s var(--ease),background .3s var(--ease)}
+input[type=date]::-webkit-calendar-picker-indicator:hover{opacity:1;background:var(--fill)}
+input[type=date]:disabled{cursor:not-allowed}
+
+@media (min-width:861px){
+  /* calendar: let event names use two lines before cutting with an ellipsis */
+  .day{min-height:128px}
+  .cev:not(.solo):not(.off){white-space:normal;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
+  .cev.off{white-space:normal;align-items:flex-start}
+  .cev.off>:not(b){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+  /* board: four columns fit beside the sidebar without sideways scrolling */
+  .kanban:not(.three){grid-template-columns:repeat(4,minmax(220px,1fr))}
+}
