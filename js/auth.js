@@ -114,7 +114,7 @@ function openAccount() {
   const m = me();
   modal({
     title: ACTION.account[0],
-    body: `<div class="acct"><div class="person">${avatar(m, 52)}<div><b style="font-size:18px">${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก'} · ${esc(m.position)}</small></div></div></div>
+    body: `<div class="acct"><div class="person">${avatar(m, 52)}<div><b style="font-size:17px">${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก'} · ${esc(m.position)}</small></div></div></div>
       <form id="pwForm" class="form-grid mt" autocomplete="off"><div class="full"><b>เปลี่ยนรหัสผ่าน</b></div>
         <label class="field full"><span>รหัสผ่านปัจจุบัน</span><input type="password" name="cur" autocomplete="current-password" required></label>
         <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</span><input type="password" name="n1" minlength="4" autocomplete="new-password" required></label>
