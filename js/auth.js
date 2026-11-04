@@ -154,7 +154,7 @@ async function loadAccessTable() {
   const box = $('#accessBox'); if (!box) return;
   let data; try { data = await Auth.adminList(); } catch (e) { box.innerHTML = '<p class="muted small">โหลดรายการรหัสผ่านไม่ได้</p>'; return; }
   const byId = new Map(data.list.map(x => [x.id, x]));
-  box.innerHTML = `<div class="inline-add" style="grid-template-columns:1fr auto auto;margin-bottom:14px"><label class="field" style="margin:0"><span>รหัสเริ่มต้น (ใช้กับสมาชิกที่ยังไม่เคยตั้งรหัสเอง)</span><input id="defPw" value="${esc(data.default)}"></label><button class="btn btn-ghost btn-sm" data-act="saveDefaultPw" style="align-self:end">บันทึก</button><span></span></div>
+  box.innerHTML = `<div class="inline-add" style="grid-template-columns:1fr auto auto;margin-bottom:14px"><label class="field" style="margin:0"><span>รหัสเริ่มต้น (ใช้กับสมาชิกที่ยังไม่เคยตั้งรหัสเอง)</span><input id="defPw" value="${esc(data.default)}"></label><button class="btn btn-ghost btn-sm" data-act="saveDefaultPw" style="align-self:end">บันทึก</button><button class="btn btn-primary btn-sm" data-act="applyAllPw" style="align-self:end" title="ตั้งรหัสนี้ให้สมาชิกทุกคน แทนรหัสที่เคยตั้งไว้">ตั้งให้ทุกคน</button></div>
     <div class="table-wrap"><table class="tbl"><thead><tr><th>สมาชิก</th><th>รหัสผ่านปัจจุบัน</th><th>สถานะ</th><th></th></tr></thead><tbody>
     ${S().members.map(m => { const x = byId.get(m.id) || { password: data.default, custom: false }; return `<tr data-id="${m.id}"><td><div class="person">${avatar(m, 26)}<b>${esc(m.name)}</b></div></td>
       <td><code class="pwc" data-pw="${esc(x.password)}">••••••••</code> <button class="icon-btn" data-act="togglePw" aria-label="แสดง/ซ่อนรหัส">${ico('search', 15)}</button></td>
@@ -163,6 +163,21 @@ async function loadAccessTable() {
 }
 ACT.togglePw = el => { const c = $('.pwc', el.closest('tr')); c.textContent = c.textContent.startsWith('•') ? c.dataset.pw : '••••••••'; };
 ACT.saveDefaultPw = async () => { const v = $('#defPw').value.trim(); if (v.length < 4) return toast('รหัสเริ่มต้นต้องมีอย่างน้อย 4 ตัว', 'error'); try { await Auth.adminDefault(v); toast('บันทึกรหัสเริ่มต้นแล้ว'); loadAccessTable(); } catch (e) { toast(e.message, 'error'); } };
+ACT.applyAllPw = () => {
+  const v = $('#defPw').value.trim(); if (v.length < 4) return toast('รหัสต้องมีอย่างน้อย 4 ตัว', 'error');
+  modal({
+    title: 'ตั้งรหัสผ่านให้ทุกคน',
+    body: `<p>ทุกคนจะใช้รหัส <code class="pwc">${esc(v)}</code> เข้าสู่ระบบ — รหัสที่สมาชิกเคยตั้งเองไว้จะถูกแทนที่</p><p class="muted small mt">แจ้งรหัสนี้ให้ทีม แล้วให้แต่ละคนเปลี่ยนเป็นรหัสของตัวเองหลังเข้าสู่ระบบ</p>`,
+    actions: [{ label: 'ยกเลิก' }, { label: 'ยืนยัน ตั้งให้ทุกคน', cls: 'btn-primary', onClick: async () => {
+      try {
+        await Auth.adminDefault(v);
+        const d = await Auth.adminList();
+        for (const x of d.list) if (x.custom) await Auth.adminSet(x.id, null);
+        toast('ตั้งรหัสให้ทุกคนแล้ว'); loadAccessTable(); fillCardPasswords();
+      } catch (e) { toast(e.message, 'error'); return false; }
+    } }],
+  });
+};
 ACT.resetPw = async el => { try { await Auth.adminSet(el.dataset.id, null); toast('รีเซ็ตเป็นรหัสเริ่มต้นแล้ว'); loadAccessTable(); } catch (e) { toast(e.message, 'error'); } };
 ACT.setPw = el => {
   const m = member(el.dataset.id);
