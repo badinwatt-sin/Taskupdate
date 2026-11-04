@@ -53,3 +53,20 @@ input[type=date]:disabled{cursor:not-allowed}
   /* board: four columns fit beside the sidebar without sideways scrolling */
   .kanban:not(.three){grid-template-columns:repeat(4,minmax(220px,1fr))}
 }
+
+/* ---------- forms: long option text must not widen the column ---------- */
+.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:860px){.form-grid{grid-template-columns:minmax(0,1fr)}}
+.form-grid>*,.field{min-width:0}
+.field select,.field input,.field textarea{max-width:100%}
+
+/* start / end / days row: dates need room for the year on phones */
+.triad{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:600px){
+  .triad{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .triad .field:nth-child(3){grid-column:1/-1}
+  input[type=date]{padding-left:8px;padding-right:8px}
+}
+
+/* notes: a bold lead label stays on one line instead of being squeezed */
+.note>b:first-of-type{flex:none;white-space:nowrap}
