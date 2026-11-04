@@ -138,14 +138,14 @@ let PW_CACHE = null;
 function paintCardPasswords(d) {
   const by = new Map(d.list.map(x => [x.id, x]));
   $$('.pwline').forEach(el => {
-    const x = by.get(el.dataset.id); if (!x) return;
+    const x = by.get(el.dataset.id) || { password: d.default, custom: false };   // member added after the login list was made: still on the default password
     el.innerHTML = `<span class="muted small">รหัสผ่านปัจจุบัน</span><code class="pwc" title="แตะเพื่อคัดลอก" data-act="copyPw" data-pw="${esc(x.password)}">${esc(x.password)}</code><span class="pw-tag ${x.custom ? 'own' : ''}">${x.custom ? 'ตั้งเอง' : 'รหัสเริ่มต้น'}</span>`;
   });
 }
 async function fillCardPasswords() {
   if (!isAdmin()) return;
   if (PW_CACHE) paintCardPasswords(PW_CACHE);   // instant from the last read, then refresh
-  try { PW_CACHE = await Auth.adminList(); paintCardPasswords(PW_CACHE); } catch (e) { }
+  try { PW_CACHE = await Auth.adminList(); paintCardPasswords(PW_CACHE); } catch (e) { if (!PW_CACHE) $$('.pwline .pwc').forEach(c => { c.textContent = 'โหลดไม่ได้'; }); }
 }
 ACT.copyPw = async el => { try { await navigator.clipboard.writeText(el.dataset.pw); toast('คัดลอกรหัสผ่านแล้ว'); } catch (e) { toast(el.dataset.pw, 'ok'); } };
 
