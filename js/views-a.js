@@ -52,12 +52,17 @@ V.dashboard = root => {
     return `<li class="${done ? 'is-done' : ''}"><button class="tick ${done ? 'on' : ''}" data-act="toggleDone" data-id="${t.id}" aria-label="${done ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายเสร็จ'}" ${canStatus(t) ? '' : 'disabled'}>${done ? ico('check', 14) : ''}</button>
       <div class="grow clickable" data-act="openTask" data-id="${t.id}"><b class="clip">${esc(t.title)}</b><small class="muted">${p ? esc(p.name) : KINDS[t.source] || 'งาน'}${done ? '' : ` · <span class="${isDelayed(t) ? 'late' : ''}">${fmtRel(taskEnd(t))}</span>`}</small></div>${done ? '' : advBtn(t)}</li>`; };
 
-  const hero = `<section class="hero">
-    <div class="hero-main"><span class="hero-date">วัน${TH_DOW_FULL[now.getDay()]}ที่ ${now.getDate()} ${TH_MON_FULL[now.getMonth()]} ${now.getFullYear() + 543}</span>
+  const qa = quickActions().slice(0, 4);
+  const hero = `<section class="dash-head">
+    <div class="dh-main"><span class="eyebrow">วัน${TH_DOW_FULL[now.getDay()]}ที่ ${now.getDate()} ${TH_MON_FULL[now.getMonth()]} ${now.getFullYear() + 543}</span>
       <h1>${greet}, ${esc(m.name)}</h1>
-      <p>${focus.length ? `วันนี้มี <b>${focus.length}</b> งานให้โฟกัส${overdue ? ` · <b class="hl-late">${overdue}</b> งานเลยกำหนด` : ''}` : (doneToday.length ? `เคลียร์งานวันนี้ครบแล้ว ${doneToday.length} งาน` : 'วันนี้ยังไม่มีงานค้าง')}</p></div>
-    <a class="hero-ring h-${H.level}" href="#/todo" style="--p:${H.pct}" aria-label="ความคืบหน้าสัปดาห์นี้ ${H.pct} เปอร์เซ็นต์"><span class="ring-in"><b>${H.pct}%</b><span>สัปดาห์นี้</span></span><small>${hLabel} · ${H.done}/${H.total}</small></a>
-    <div class="hero-actions">${quickActions().slice(0, 4).map(([k, i, t, s2, c]) => `<button type="button" class="hq" data-act="quick" data-id="${k}">${ico(i, 16)}<span>${t}</span></button>`).join('')}</div>
+      <p>${focus.length ? `วันนี้มี <b>${focus.length}</b> งานให้โฟกัส${overdue ? ` และ <b class="late">${overdue}</b> งานเลยกำหนด` : ''}` : (doneToday.length ? `เคลียร์งานวันนี้ครบแล้ว ${doneToday.length} งาน` : 'วันนี้ยังไม่มีงานค้าง')}</p></div>
+    <div class="dh-actions">${qa.map(([k, i, tt], n) => `<button type="button" class="btn ${n === 0 ? 'btn-primary' : 'btn-ghost'}" data-act="quick" data-id="${k}">${ico(i, 16)}<span>${tt}</span></button>`).join('')}</div>
+  </section>
+  <section class="stat-strip" aria-label="สรุปวันนี้">
+    <a class="stat h-${H.level}" href="#/todo" aria-label="ความคืบหน้าสัปดาห์นี้ ${H.pct} เปอร์เซ็นต์"><span class="stat-l">ความคืบหน้าสัปดาห์นี้</span><b class="stat-v">${H.pct}%</b><span class="bar"><i style="width:${H.pct}%"></i></span><span class="stat-s">${hLabel} · เสร็จ ${H.done} จาก ${H.total} งาน</span></a>
+    <a class="stat" href="#/todo"><span class="stat-l">งานโฟกัสวันนี้</span><b class="stat-v">${focus.length}</b><span class="stat-s">เสร็จแล้ววันนี้ ${doneToday.length} งาน</span></a>
+    <a class="stat ${overdue ? 'is-late' : ''}" href="#/todo"><span class="stat-l">เลยกำหนด</span><b class="stat-v">${overdue}</b><span class="stat-s">${overdue ? 'ควรจัดการก่อนงานอื่น' : 'ไม่มีงานค้างเกินกำหนด'}</span></a>
   </section>`;
 
   const focusCard = `<section class="card"><div class="card-h"><h3>วันนี้ของฉัน</h3><a class="link" href="#/todo">${pageName('todo')}</a></div>
@@ -65,7 +70,7 @@ V.dashboard = root => {
       : `<div class="empty small-empty">${ico('check', 30)}<h4>วันนี้ว่าง</h4><p>เพิ่มงานแรกของวันได้จากปุ่มด้านล่าง</p><button class="btn btn-primary btn-sm" data-act="quick" data-id="task">${ico('plus', 14)} งานใหม่</button></div>`}</section>`;
 
   const nextCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">${pageName('calendar')}</a></div>
-    ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้!' : 'วัน'}</span><span class="cd-t"><small>Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
+    ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้' : 'วัน'}</span><span class="cd-t"><small>Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
     ${upcoming.length ? `<ul class="list">${upcoming.map(x => `<li data-act="${x.act}" data-id="${x.id}" class="clickable"><div class="datebox ${x.alt ? 'alt' : ''}"><b>${parse(x.d).getDate()}</b><span>${TH_MON[parse(x.d).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(x.title)}</b><small class="muted clip">${esc(x.sub)}</small></div></li>`).join('')}</ul>` : (nextEv ? '' : '<p class="muted small">ยังไม่มีกิจกรรมที่กำลังจะมาถึง</p>')}</section>`;
 
   /* ---- team (admin / leader) ---- */
