@@ -263,7 +263,7 @@ V.board = root => {
   const f = ST.board, tasks = boardTasks(f);
   const tabs = `<div class="seg-ctl"><button class="${f.tab === 'kanban' ? 'on' : ''}" data-act="boardTab" data-id="board:kanban">${ico('board', 15)} Kanban</button><button class="${f.tab === 'gantt' ? 'on' : ''}" data-act="boardTab" data-id="board:gantt">${ico('gantt', 15)} Gantt Chart</button></div>`;
   const extra = f.tab === 'gantt' ? zoomCtl('board') + `<label class="check"><input type="checkbox" data-f="board.hideDone" ${f.hideDone ? 'checked' : ''}> ซ่อนงานที่เสร็จแล้ว</label>` : '';
-  root.innerHTML = pageHead('Timeline & Board', 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
+  root.innerHTML = pageHead(pageName('board'), 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
     + filterBar('board', null, extra) + (f.tab === 'kanban' ? kanbanHTML(tasks) : ganttHTML(tasks, f.zoom, f.hideDone));
   if (f.tab === 'kanban') bindKanban(root); else bindGantt(root);
 };
@@ -273,8 +273,8 @@ ACT.boardTab = el => { const [k, t] = el.dataset.id.split(':'); ST[k].tab = t; r
 V.projects = (root, id) => {
   if (id) return projectDetail(root, id);
   const ps = visibleProjects();
-  root.innerHTML = pageHead('Projects', 'โครงการและ Squad — สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
-    (isAdmin() || isPM() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} สร้าง Project</button>` : '')) +
+  root.innerHTML = pageHead(pageName('projects'), 'โครงการและ Squad — สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
+    (isAdmin() || isPM() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : '')) +
     (ps.length ? `<div class="pcards">${ps.map(p => {
       const s = projectStats(p), pm = member(p.pmId);
       return `<a class="pcard" href="#/projects/${p.id}" style="--c:${p.color}">
@@ -282,14 +282,14 @@ V.projects = (root, id) => {
         <p class="goal clip2">${esc(p.goal || 'ยังไม่ได้ระบุเป้าหมาย')}</p>
         <div class="pc-meta"><span>PM: ${personChip(pm, 20)}</span><span>${s.end ? fmtRange(s.start, s.end) : '–'}</span></div>
         ${progressBar(s.pct, p.color)}<div class="pc-foot"><span>${s.done}/${s.total} งานเสร็จ · ${s.pct}%</span><span class="squad">${p.squad.slice(0, 6).map(id => avatar(member(id), 24)).join('')}${p.squad.length > 6 ? `<em>+${p.squad.length - 6}</em>` : ''}</span></div></a>`;
-    }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', isAdmin() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} สร้าง Project</button>` : ''));
+    }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', isAdmin() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : ''));
 };
 ACT.newProject = () => openProject(null);
 
 function projectDetail(root, id) {
   const p = project(id); if (!p || !visibleProjects().includes(p)) { location.hash = '#/projects'; return; }
   const f = ST.proj, s = projectStats(p), pm = member(p.pmId), can = canManageProject(p);
-  const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'Overview & Squad']];
+  const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'Overview']];
   const mode = p.dayMode || S().settings.dayMode;
   const tasks = boardTasks(f, p.id);
   let content = '';
@@ -309,7 +309,7 @@ function projectDetail(root, id) {
   } else {
     content = filterBar('proj', p.id, zoomCtl('proj') + projFilterExtra(p)) + ganttHTML(tasks, f.zoom, false, { p, by: f.groupBy || 'group' });
   }
-  root.innerHTML = `<a class="back" href="#/projects">${ico('left', 16)} Project ทั้งหมด</a>
+  root.innerHTML = `<a class="back" href="#/projects">${ico('left', 16)} ${pageName('projects')}</a>
     <div class="proj-head" style="--c:${p.color}"><div><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.total} งาน · ${s.pct}% เสร็จ${s.delayed ? ` · <span class="late">${s.delayed} งานล่าช้า</span>` : ''}</p></div>
       <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="editGroups" data-id="${p.id}">${ico('layers', 16)} กลุ่มงาน</button><button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}
       <button class="btn btn-primary" data-act="newTask" data-pid="${p.id}">${ico('plus', 16)} เพิ่มงาน</button></div></div>

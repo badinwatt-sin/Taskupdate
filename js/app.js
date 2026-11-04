@@ -2,15 +2,7 @@
 /* ============================================================
    App shell: router, navigation, search, user switcher
    ============================================================ */
-const NAV = [   // [route, English name, Thai gloss, icon]
-  ['dashboard', 'Dashboard', 'ภาพรวมทีม', 'dashboard'],
-  ['support', 'Offsite Support', 'งานนอกสถานที่ / สนับสนุน Event', 'inbox'],
-  ['calendar', 'Event Calendar', 'ปฏิทินงานสำคัญประจำปี', 'calendar'],
-  ['projects', 'Projects', 'โครงการและ Squad', 'folder'],
-  ['board', 'Timeline & Board', 'Gantt และ Kanban ทุก Project', 'board'],
-  ['todo', 'My Weekly Plan', 'แผนงานรายสัปดาห์ของฉัน', 'check'],
-  ['team', 'Team & Access', 'ทีม สิทธิ์ และการตั้งค่า', 'users'],
-];
+const NAV = MENU_ORDER.map(k => [k, ...PAGE[k]]);   // [route, name, Thai gloss, icon] — vocabulary lives in labels.js
 /* Feature flags — Meeting Hub is parked until the AI part is decided (code kept in views-c.js) */
 const FEATURES = { meetings: false };
 let lastRoute = '';
@@ -23,7 +15,7 @@ function render() {
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
   $('#nav').innerHTML = NAV.map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
-  $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · บัญชีของฉัน</small></div>`;
+  $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · ${ACTION.account[0]}</small></div>`;
   const key = r.name + '/' + (r.id || '');
   const view = $('#view'), y = window.scrollY;
   document.body.dataset.route = r.name;
@@ -31,7 +23,7 @@ function render() {
   V[r.name](view, r.id);
   renderTabbar(r);
   const tu = $('#tbUser'); if (tu) tu.innerHTML = avatar(m, 32);
-  document.title = (NAV.find(n => n[0] === r.name)?.[1] || 'Hub') + ' · TEAM Hub';
+  document.title = pageName(r.name) + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
   Store.setSync();
 }
@@ -40,8 +32,8 @@ window.addEventListener('hashchange', render);
 /* ---------- global search (Ctrl/⌘+K) ---------- */
 function openSearch() {
   const m = modal({
-    title: 'ค้นหา', cls: 'search-modal',
-    body: `<label class="search big">${ico('search', 18)}<input id="gq" placeholder="ค้นหางาน, Project, Major Event, การประชุม, สมาชิก…" autocomplete="off"></label><div id="gres" class="gres"></div>`,
+    title: ACTION.search[0], cls: 'search-modal',
+    body: `<label class="search big">${ico('search', 18)}<input id="gq" placeholder="ค้นหางาน, Project, Major Event, สมาชิก…" autocomplete="off"></label><div id="gres" class="gres"></div>`,
     onOpen(md) {
       const out = $('#gres', md.el), inp = $('#gq', md.el);
       const run = () => {

@@ -1,7 +1,7 @@
 # Agency Experience Team Hub
 
 ระบบกลางสำหรับวางแผนและติดตามงานของทีม Agency Experience — **บันทึกงานครั้งเดียว ดูได้หลายมุม**
-(Dashboard · Offsite & Event Support log · Major Event Calendar · Project/Squad · Gantt · Kanban · My To-Do · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
+(Home · My Plan · Projects · Calendar · Board (Gantt/Kanban) · Offsite · Team · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
 
 ## เริ่มใช้งาน
 ```bash
@@ -13,7 +13,7 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 1. Merge branch นี้เข้า `main` ของ repo แล้ว Import repo ใน Vercel (Framework: **Other**, ไม่ต้องมี Build Command, Output = root)
 2. ใน Vercel โปรเจกต์ → **Storage → Create / Marketplace → Upstash Redis** → เชื่อมกับโปรเจกต์ (ระบบใส่ `KV_REST_API_URL` และ `KV_REST_API_TOKEN` ให้อัตโนมัติ)
 3. (แนะนำ) ตั้ง Environment Variable `HUB_DEFAULT_PASSWORD` = รหัสเริ่มต้นของทุกคน (ถ้าไม่ตั้ง ระบบสร้างให้และแสดงครั้งเดียวบนหน้า Login ของคนแรกที่เปิด)
-4. Redeploy → เปิดเว็บ → เข้าเป็น **Kaeng (Admin)** → Team & Access → เปลี่ยนรหัสเริ่มต้น/ตั้งรหัสรายบุคคล และตั้งสายบังคับบัญชา
+4. Redeploy → เปิดเว็บ → เข้าเป็น **Kaeng (Admin)** → Team → เปลี่ยนรหัสเริ่มต้น/ตั้งรหัสรายบุคคล และตั้งสายบังคับบัญชา
 - ไฟล์แนบในโหมดนี้จำกัด 300 KB/ไฟล์ (ไฟล์ใหญ่ให้ใส่ Link) · แอปตรวจข้อมูลใหม่ทุก 60 วินาทีเฉพาะตอนเปิดหน้าไว้ เพื่อประหยัดโควตาฐานข้อมูล
 - ทดสอบในเครื่องโดยไม่ใช้ Vercel: `node server.js` (เก็บข้อมูลใน `data/`)
 
@@ -24,7 +24,7 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 - ใครเข้าถึงบัญชี Vercel ได้ก็ตั้งตัวแปรนี้ได้ จึงควรเปิด 2-step verification ให้บัญชี Vercel/GitHub/Upstash
 
 ## การเข้าสู่ระบบ
-- เลือกชื่อ + ใส่รหัสผ่าน · Admin ตั้งรหัสเริ่มต้น/รายบุคคลที่ Team & Access · สมาชิกเปลี่ยนรหัสเองที่ “บัญชีของฉัน” · Admin เห็นรหัสของทุกคน (ตั้งใจให้เป็นแบบนี้ เพื่อช่วยคนลืมรหัส)
+- เลือกชื่อ + ใส่รหัสผ่าน · Admin ตั้งรหัสเริ่มต้น/รายบุคคลที่ Team · สมาชิกเปลี่ยนรหัสเองที่ “Account” · Admin เห็นรหัสของทุกคน (ตั้งใจให้เป็นแบบนี้ เพื่อช่วยคนลืมรหัส)
 - `node server.js` = ล็อกอินจริง (เซิร์ฟเวอร์ตรวจ token ทุก request, เก็บรหัสใน `data/auth.json` แบบ plain text — ต้องเก็บโฟลเดอร์ data เป็นความลับและใช้ HTTPS) · รหัสเริ่มต้นแสดงใน terminal ตอนเปิดเซิร์ฟเวอร์ครั้งแรก
 - เปิดเป็น static (เช่น Vercel/GitHub Pages) = โหมดสาธิต: ข้อมูลและรหัสอยู่ในเบราว์เซอร์ของแต่ละคน ไม่แชร์และไม่ปลอดภัยจริง
 

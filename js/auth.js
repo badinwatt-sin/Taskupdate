@@ -113,7 +113,7 @@ function showLogin(bootMsg) {
 function openAccount() {
   const m = me();
   modal({
-    title: 'บัญชีของฉัน',
+    title: ACTION.account[0],
     body: `<div class="acct"><div class="person">${avatar(m, 52)}<div><b style="font-size:17px">${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก'} · ${esc(m.position)}</small></div></div></div>
       <form id="pwForm" class="form-grid mt" autocomplete="off"><div class="full"><b>เปลี่ยนรหัสผ่าน</b></div>
         <label class="field full"><span>รหัสผ่านปัจจุบัน</span><input type="password" name="cur" autocomplete="current-password" required></label>
@@ -132,7 +132,7 @@ function openAccount() {
 }
 ACT.account = () => openAccount();
 
-/* ---------- Admin: passwords table (inside Team & Access) ---------- */
+/* ---------- Admin: passwords table (inside Team) ---------- */
 async function loadAccessTable() {
   const box = $('#accessBox'); if (!box) return;
   let data; try { data = await Auth.adminList(); } catch (e) { box.innerHTML = '<p class="muted small">โหลดรายการรหัสผ่านไม่ได้</p>'; return; }

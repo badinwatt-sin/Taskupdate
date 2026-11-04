@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
-   Views: Dashboard · Support Tracker · Major Event Calendar
+   Views: Home · Offsite · Calendar
    ============================================================ */
 const V = {};
 
@@ -60,11 +60,11 @@ V.dashboard = root => {
     <div class="hero-actions">${quickActions().slice(0, 4).map(([k, i, t, s2, c]) => `<button type="button" class="hq" data-act="quick" data-id="${k}">${ico(i, 16)}<span>${t}</span></button>`).join('')}</div>
   </section>`;
 
-  const focusCard = `<section class="card"><div class="card-h"><h3>วันนี้ของฉัน</h3><a class="link" href="#/todo">แผนรายสัปดาห์</a></div>
+  const focusCard = `<section class="card"><div class="card-h"><h3>วันนี้ของฉัน</h3><a class="link" href="#/todo">${pageName('todo')}</a></div>
     ${focus.length || doneToday.length ? `<ul class="focus-list">${focus.slice(0, 6).map(focusRow).join('')}${doneToday.slice(0, 3).map(focusRow).join('')}</ul>${focus.length > 6 ? `<a class="link small" href="#/todo">ดูอีก ${focus.length - 6} งาน</a>` : ''}`
       : `<div class="empty small-empty">${ico('check', 30)}<h4>วันนี้ว่าง</h4><p>เพิ่มงานแรกของวันได้จากปุ่มด้านล่าง</p><button class="btn btn-primary btn-sm" data-act="quick" data-id="task">${ico('plus', 14)} งานใหม่</button></div>`}</section>`;
 
-  const nextCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">ปฏิทิน</a></div>
+  const nextCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">${pageName('calendar')}</a></div>
     ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้!' : 'วัน'}</span><span class="cd-t"><small>Major Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
     ${upcoming.length ? `<ul class="list">${upcoming.map(x => `<li data-act="${x.act}" data-id="${x.id}" class="clickable"><div class="datebox ${x.alt ? 'alt' : ''}"><b>${parse(x.d).getDate()}</b><span>${TH_MON[parse(x.d).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(x.title)}</b><small class="muted clip">${esc(x.sub)}</small></div></li>`).join('')}</ul>` : (nextEv ? '' : '<p class="muted small">ยังไม่มีกิจกรรมที่กำลังจะมาถึง</p>')}</section>`;
 
@@ -166,8 +166,8 @@ V.support = root => {
   const sum = offsiteSummary(rows, from, to), totalDays = sum.reduce((a, r) => a + r.days.size, 0);
   const cd = parse(f.cur), title = f.view === 'month' ? `${TH_MON_FULL[cd.getMonth()]} ${cd.getFullYear() + 543}` : f.view === 'week' ? `${fmtD(rg[0])} – ${fmtD(rg[1])} ${parse(rg[1]).getFullYear() + 543}` : '';
   const periodLabel = rg ? (f.view === 'week' ? 'สัปดาห์นี้ที่เลือก' : 'เดือน' + TH_MON_FULL[cd.getMonth()]) : (f.month ? 'เดือน ' + TH_MON_FULL[+f.month.slice(5) - 1] : 'ทุกช่วงเวลา');
-  root.innerHTML = pageHead('Offsite Support', 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
-    `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button><button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`) + `
+  root.innerHTML = pageHead(pageName('support'), 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
+    `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button><button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} ${ACTION.logOffsite[0]}</button>`) + `
   <div class="cal-bar"><div class="seg-ctl">${[['list', 'รายการ'], ['week', 'ปฏิทินสัปดาห์'], ['month', 'ปฏิทินเดือน']].map(([k, l]) => `<button class="${f.view === k ? 'on' : ''}" data-act="offView" data-id="${k}">${l}</button>`).join('')}</div>
     ${f.view !== 'list' ? `<div class="cal-nav"><button class="icon-btn" data-act="offNav" data-d="-1" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="offNav" data-d="1" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="offNav" data-d="0">วันนี้</button></div>` : ''}</div>
   <div class="filters">
@@ -185,7 +185,7 @@ V.support = root => {
   ${rows.length ? `<div class="table-wrap"><table class="tbl tracker"><thead><tr><th>วันที่</th><th>กิจกรรม</th><th>พื้นที่</th><th>ผู้ปฏิบัติงาน</th><th>หมายเหตุ</th></tr></thead><tbody>
   ${rows.map(o => `<tr class="clickable" data-act="openOffsite" data-id="${o.id}"><td class="nw">${fmtRange(o.start, o.end)}<small class="muted">${offDays(o)} วัน</small></td><td class="main"><b>${esc(o.title)}</b></td><td><span class="area-tag">${esc(o.area)}</span></td>
   <td><span class="squad">${o.personIds.map(i => avatar(member(i), 26)).join('')}</span><small class="muted names">${esc(offNames(o))}</small></td><td class="small muted">${esc(o.note || '–')}</td></tr>`).join('')}</tbody></table></div>`
-    : empty('inbox', 'ยังไม่มีบันทึก', 'บันทึกเมื่อทีมไปปฏิบัติงานนอกสำนักงาน', `<button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} บันทึก Offsite</button>`)}</section>` : ''}`;
+    : empty('inbox', 'ยังไม่มีบันทึก', 'บันทึกเมื่อทีมไปปฏิบัติงานนอกสำนักงาน', `<button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} ${ACTION.logOffsite[0]}</button>`)}</section>` : ''}`;
 };
 ACT.offView = el => { ST.tracker.view = el.dataset.id; render(); };
 ACT.offNav = el => {
@@ -199,7 +199,7 @@ ACT.offDay = el => {
   const d = el.dataset.id, items = offOn(offsiteRows(), d), hol = holidayOf(d);
   modal({
     title: fmtDY(d), body: `${hol ? `<div class="note">${esc(hol.name)} (${hol.kind === 'public' ? 'วันหยุดราชการ' : 'วันหยุดบริษัท'})</div>` : ''}${items.length ? `<ul class="list">${items.map(o => `<li class="clickable" data-act="openOffsite" data-id="${o.id}"><span class="area-tag">${esc(o.area)}</span><div class="grow"><b>${esc(o.title)}</b><small class="muted">${esc(offNames(o))}</small></div></li>`).join('')}</ul>` : '<p class="muted">ไม่มีการปฏิบัติงานนอกสำนักงานในวันนี้</p>'}`,
-    actions: [{ label: 'ปิด' }, { label: ico('plus', 15) + ' บันทึก Offsite วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openOffsite(null, d)); } }],
+    actions: [{ label: 'ปิด' }, { label: ico('plus', 15) + ' ' + ACTION.logOffsite[0] + ' วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openOffsite(null, d)); } }],
   });
 };
 ACT.clearTracker = () => { Object.assign(ST.tracker, { q: '', area: '', who: '', status: '', month: '' }); render(); };
@@ -217,7 +217,7 @@ function openOffsite(id, date) {
   const can = !orig || canEditOffsite(orig), d = can ? '' : 'disabled';
   const sel = o.areaType === 'OTHER' ? '__OTHER' : o.area;
   modal({
-    title: orig ? (can ? 'แก้ไขบันทึก Offsite' : 'รายละเอียด Offsite') : 'บันทึกงาน Offsite / Event Support', wide: true,
+    title: orig ? (can ? 'แก้ไข Offsite' : 'รายละเอียด Offsite') : ACTION.logOffsite[0], wide: true,
     body: `<form id="ofForm" class="form-grid" autocomplete="off">
       <label class="field full"><span>กิจกรรม / งานที่ไปปฏิบัติ *</span><input name="title" required value="${esc(o.title)}" placeholder="เช่น Roadshow เปิดตัวแคมเปญ" ${d}></label>
       <label class="field"><span>พื้นที่ *</span><select name="area" ${d}>${areaOptions(sel)}</select></label>
@@ -269,7 +269,7 @@ function calHeader(title) {
 }
 V.calendar = root => {
   const c = ST.cal;
-  const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>${canManageEvents() ? `<button class="btn btn-primary" data-act="newEvent">${ico('plus', 16)} เพิ่ม Major Event</button>` : ''}`;
+  const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>${canManageEvents() ? `<button class="btn btn-primary" data-act="newEvent">${ico('plus', 16)} ${ACTION.newEvent[0]}</button>` : ''}`;
   const year = c.mode === 'year' ? c.y : c.y;
   const evYear = sortBy(S().events.filter(e => e.start.startsWith(year) || e.end.startsWith(year) || (e.start.slice(0, 4) <= String(year) && e.end.slice(0, 4) >= String(year))), e => e.start);
   const legend = `<div class="legend cal-legend">${Object.values(EV_STATUS).map(s => `<span><i class="${s.cls}"></i>${s.th}</span>`).join('')}<span><i class="ram"></i>Event Support (RAM/Other)</span><span><i class="hol"></i>วันหยุด</span></div>`;
@@ -281,7 +281,7 @@ V.calendar = root => {
     const t0 = today(), first = iso(new Date(c.y, c.m, 1)), from = first.slice(0, 7) === t0.slice(0, 7) ? t0 : first, days = [];
     const COL = { 'ev-planning': '#ff9500', 'ev-confirmed': '#007aff', 'ev-done': '#34c759', 'ev-cancelled': '#8e8e93', ms: '#af52de', 'ms-done': '#c7c7cc', ram: '#30b0c7' };
     for (let i = 0; i < 92; i++) { const d = addDays(from, i), items = itemsOnDay(d), hol = holidayOf(d); if (items.length || hol) days.push({ d, items, hol }); }
-    root.innerHTML = pageHead('Event Calendar', 'กิจกรรม วันเตรียมงาน Offsite และวันหยุด เรียงตามวัน (3 เดือน)', actions) + calHeader(`ตั้งแต่ ${fmtDY(from)}`) +
+    root.innerHTML = pageHead(pageName('calendar'), 'กิจกรรม วันเตรียมงาน Offsite และวันหยุด เรียงตามวัน (3 เดือน)', actions) + calHeader(`ตั้งแต่ ${fmtDY(from)}`) +
       (days.length ? `<div class="agenda">${days.map(({ d, items, hol }) => { const dt = parse(d); return `<div class="ag-day ${d === t0 ? 'today' : ''}"><button type="button" class="ag-date" data-act="openDay" data-id="${d}"><b>${dt.getDate()}</b><span>${TH_DOW[dt.getDay()]}</span><small>${TH_MON[dt.getMonth()]}</small></button>
         <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Major Event'}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
         : empty('calendar', 'ไม่มีกิจกรรมใน 3 เดือนนี้', 'ลองเลื่อนไปเดือนถัดไป หรือเพิ่ม Major Event'));
@@ -298,7 +298,7 @@ V.calendar = root => {
         ${items.length > 3 ? `<small class="more">+${items.length - 3} เพิ่มเติม</small>` : ''}</div>`);
     }
     const monthEv = sortBy(S().events.filter(e => e.start <= iso(new Date(c.y, c.m + 1, 0)) && e.end >= iso(first)), e => e.start);
-    root.innerHTML = pageHead('Event Calendar', 'ปฏิทินงานสำคัญประจำปี พร้อมวันเตรียมงานและวันหยุดราชการ', actions) + calHeader(`${TH_MON_FULL[c.m]} ${c.y + 543}`) + legend +
+    root.innerHTML = pageHead(pageName('calendar'), 'ปฏิทินงานสำคัญประจำปี พร้อมวันเตรียมงานและวันหยุดราชการ', actions) + calHeader(`${TH_MON_FULL[c.m]} ${c.y + 543}`) + legend +
       `<div class="cal"><div class="cal-dow">${TH_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div></div>
       <section class="card flush mt"><div class="card-h pad"><h3>งานในเดือน${TH_MON_FULL[c.m]}</h3></div>${list(monthEv)}</section>`;
   } else {
@@ -314,7 +314,7 @@ V.calendar = root => {
       const n = S().events.filter(e => e.start.startsWith(`${c.y}-${pad(mo + 1)}`)).length;
       mini.push(`<div class="mini" data-act="calGoMonth" data-id="${mo}" tabindex="0"><h4>${TH_MON_FULL[mo]}${n ? `<em>${n}</em>` : ''}</h4><div class="mini-grid">${cells}</div></div>`);
     }
-    root.innerHTML = pageHead('Event Calendar', 'ภาพรวมงานสำคัญทั้งปี — คลิกเดือนเพื่อดูรายละเอียด', actions) + calHeader(`พ.ศ. ${c.y + 543}`) + legend +
+    root.innerHTML = pageHead(pageName('calendar'), 'ภาพรวมงานสำคัญทั้งปี — คลิกเดือนเพื่อดูรายละเอียด', actions) + calHeader(`พ.ศ. ${c.y + 543}`) + legend +
       `<div class="year-grid">${mini.join('')}</div><section class="card flush mt"><div class="card-h pad"><h3>รายการทั้งหมดในปี ${c.y + 543} (${evYear.length} งาน)</h3></div>${list(evYear)}</section>`;
   }
 };
@@ -333,7 +333,7 @@ ACT.openDay = el => {
   const d = el.dataset.id, items = itemsOnDay(d), hol = holidayOf(d);
   modal({
     title: fmtDY(d), body: `${hol ? `<div class="note">${esc(hol.name)} (${hol.kind === 'public' ? 'วันหยุดราชการ' : 'วันหยุดบริษัท'})</div>` : ''}${items.length ? `<ul class="list">${items.map(it => `<li class="clickable" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><span class="cev ${it.cls} solo">${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Major Event'}</span><div class="grow"><b>${esc(it.label)}</b></div></li>`).join('')}</ul>` : '<p class="muted">ไม่มีกิจกรรมในวันนี้</p>'}`,
-    actions: [{ label: 'ปิด' }].concat(canManageEvents() ? [{ label: ico('plus', 15) + ' เพิ่ม Major Event วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openEvent(null, d)); } }] : []),
+    actions: [{ label: 'ปิด' }].concat(canManageEvents() ? [{ label: ico('plus', 15) + ' ' + ACTION.newEvent[0] + ' วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openEvent(null, d)); } }] : []),
   });
 };
 
@@ -345,7 +345,7 @@ function openEvent(id, date) {
   const d = canEdit ? '' : 'disabled';
   const msRow = ms => `<div class="ms-row"><input type="date" value="${ms.date}" ${d}><input type="text" value="${esc(ms.title)}" placeholder="เช่น ส่งแบบสื่อ / เริ่มเตรียมงาน" ${d}><label class="check"><input type="checkbox" ${ms.done ? 'checked' : ''} ${d}> เสร็จ</label>${canEdit ? '<button type="button" class="icon-btn" data-rm aria-label="ลบ">' + ico('x', 15) + '</button>' : ''}</div>`;
   modal({
-    title: orig ? (canEdit ? 'แก้ไข Major Event' : 'รายละเอียด Major Event') : 'เพิ่ม Major Event', wide: true,
+    title: orig ? (canEdit ? 'แก้ไข Major Event' : 'รายละเอียด Major Event') : ACTION.newEvent[0], wide: true,
     body: `<form id="evForm" class="form-grid" autocomplete="off">
       <label class="field full"><span>ชื่องาน *</span><input name="name" required value="${esc(e.name)}" ${d}></label>
       <label class="field"><span>วันเริ่ม *</span><input type="date" name="start" required value="${e.start}" ${d}></label>

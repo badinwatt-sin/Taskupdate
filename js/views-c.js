@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
-   Views: My To-Do · AI Meeting Hub · Team & Settings
+   Views: My Plan · Meetings · Team
    ============================================================ */
 
 /* ============================ MY TO-DO ============================ */
@@ -102,8 +102,8 @@ V.todo = root => {
         ${full && own ? `<button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="-7" title="เลื่อนไปสัปดาห์ก่อน" aria-label="เลื่อนไปสัปดาห์ก่อน">${ico('left', 13)}</button><button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="7" title="เลื่อนไปสัปดาห์ถัดไป" aria-label="เลื่อนไปสัปดาห์ถัดไป">${ico('right', 13)}</button>` : ''}
         ${canSubmit(t) && own ? (t.submitted ? `<button class="mini-btn on" data-act="unsubmit" data-id="${t.id}" title="อยู่บน Kanban ทีม (กดเพื่อเอาออก)">${ico('check', 13)} บนบอร์ด</button>` : `<button class="mini-btn" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}</div></article>`;
   };
-  root.innerHTML = pageHead(own ? 'My Weekly Plan' : `แผนของ ${who.name}`, 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า',
-    `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} Assign Task</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} Post-it & Icon</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
+  root.innerHTML = pageHead(own ? pageName('todo') : `แผนของ ${who.name}`, 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า',
+    `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} ${ACTION.assign[0]}</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} ${ACTION.style[0]}</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
   <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
     <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
   ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานในแผนสัปดาห์นี้… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
@@ -128,7 +128,7 @@ function openAssign(preset) {
   if (!canAssign()) return toast('เฉพาะหัวหน้าทีมเท่านั้นที่มอบหมายงานให้ผู้อื่นได้', 'error');
   const ppl = assignablePeople();
   modal({
-    title: 'Assign Task', wide: true,
+    title: ACTION.assign[0], wide: true,
     body: `<form id="asForm" class="form-grid" autocomplete="off">
       <label class="field full"><span>งานที่มอบหมาย *</span><input name="title" required maxlength="140" placeholder="เช่น ทำสรุปผลสำรวจลูกค้า"></label>
       <label class="field"><span>มอบหมายให้ *</span><select name="who" required>${opt('', '— เลือกคนในทีม —', preset || '')}${ppl.map(m => opt(m.id, `${m.name} · ${group(m.group).short}`, preset || '')).join('')}</select></label>
@@ -137,7 +137,7 @@ function openAssign(preset) {
       <label class="field"><span>Target date (วันที่ต้องเสร็จ)</span><input type="date" name="end" value="${today()}"></label>
       <label class="field"><span>ความสำคัญ</span><select name="prio">${Object.keys(PRIO).map(k => opt(k, PRIO[k].th, 'med')).join('')}</select></label>
       <label class="field full"><span>รายละเอียด / สิ่งที่คาดหวัง</span><textarea name="note" rows="3"></textarea></label></form>`,
-    actions: [{ label: 'ยกเลิก' }, { label: 'มอบหมายงาน', cls: 'btn-primary', onClick: () => {
+    actions: [{ label: 'ยกเลิก' }, { label: ACTION.assign[0], cls: 'btn-primary', onClick: () => {
       const f = $('#asForm'); if (!f.reportValidity()) return false; const e = f.elements;
       if (e.end.value < e.start.value) { toast('Target date ต้องไม่ก่อนวันเริ่ม', 'error'); return false; }
       const t = newTask(e.pid.value ? 'project' : 'assigned', { title: e.title.value.trim(), assigneeId: e.who.value, start: e.start.value, priority: e.prio.value, desc: e.note.value, projectId: e.pid.value || null, assignedBy: me().id, type: 'Admin / อื่นๆ' });
@@ -210,7 +210,7 @@ V.meetings = root => {
   if (f.sel && !ms.find(m => m.id === f.sel)) f.sel = null;
   if (!f.sel && ms.length && !f.draft) f.sel = ms[0].id;
   const cur = f.draft || ms.find(m => m.id === f.sel);
-  root.innerHTML = pageHead('Meeting Hub', 'เปลี่ยนบันทึกประชุมให้เป็นข้อสรุป การตัดสินใจ และ Action Items — ตรวจสอบก่อนสร้างเป็น Task ของทีม',
+  root.innerHTML = pageHead(pageName('meetings'), 'เปลี่ยนบันทึกประชุมให้เป็นข้อสรุป การตัดสินใจ และ Action Items — ตรวจสอบก่อนสร้างเป็น Task ของทีม',
     `<button class="btn btn-primary" data-act="newMeeting">${ico('plus', 16)} ประชุมใหม่</button>`) + `
   <div class="meet-grid"><aside class="card meet-list"><div class="card-h"><h3>การประชุม (${ms.length})</h3></div>
     ${ms.length ? ms.map(m => `<button class="mi ${cur && cur.id === m.id ? 'on' : ''}" data-act="selMeeting" data-id="${m.id}"><b>${esc(m.title)}</b><small>${fmtDY(m.date)} · ${m.status === 'confirmed' ? 'ยืนยันแล้ว' : 'ฉบับร่าง'} · ${m.actions.length} action</small></button>`).join('') : '<p class="muted small pad">ยังไม่มีบันทึกการประชุม</p>'}</aside>
@@ -272,7 +272,7 @@ function bindMeeting(root, m) {
       if (a.due) { t.duration = Math.max(1, diffDays(t.start, a.due) + 1); if (taskMode(t) === 'working') t.duration = Math.max(1, workdaysBetween(t.start, a.due)); }
       S().tasks.push(t); a.taskId = t.id;
     });
-    m.status = 'confirmed'; persist(); commit(); toast(`สร้าง ${sel.length} Task แล้ว — ผู้รับผิดชอบจะเห็นใน My To-Do`);
+    m.status = 'confirmed'; persist(); commit(); toast(`สร้าง ${sel.length} Task แล้ว — ผู้รับผิดชอบจะเห็นใน ${pageName('todo')}`);
   };
 }
 function workdaysBetween(a, b) { let n = 0, d = a; while (d <= b && n < 999) { if (!isOff(d)) n++; d = addDays(d, 1); } return n || 1; }
@@ -329,7 +329,7 @@ V.team = root => {
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
       <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
-  root.innerHTML = pageHead('Team & Access', `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
+  root.innerHTML = pageHead(pageName('team'), `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
   <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
   <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Major Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
@@ -349,7 +349,7 @@ V.team = root => {
       <label class="field"><span class="sr">ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
       <button class="btn btn-primary btn-sm" data-act="saveLists">บันทึกรายการ</button></section></div>
     <section class="card mt"><div class="card-h"><h3>รหัสผ่านเข้าใช้งาน (Admin เท่านั้น)</h3></div>
-      <p class="muted small mb">กำหนดรหัสเริ่มต้นหรือรหัสรายบุคคลให้สมาชิกเข้าใช้งานครั้งแรก สมาชิกเปลี่ยนรหัสของตัวเองได้ที่เมนู “บัญชีของฉัน” และ Admin เห็นรหัสปัจจุบันของทุกคนที่นี่เพื่อแจ้งเมื่อมีคนลืม</p>
+      <p class="muted small mb">กำหนดรหัสเริ่มต้นหรือรหัสรายบุคคลให้สมาชิกเข้าใช้งานครั้งแรก สมาชิกเปลี่ยนรหัสของตัวเองได้ที่เมนู “Account” และ Admin เห็นรหัสปัจจุบันของทุกคนที่นี่เพื่อแจ้งเมื่อมีคนลืม</p>
       <div id="accessBox"><p class="muted small">กำลังโหลด…</p></div></section>
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
