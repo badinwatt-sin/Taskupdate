@@ -14,18 +14,6 @@ function todoBuckets(uid_) {
     done: sortBy(mine.filter(t => t.status === 'done'), t => t.doneAt || '').reverse(),
   };
 }
-const canSubmit = t => !t.projectId && t.source !== 'ram' && t.assigneeId === me().id && t.status !== 'cancelled';
-ACT.submitTask = async el => {
-  const t = S().tasks.find(x => x.id === el.dataset.id); if (!t) return;
-  if (t.private && !await confirmBox('งานนี้ตั้งเป็นส่วนตัวอยู่ — เมื่อ Submit จะเปลี่ยนเป็นเปิดเผยและทุกคนในทีมเห็นบน Kanban ต้องการดำเนินการต่อหรือไม่?', 'Submit ขึ้นบอร์ด')) return;
-  t.private = false; t.submitted = true; t.submittedAt = today(); commit();
-  toast('ส่งขึ้น Kanban เป็น Post-it แล้ว', 'ok', () => { t.submitted = false; commit(); });
-};
-ACT.unsubmit = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) { t.submitted = false; commit(); toast('เอา Post-it ออกจากบอร์ดแล้ว'); } };
-ACT.submitAll = () => {
-  const ts = S().tasks.filter(t => canSubmit(t) && !t.submitted && !t.private && isActive(t));
-  ts.forEach(t => { t.submitted = true; t.submittedAt = today(); }); commit(); toast(`ส่ง ${ts.length} งานขึ้นบอร์ดแล้ว`);
-};
 ACT.myStyle = el => openMyStyle(el.dataset.id || me().id);
 function openMyStyle(id) {
   const m = member(id); if (!m || (id !== me().id && !isAdmin())) return toast('ปรับแต่งได้เฉพาะโปรไฟล์ของตัวเอง', 'error');
@@ -99,8 +87,7 @@ V.todo = root => {
       <b class="kc-title">${esc(t.title)}</b>
       <div class="wc-dates"><span>${fmtD(taskStart(t))}</span><i></i><span class="${late ? 'late' : ''}">${fmtD(taskEnd(t))}</span><small class="muted">${late ? 'เลยกำหนด' : 'Start → Target'}</small></div>
       ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>${advBtn(t)}
-        ${full && own ? `<button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="-7" title="เลื่อนไปสัปดาห์ก่อน" aria-label="เลื่อนไปสัปดาห์ก่อน">${ico('left', 13)}</button><button class="mini-btn" data-act="shiftTask" data-id="${t.id}" data-d="7" title="เลื่อนไปสัปดาห์ถัดไป" aria-label="เลื่อนไปสัปดาห์ถัดไป">${ico('right', 13)}</button>` : ''}
-        ${canSubmit(t) && own ? (t.submitted ? `<button class="mini-btn on" data-act="unsubmit" data-id="${t.id}" title="อยู่บน Kanban ทีม (กดเพื่อเอาออก)">${ico('check', 13)} บนบอร์ด</button>` : `<button class="mini-btn" data-act="submitTask" data-id="${t.id}" title="ส่งเป็น Post-it ขึ้น Kanban ของทีม">Submit</button>`) : ''}</div></article>`;
+        ${full && own && t.status !== 'done' ? `<button type="button" class="mini-btn nextwk" data-act="nextWeek" data-id="${t.id}" title="เลื่อนแผนงานนี้ไปสัปดาห์หน้า">สัปดาห์หน้า ${ico('right', 13)}</button>` : ''}</div></article>`;
   };
   root.innerHTML = pageHead(own ? pageName('todo') : `แผนของ ${who.name}`, 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า',
     `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} ${ACTION.assign[0]}</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} ${ACTION.style[0]}</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
@@ -109,16 +96,18 @@ V.todo = root => {
   ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานในแผนสัปดาห์นี้… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
     <label class="qd"><small>เริ่ม</small><input type="date" name="start" value="${off === 0 ? today() : ws}"></label><label class="qd"><small>เป้าหมายเสร็จ</small><input type="date" name="end" value="${off === 0 ? today() : ws}"></label>
     <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
-    <label class="check" title="เห็นเฉพาะฉัน"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
+    <select name="status" aria-label="สถานะ"><option value="todo">To do</option><option value="doing">Doing</option><option value="done">Done</option></select>
+    <label class="check" title="เห็นเฉพาะฉัน (ไม่ขึ้น Kanban ทีม)"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
   <div class="kanban three">${col('todo', 'To do')}${col('doing', 'Doing')}${col('done', 'Done')}</div>
-  <p class="muted small kb-hint">ลากการ์ด หรือแตะ “เริ่มทำ / เสร็จ” บนการ์ดเมื่อคืบหน้า · ลูกศรบนการ์ดเลื่อนงานไปสัปดาห์อื่น (เฉพาะงานที่คุณแก้ไขได้) · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด · งานที่มอบหมายจาก Project เข้ามาในแผนอัตโนมัติ</p>`;
+  <p class="muted small kb-hint">งานที่เพิ่มจะขึ้น Kanban ของทีมอัตโนมัติ (ติ๊กรูปกุญแจ = เห็นเฉพาะคุณ) · ลากการ์ด หรือกดปุ่มสถานะบนการ์ดเพื่อเลื่อน To do ⇄ Doing ⇄ Done · “สัปดาห์หน้า” ย้ายแผนงานไปสัปดาห์ถัดไป · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด</p>`;
   const qa = $('#quickAdd');
   if (qa) qa.onsubmit = e => {
     e.preventDefault(); const v = qa.elements, title = v.title.value.trim(); if (!title) { v.title.focus(); return; }
     if (v.end.value < v.start.value) return toast('วันเป้าหมายต้องไม่ก่อนวันเริ่ม', 'error');
     const pid = v.pid.value, t = newTask(pid ? 'project' : 'personal', { title, start: v.start.value, projectId: pid || null, private: v.priv.checked && !pid, type: 'Admin / อื่นๆ' });
     t.duration = countDays(t.start, v.end.value, taskMode(t)) || 1;
-    S().tasks.push(t); commit(); toast('เพิ่มงานเข้าแผนแล้ว');
+    t.status = v.status.value || 'todo'; t.doneAt = t.status === 'done' ? today() : null;
+    S().tasks.push(t); commit(); toast(t.private || pid ? 'เพิ่มงานเข้าแผนแล้ว' : 'เพิ่มงานแล้ว — ขึ้นบน Kanban ทีมอัตโนมัติ');
     setTimeout(() => $('#quickAdd input[name=title]')?.focus(), 30);
   };
   bindKanban(root);
@@ -153,6 +142,13 @@ ACT.shiftTask = el => {
   const t = S().tasks.find(x => x.id === el.dataset.id); if (!t || !canFullEdit(t)) return;
   const before = t.start; t.start = addDays(taskStart(t), +el.dataset.d); commit();
   toast(`เลื่อนงานเป็น ${fmtRange(taskStart(t), taskEnd(t))}`, 'ok', () => { t.start = before; commit(); });
+};
+ACT.nextWeek = el => {
+  const t = S().tasks.find(x => x.id === el.dataset.id); if (!t || !canFullEdit(t)) return;
+  const before = t.start, nws = addDays(weekStartOf(ST.todo.week || 0), 7);
+  let ns = addDays(taskStart(t), 7); if (addDays(ns, 0) < nws && taskEnd(t) < nws) ns = nws;   // carried-over tasks land inside next week
+  t.start = ns; commit();
+  toast(`ย้ายไปสัปดาห์หน้าแล้ว (${fmtRange(taskStart(t), taskEnd(t))}) — ดูที่ Kanban ทีมได้เลย`, 'ok', () => { t.start = before; commit(); });
 };
 ACT.todoTab = el => { ST.todo.tab = el.dataset.id; render(); };
 ACT.toggleDone = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t) setStatus(t, t.status === 'done' ? 'todo' : 'done'); };

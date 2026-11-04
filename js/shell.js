@@ -61,10 +61,16 @@ function openMore() {
 ACT.moreSheet = () => openMore();
 
 /* ---------- touch-friendly "next step" button for cards ---------- */
-const NEXT_STATUS = { todo: 'doing', doing: 'done' };
-const advBtn = t => (canStatus(t) && NEXT_STATUS[t.status])
-  ? `<button type="button" class="adv adv-${t.status}" data-act="advance" data-id="${t.id}" title="${t.status === 'todo' ? 'เริ่มทำงานนี้' : 'ทำเครื่องหมายว่าเสร็จ'}">${t.status === 'todo' ? ico('right', 13) + 'เริ่มทำ' : ico('check', 13) + 'เสร็จ'}</button>` : '';
+const NEXT_STATUS = { todo: 'doing', doing: 'done' }, PREV_STATUS = { doing: 'todo', done: 'doing' };
+const STEP_LBL = { todo: 'To do', doing: 'Doing', done: 'Done' };
+const advBtn = t => {
+  if (!canStatus(t)) return '';
+  const p = PREV_STATUS[t.status], n = NEXT_STATUS[t.status];
+  if (!p && !n) return '';
+  return `<span class="stepper">${p ? `<button type="button" class="adv adv-back" data-act="stepBack" data-id="${t.id}" title="ย้อนกลับไป ${STEP_LBL[p]}" aria-label="ย้อนกลับไป ${STEP_LBL[p]}">${ico('left', 13)}${STEP_LBL[p]}</button>` : ''}${n ? `<button type="button" class="adv adv-${n}" data-act="advance" data-id="${t.id}" title="เลื่อนไป ${STEP_LBL[n]}" aria-label="เลื่อนไป ${STEP_LBL[n]}">${STEP_LBL[n]}${ico(n === 'done' ? 'check' : 'right', 13)}</button>` : ''}</span>`;
+};
 ACT.advance = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t && NEXT_STATUS[t.status]) setStatus(t, NEXT_STATUS[t.status]); };
+ACT.stepBack = el => { const t = S().tasks.find(x => x.id === el.dataset.id); if (t && PREV_STATUS[t.status]) setStatus(t, PREV_STATUS[t.status]); };
 
 /* ---------- celebration burst (respects reduced motion) ---------- */
 let lastPt = { x: innerWidth / 2, y: innerHeight / 2 };

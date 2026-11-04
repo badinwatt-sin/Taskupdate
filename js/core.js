@@ -207,7 +207,7 @@ const projGroupOf = t => (project(t.projectId)?.taskGroups || []).find(g => g.id
 const isLeader = () => !isAdmin() && subordinates(me().id).size > 0;
 const inProject = p => isAdmin() || p.pmId === me().id || p.squad.includes(me().id);
 const visibleProjects = () => S().projects.filter(p => inProject(p) || (myScope() && [p.pmId, ...p.squad].some(inScope)));
-const isPostit = t => t.submitted && !t.projectId && t.source !== 'ram' && !t.private;
+const isPostit = t => !t.projectId && t.source !== 'ram' && !t.private && t.status !== 'cancelled';   // auto: no Submit step — mark a task private to keep it off the board
 function taskVisible(t) {
   if (t.private && t.assigneeId !== me().id) return false;
   if (isAdmin() || inScope(t.assigneeId) || isPostit(t)) return true;
