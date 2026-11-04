@@ -54,15 +54,15 @@ const Auth = {
   },
   /* ---- Admin only ---- */
   async adminList() {
-    if (Store.mode === 'server') { const r = await fetch('api/admin/passwords', { headers: Store.headers() }); if (!r.ok) throw new Error('forbidden'); return r.json(); }
+    if (Store.mode === 'server') { const r = await fetch('api/admin-passwords', { headers: Store.headers() }); if (!r.ok) throw new Error('forbidden'); return r.json(); }
     const a = S().auth; return { default: a.defaultPassword, list: S().members.map(m => ({ id: m.id, password: a.pw[m.id] ?? a.defaultPassword, custom: m.id in a.pw })) };
   },
   async adminSet(id, password) {
-    if (Store.mode === 'server') { const r = await fetch('api/admin/password', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ id, password }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); return; }
+    if (Store.mode === 'server') { const r = await fetch('api/admin-password', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ id, password }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); return; }
     const a = S().auth; if (password == null) delete a.pw[id]; else a.pw[id] = password; Store.save();
   },
   async adminDefault(password) {
-    if (Store.mode === 'server') { const r = await fetch('api/admin/password', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ default: password }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); return; }
+    if (Store.mode === 'server') { const r = await fetch('api/admin-password', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ default: password }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); return; }
     S().auth.defaultPassword = password; Store.save();
   },
 };
