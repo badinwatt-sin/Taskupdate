@@ -332,7 +332,7 @@ V.team = root => {
   root.innerHTML = pageHead(pageName('team'), `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
   <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
-  <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Major Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
+  <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
   ${ST.team.tab === 'org' ? orgTree(admin) : S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}
   ${admin ? `<h2 class="sec-h">การตั้งค่า (Admin)</h2><div class="two-col">
     <section class="card"><div class="card-h"><h3>การนับวัน & วันหยุดบริษัท</h3></div>
@@ -342,8 +342,8 @@ V.team = root => {
       <p class="muted small mb">ข้อมูลวันหยุดราชการ: ปี 2569 ครบถ้วน · ปี 2570 มีเฉพาะวันที่คงที่ — วันหยุดตามจันทรคติของปี 2570 ให้เพิ่มเองในรายการด้านล่างเมื่อมีประกาศ</p>
       <div class="field"><span>วันหยุดเพิ่มเติมของบริษัท</span><ul class="holidays">${sortBy(st.holidays, h => h.date).map((h, i) => `<li><span>${fmtDY(h.date)} — ${esc(h.name)}</span><button class="icon-btn" data-act="rmHoliday" data-id="${h.date}" aria-label="ลบ">${ico('x', 14)}</button></li>`).join('') || '<li class="muted">ยังไม่มีวันหยุด</li>'}</ul>
       <div class="inline-add"><input type="date" id="hDate"><input id="hName" placeholder="ชื่อวันหยุด"><button class="btn btn-ghost btn-sm" data-act="addHoliday">เพิ่ม</button></div></div></section>
-    <section class="card"><div class="card-h"><h3>สิทธิ์เพิ่ม Major Event</h3></div>
-      <p class="muted small mb">Admin เพิ่มได้เสมอ — เลือกสมาชิกที่สามารถเพิ่มและแก้ไข Major Event ได้</p>
+    <section class="card"><div class="card-h"><h3>สิทธิ์เพิ่ม Event</h3></div>
+      <p class="muted small mb">Admin เพิ่มได้เสมอ — เลือกสมาชิกที่สามารถเพิ่มและแก้ไข Event ได้</p>
       <div class="sp-m mb" id="editorPick">${S().members.filter(m => m.role !== 'admin').map(m => `<label class="pill"><input type="checkbox" value="${m.id}" ${st.eventEditors.includes(m.id) ? 'checked' : ''}><span>${avatar(m, 20)}${esc(m.name)}</span></label>`).join('')}</div>
       <div class="card-h"><h3>ประเภทงาน</h3></div>
       <label class="field"><span class="sr">ประเภทงาน</span><textarea id="setTypes" rows="4">${esc(st.types.join('\n'))}</textarea></label>
@@ -382,7 +382,7 @@ ACT.rmHoliday = el => { S().settings.holidays = S().settings.holidays.filter(h =
 ACT.saveLists = () => { const sp = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean); S().settings.types = sp('#setTypes'); commit(); toast('บันทึกรายการแล้ว'); };
 ACT.exportBackup = () => { downloadBlob(`aex-hub-backup-${today()}.json`, new Blob([JSON.stringify({ ...S(), auth: undefined }, null, 1)], { type: 'application/json' })); };
 ACT.startClean = async () => {
-  if (!await confirmBox('ล้าง <b>งาน, Project, Major Event, Offsite และการประชุมตัวอย่าง</b> ทั้งหมด โดยเก็บรายชื่อทีม สายบังคับบัญชา สิทธิ์ ไอคอน และรหัสผ่านไว้ — ควรสำรองข้อมูลก่อนถ้าไม่แน่ใจ ดำเนินการต่อหรือไม่?', 'ล้างข้อมูลตัวอย่าง', true, 'เริ่มต้นใหม่')) return;
+  if (!await confirmBox('ล้าง <b>งาน, Project, Event, Offsite และการประชุมตัวอย่าง</b> ทั้งหมด โดยเก็บรายชื่อทีม สายบังคับบัญชา สิทธิ์ ไอคอน และรหัสผ่านไว้ — ควรสำรองข้อมูลก่อนถ้าไม่แน่ใจ ดำเนินการต่อหรือไม่?', 'ล้างข้อมูลตัวอย่าง', true, 'เริ่มต้นใหม่')) return;
   const s = S(); s.tasks = []; s.projects = []; s.events = []; s.offsite = []; s.meetings = []; s.settings.holidays = [];
   commit(); toast('ล้างข้อมูลตัวอย่างแล้ว — เริ่มเพิ่ม Project และงานจริงได้เลย');
 };

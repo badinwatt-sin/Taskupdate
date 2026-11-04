@@ -33,7 +33,7 @@ window.addEventListener('hashchange', render);
 function openSearch() {
   const m = modal({
     title: ACTION.search[0], cls: 'search-modal',
-    body: `<label class="search big">${ico('search', 18)}<input id="gq" placeholder="ค้นหางาน, Project, Major Event, สมาชิก…" autocomplete="off"></label><div id="gres" class="gres"></div>`,
+    body: `<label class="search big">${ico('search', 18)}<input id="gq" placeholder="ค้นหางาน, Project, Event, สมาชิก…" autocomplete="off"></label><div id="gres" class="gres"></div>`,
     onOpen(md) {
       const out = $('#gres', md.el), inp = $('#gq', md.el);
       const run = () => {

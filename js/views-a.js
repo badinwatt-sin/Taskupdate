@@ -44,7 +44,7 @@ V.dashboard = root => {
   const hr = now.getHours(), greet = hr < 12 ? 'สวัสดีตอนเช้า' : hr < 17 ? 'สวัสดีตอนบ่าย' : 'สวัสดีตอนเย็น';
   const evs = sortBy(S().events.filter(e => e.status !== 'cancelled' && e.end >= t0), e => e.start), nextEv = evs[0];
   const upcoming = sortBy([
-    ...evs.slice(nextEv ? 1 : 0).map(e => ({ act: 'openEvent', id: e.id, d: e.start, title: e.name, sub: 'Major Event' + (e.venue ? ' · ' + e.venue : ''), alt: false })),
+    ...evs.slice(nextEv ? 1 : 0).map(e => ({ act: 'openEvent', id: e.id, d: e.start, title: e.name, sub: 'Event' + (e.venue ? ' · ' + e.venue : ''), alt: false })),
     ...S().offsite.filter(o => o.end >= t0).map(o => ({ act: 'openOffsite', id: o.id, d: o.start, title: o.title, sub: `${offArea(o)} · ${offNames(o)}`, alt: true })),
   ], x => x.d).slice(0, 4);
 
@@ -65,7 +65,7 @@ V.dashboard = root => {
       : `<div class="empty small-empty">${ico('check', 30)}<h4>วันนี้ว่าง</h4><p>เพิ่มงานแรกของวันได้จากปุ่มด้านล่าง</p><button class="btn btn-primary btn-sm" data-act="quick" data-id="task">${ico('plus', 14)} งานใหม่</button></div>`}</section>`;
 
   const nextCard = `<section class="card"><div class="card-h"><h3>กำลังจะมาถึง</h3><a href="#/calendar" class="link">${pageName('calendar')}</a></div>
-    ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้!' : 'วัน'}</span><span class="cd-t"><small>Major Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
+    ${nextEv ? `<button type="button" class="countdown" data-act="openEvent" data-id="${nextEv.id}"><span class="cd-n">${Math.max(0, diffDays(t0, nextEv.start))}</span><span class="cd-l">${diffDays(t0, nextEv.start) <= 0 ? 'วันนี้!' : 'วัน'}</span><span class="cd-t"><small>Event ถัดไป</small><b>${esc(nextEv.name)}</b><small>${fmtRange(nextEv.start, nextEv.end)}${nextEv.venue ? ' · ' + esc(nextEv.venue) : ''}</small></span></button>` : ''}
     ${upcoming.length ? `<ul class="list">${upcoming.map(x => `<li data-act="${x.act}" data-id="${x.id}" class="clickable"><div class="datebox ${x.alt ? 'alt' : ''}"><b>${parse(x.d).getDate()}</b><span>${TH_MON[parse(x.d).getMonth()]}</span></div><div class="grow"><b class="clip">${esc(x.title)}</b><small class="muted clip">${esc(x.sub)}</small></div></li>`).join('')}</ul>` : (nextEv ? '' : '<p class="muted small">ยังไม่มีกิจกรรมที่กำลังจะมาถึง</p>')}</section>`;
 
   /* ---- team (admin / leader) ---- */
@@ -275,7 +275,7 @@ V.calendar = root => {
   const legend = `<div class="legend cal-legend">${Object.values(EV_STATUS).map(s => `<span><i class="${s.cls}"></i>${s.th}</span>`).join('')}<span><i class="ram"></i>Event Support (RAM/Other)</span><span><i class="hol"></i>วันหยุด</span></div>`;
   const list = (evs) => evs.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>งาน</th><th>วันจัด</th><th>สถานที่</th><th>เจ้าของงาน</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th><th>วันเตรียมงาน</th></tr></thead><tbody>
     ${evs.map(e => `<tr class="clickable" data-act="openEvent" data-id="${e.id}"><td><b>${esc(e.name)}</b></td><td>${fmtRange(e.start, e.end)}</td><td>${esc(e.venue)}</td><td>${personChip(member(e.ownerId))}</td><td>${esc(e.audience)}</td><td><span class="badge ${EV_STATUS[e.status].cls}">${EV_STATUS[e.status].th}</span></td>
-    <td class="small">${e.milestones.length ? `${e.milestones.filter(m => m.done).length}/${e.milestones.length} เสร็จ` : '–'}</td></tr>`).join('')}</tbody></table></div>` : empty('calendar', 'ยังไม่มี Major Event', 'เพิ่มงานสำคัญเพื่อดูภาพรวมทั้งปี');
+    <td class="small">${e.milestones.length ? `${e.milestones.filter(m => m.done).length}/${e.milestones.length} เสร็จ` : '–'}</td></tr>`).join('')}</tbody></table></div>` : empty('calendar', 'ยังไม่มี Event', 'เพิ่มงานสำคัญเพื่อดูภาพรวมทั้งปี');
 
   if (c.mode === 'agenda') {
     const t0 = today(), first = iso(new Date(c.y, c.m, 1)), from = first.slice(0, 7) === t0.slice(0, 7) ? t0 : first, days = [];
@@ -283,8 +283,8 @@ V.calendar = root => {
     for (let i = 0; i < 92; i++) { const d = addDays(from, i), items = itemsOnDay(d), hol = holidayOf(d); if (items.length || hol) days.push({ d, items, hol }); }
     root.innerHTML = pageHead(pageName('calendar'), 'กิจกรรม วันเตรียมงาน Offsite และวันหยุด เรียงตามวัน (3 เดือน)', actions) + calHeader(`ตั้งแต่ ${fmtDY(from)}`) +
       (days.length ? `<div class="agenda">${days.map(({ d, items, hol }) => { const dt = parse(d); return `<div class="ag-day ${d === t0 ? 'today' : ''}"><button type="button" class="ag-date" data-act="openDay" data-id="${d}"><b>${dt.getDate()}</b><span>${TH_DOW[dt.getDay()]}</span><small>${TH_MON[dt.getMonth()]}</small></button>
-        <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Major Event'}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
-        : empty('calendar', 'ไม่มีกิจกรรมใน 3 เดือนนี้', 'ลองเลื่อนไปเดือนถัดไป หรือเพิ่ม Major Event'));
+        <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Event'}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
+        : empty('calendar', 'ไม่มีกิจกรรมใน 3 เดือนนี้', 'ลองเลื่อนไปเดือนถัดไป หรือเพิ่ม Event'));
   } else if (c.mode === 'month') {
     const first = new Date(c.y, c.m, 1), startOff = first.getDay(), dim = new Date(c.y, c.m + 1, 0).getDate();
     const cells = []; const t0 = today();
@@ -332,7 +332,7 @@ ACT.exportCal = () => {
 ACT.openDay = el => {
   const d = el.dataset.id, items = itemsOnDay(d), hol = holidayOf(d);
   modal({
-    title: fmtDY(d), body: `${hol ? `<div class="note">${esc(hol.name)} (${hol.kind === 'public' ? 'วันหยุดราชการ' : 'วันหยุดบริษัท'})</div>` : ''}${items.length ? `<ul class="list">${items.map(it => `<li class="clickable" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><span class="cev ${it.cls} solo">${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Major Event'}</span><div class="grow"><b>${esc(it.label)}</b></div></li>`).join('')}</ul>` : '<p class="muted">ไม่มีกิจกรรมในวันนี้</p>'}`,
+    title: fmtDY(d), body: `${hol ? `<div class="note">${esc(hol.name)} (${hol.kind === 'public' ? 'วันหยุดราชการ' : 'วันหยุดบริษัท'})</div>` : ''}${items.length ? `<ul class="list">${items.map(it => `<li class="clickable" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><span class="cev ${it.cls} solo">${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Event'}</span><div class="grow"><b>${esc(it.label)}</b></div></li>`).join('')}</ul>` : '<p class="muted">ไม่มีกิจกรรมในวันนี้</p>'}`,
     actions: [{ label: 'ปิด' }].concat(canManageEvents() ? [{ label: ico('plus', 15) + ' ' + ACTION.newEvent[0] + ' วันนี้', cls: 'btn-primary', onClick: () => { setTimeout(() => openEvent(null, d)); } }] : []),
   });
 };
@@ -345,7 +345,7 @@ function openEvent(id, date) {
   const d = canEdit ? '' : 'disabled';
   const msRow = ms => `<div class="ms-row"><input type="date" value="${ms.date}" ${d}><input type="text" value="${esc(ms.title)}" placeholder="เช่น ส่งแบบสื่อ / เริ่มเตรียมงาน" ${d}><label class="check"><input type="checkbox" ${ms.done ? 'checked' : ''} ${d}> เสร็จ</label>${canEdit ? '<button type="button" class="icon-btn" data-rm aria-label="ลบ">' + ico('x', 15) + '</button>' : ''}</div>`;
   modal({
-    title: orig ? (canEdit ? 'แก้ไข Major Event' : 'รายละเอียด Major Event') : ACTION.newEvent[0], wide: true,
+    title: orig ? (canEdit ? 'แก้ไข Event' : 'รายละเอียด Event') : ACTION.newEvent[0], wide: true,
     body: `<form id="evForm" class="form-grid" autocomplete="off">
       <label class="field full"><span>ชื่องาน *</span><input name="name" required value="${esc(e.name)}" ${d}></label>
       <label class="field"><span>วันเริ่ม *</span><input type="date" name="start" required value="${e.start}" ${d}></label>
@@ -357,7 +357,7 @@ function openEvent(id, date) {
       <label class="field full"><span>เชื่อมกับ Project (ถ้ามี)</span><select name="projectId" ${d}>${projectOptions(e.projectId, '— ไม่เชื่อม —')}</select></label>
       <div class="field full"><span>วันเตรียมงาน</span><div id="msList" class="ms-list">${e.milestones.map(msRow).join('')}</div>
         ${canEdit ? `<button type="button" class="btn btn-ghost btn-sm" id="msAdd">${ico('plus', 14)} เพิ่มวันเตรียมงาน</button>` : ''}</div></form>`,
-    actions: (orig && canEdit ? [{ label: ico('trash', 15) + ' ลบ', cls: 'btn-danger-ghost', left: true, onClick: async () => { if (await confirmBox(`ลบ “${esc(e.name)}” ?`, 'ลบ', true)) { S().events = S().events.filter(x => x.id !== e.id); commit(); toast('ลบ Major Event แล้ว'); return true; } return false; } }] : [])
+    actions: (orig && canEdit ? [{ label: ico('trash', 15) + ' ลบ', cls: 'btn-danger-ghost', left: true, onClick: async () => { if (await confirmBox(`ลบ “${esc(e.name)}” ?`, 'ลบ', true)) { S().events = S().events.filter(x => x.id !== e.id); commit(); toast('ลบ Event แล้ว'); return true; } return false; } }] : [])
       .concat([{ label: canEdit ? 'ยกเลิก' : 'ปิด' }]).concat(canEdit ? [{
         label: 'บันทึก', cls: 'btn-primary', onClick: () => {
           const f = $('#evForm'); if (!f.reportValidity()) return false;

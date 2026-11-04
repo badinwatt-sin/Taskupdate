@@ -1,6 +1,6 @@
 'use strict';
 /* ============================================================
-   Import Major Events from Excel / CSV
+   Import Events from Excel / CSV
    Smart column detection (header names + cell contents) and
    date interpretation (Excel serials, Thai/English months, BE years,
    ranges). Runs entirely in the browser — nothing is uploaded.
@@ -147,17 +147,17 @@ function validateRow(r) {
     const off = Math.abs(diffDays(today(), r.start)); if (off > 550) is.push(['warn', `วันที่ห่างจากวันนี้ ${Math.round(off / 365 * 10) / 10} ปี — ตรวจปี พ.ศ./ค.ศ.`]);
     if (diffDays(r.start, r.end) > 30) is.push(['warn', 'งานยาวกว่า 30 วัน — ตรวจวันสิ้นสุด']);
   }
-  if (r.name && r.start && S().events.some(e => hnorm(e.name) === hnorm(r.name) && e.start === r.start)) { is.push(['warn', 'ซ้ำกับ Major Event ที่มีอยู่แล้ว']); if (r._dupInit == null) { r._dupInit = true; r.include = false; } }
+  if (r.name && r.start && S().events.some(e => hnorm(e.name) === hnorm(r.name) && e.start === r.start)) { is.push(['warn', 'ซ้ำกับ Event ที่มีอยู่แล้ว']); if (r._dupInit == null) { r._dupInit = true; r.include = false; } }
   if (r.ownerText && !r.owner) is.push(['warn', `ไม่พบ “${r.ownerText}” ในทีม — จะใช้ชื่อคุณเป็นเจ้าของ`]);
   r.issues = is; if (is.some(x => x[0] === 'err')) r.include = false; return r;
 }
 
 /* ---------- UI ---------- */
 function openImportEvents() {
-  if (!canManageEvents()) return toast('คุณไม่มีสิทธิ์เพิ่ม Major Event', 'error');
+  if (!canManageEvents()) return toast('คุณไม่มีสิทธิ์เพิ่ม Event', 'error');
   let wb = null, layout = null, map = {}, rows = [];
   modal({
-    title: 'นำเข้า Major Event จาก Excel', wide: true, cls: 'import-modal',
+    title: 'นำเข้า Event จาก Excel', wide: true, cls: 'import-modal',
     body: `<div id="impStep1"><label class="dropzone" id="drop"><input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv" hidden>${ico('upload', 28)}<b>เลือกไฟล์ Excel หรือ CSV</b><span>ลากไฟล์มาวางได้ · รองรับ .xlsx .xls .csv · คอลัมน์จะเรียงแบบไหนก็ได้</span></label>
       <div class="note mt">${ico('sparkles', 14)} ระบบตรวจชื่อคอลัมน์และเนื้อหาในเซลล์เพื่อจับว่าคอลัมน์ไหนคือชื่องาน วันที่ สถานที่ ฯลฯ รองรับวันที่แบบ Excel, 15/12/2026, 15 ธ.ค. 69, 15-17 ธันวาคม 2569 และปี พ.ศ./ค.ศ. · ทำงานในเครื่องคุณ ไม่ส่งข้อมูลออกนอกระบบ · <b>กรุณาตรวจผลในตารางก่อนนำเข้าเสมอ</b></div></div>
       <div id="impStep2" hidden></div>`,
@@ -229,7 +229,7 @@ function openImportEvents() {
     if (!picked.length) { toast('ยังไม่ได้เลือกรายการที่จะนำเข้า', 'error'); return false; }
     picked.forEach(r => S().events.push({ id: uid('e_'), name: r.name, start: r.start, end: r.end || r.start, venue: r.venue, ownerId: r.owner || me().id, audience: r.audience, status: r.status, projectId: null, milestones: [] }));
     const first = picked.map(r => r.start).sort()[0]; if (first) { ST.cal.y = +first.slice(0, 4); ST.cal.m = +first.slice(5, 7) - 1; }
-    commit(); toast(`นำเข้า ${picked.length} Major Event แล้ว`);
+    commit(); toast(`นำเข้า ${picked.length} Event แล้ว`);
   }
 }
 ACT.importEvents = () => openImportEvents();
