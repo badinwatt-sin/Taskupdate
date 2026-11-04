@@ -178,6 +178,15 @@ ACT.applyAllPw = () => {
     } }],
   });
 };
+ACT.setAllPwDialog = () => modal({
+  title: 'ตั้งรหัสผ่านให้ทุกคน',
+  body: `<label class="field"><span>รหัสผ่านที่ทุกคนจะใช้เข้าสู่ระบบ (อย่างน้อย 4 ตัว)</span><input id="allPw" autocomplete="off" placeholder="เช่น Hub2027!"></label><p class="muted small mt">รหัสที่สมาชิกเคยตั้งเองไว้ (รวมของคุณ) จะถูกแทนที่ · แจ้งรหัสนี้ให้ทีม แล้วให้แต่ละคนเปลี่ยนเป็นรหัสของตัวเองหลังเข้าสู่ระบบ</p>`,
+  actions: [{ label: 'ยกเลิก' }, { label: 'ตั้งให้ทุกคน', cls: 'btn-primary', onClick: async () => {
+    const v = $('#allPw').value.trim(); if (v.length < 4) { toast('รหัสต้องมีอย่างน้อย 4 ตัว', 'error'); return false; }
+    try { await Auth.adminDefault(v); const d = await Auth.adminList(); for (const x of d.list) if (x.custom) await Auth.adminSet(x.id, null); toast('ตั้งรหัสให้ทุกคนแล้ว'); loadAccessTable(); fillCardPasswords(); }
+    catch (e) { toast(e.message, 'error'); return false; }
+  } }],
+});
 ACT.resetPw = async el => { try { await Auth.adminSet(el.dataset.id, null); toast('รีเซ็ตเป็นรหัสเริ่มต้นแล้ว'); loadAccessTable(); } catch (e) { toast(e.message, 'error'); } };
 ACT.setPw = el => {
   const m = member(el.dataset.id);
