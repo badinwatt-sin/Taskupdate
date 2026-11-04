@@ -224,3 +224,123 @@
   .quick .btn{padding:9px 14px}
   .v-todo .head-actions [data-act=myStyle]{display:none}
 }
+
+/* ======================================================================
+   Responsive polish — every phone OS, tablets, laptops and big screens.
+   Keeps text from getting squeezed: things wrap onto a new line instead.
+   ====================================================================== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overflow-wrap:break-word}
+input,select,textarea,button{font-family:inherit}
+.card-h{flex-wrap:wrap;row-gap:4px}
+.card-h>h3{flex:1 0 auto;max-width:100%}
+
+/* phones (Android 360 px → large iPhones) */
+@media (max-width:600px){
+  /* filter rows: tidy 2-column grid instead of a sideways strip that hides options */
+  .filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;overflow:visible;margin:0 0 12px;padding:0}
+  .filters>*{min-width:0!important;width:100%;flex:initial}
+  .filters .search{grid-column:1/-1;min-width:0}
+  .filters .btn{justify-content:center}
+
+  /* "Today" list on Home: the status buttons go under the title, so the title keeps its room */
+  .focus-list li{flex-wrap:wrap;row-gap:8px}
+  .focus-list li>.grow{flex:1 1 0;min-width:0}
+  .focus-list li>.stepper{width:100%;justify-content:flex-end}
+  .focus-list li b.clip{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* project Task List cards: 2 columns so dropdowns and dates are readable */
+  .tbl.grid tr:not(.gh){grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+  .tbl.grid td[data-l]::before{font-size:12px}
+
+  /* calendar agenda: label under the event name instead of beside it */
+  .ag-it{display:grid;grid-template-columns:4px minmax(0,1fr);column-gap:10px;row-gap:2px;align-items:start}
+  .ag-it i{grid-row:1/span 2}
+  .ag-it span{white-space:normal;line-height:1.35}
+  .ag-it small{white-space:normal;font-size:12px}
+  .ag-date small{font-size:12px}
+
+  /* Offsite records: one readable card per record */
+  .tbl.tracker thead{display:none}
+  .tbl.tracker,.tbl.tracker tbody{display:block}
+  .tbl.tracker tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .tbl.tracker td{display:block;border:0!important;padding:0!important;min-width:0;max-width:none;white-space:normal}
+  .tbl.tracker td.main{grid-column:1/-1;grid-row:1;font-size:15px}
+  .tbl.tracker td.nw{grid-column:1;grid-row:2;color:var(--muted);font-size:13px}
+  .tbl.tracker td.nw small{display:inline;margin-left:6px}
+  .tbl.tracker td:nth-child(3){grid-column:2;grid-row:2;align-self:start}
+  .tbl.tracker td:nth-child(4),.tbl.tracker td:nth-child(5){grid-column:1/-1}
+  .tbl.tracker td:nth-child(4){display:flex;align-items:center;gap:8px;flex-wrap:wrap}.tbl.tracker td:nth-child(4) .names{margin:0}
+
+  /* other small tables: wrap text and tighten padding so fewer columns run off-screen */
+  .tbl th,.tbl td{padding:10px 8px;white-space:normal}
+  .card .tbl th:first-child,.card .tbl td:first-child{padding-left:14px}
+  .tbl th{font-size:11.5px}
+
+  /* slightly larger minimum text on small screens */
+  small,.small{font-size:12.5px}
+  .kc-title,.wcard .kc-title{line-height:1.35}
+  .page-head p,.page-head .sub{line-height:1.45}
+}
+
+/* very narrow phones (older Android, iPhone SE/mini, split screen) */
+@media (max-width:380px){
+  .hero-actions .hq span{font-size:13px}
+  .tabbar a span,.tabbar button span{font-size:10.5px}
+  .head-actions .btn{padding:8px 12px}
+}
+
+/* tablets (iPad / Android tablets): comfortable two-column layouts, roomy touch targets */
+@media (min-width:601px) and (max-width:1100px){
+  .filters select{min-width:0}
+  .ag-it small{white-space:normal;text-align:right}
+}
+@media (pointer:coarse){
+  .icon-btn{min-width:40px;min-height:40px}
+  .mini-btn{padding:5px 10px}
+}
+
+/* large desktop / Mac: keep reading width comfortable */
+@media (min-width:1600px){
+  .view{max-width:1480px;margin-inline:auto}
+}
+/* the table cell class "main" collides with the app's .main layout container — neutralise it */
+.tbl td.main{min-height:0;height:auto;margin:0}
+@media (max-width:600px){
+  .tbl.tracker td.main{min-height:0!important;height:auto!important;margin:0!important}
+  /* Offsite summary: hide the wide "area" column on phones (filter by area above instead) */
+  .v-support .tbl:not(.tracker) th:nth-child(4),.v-support .tbl:not(.tracker) td:nth-child(4){display:none}
+  /* segmented tabs share the full width so the last tab is never cut off */
+  .tabs{display:flex;width:100%;max-width:100%}
+  .tabs>button{flex:1 1 0;min-width:0;padding-left:4px;padding-right:4px;font-size:13.5px;white-space:nowrap}
+}
+/* form grids: never let a long option (e.g. a long Project name) push fields past the screen edge */
+.form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.form-grid>*,.field{min-width:0}
+.field select,.field input,.field textarea{max-width:100%}
+@media (max-width:860px){ .form-grid{grid-template-columns:minmax(0,1fr)} }
+/* filters on tablets & phones: wrap into an even grid (no hidden options off to the side) */
+@media (max-width:860px){
+  .filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;overflow:visible;margin:0 0 12px;padding:0}
+  .filters>*{min-width:0!important;width:100%;flex:initial}
+  .filters .search{grid-column:1/-1;min-width:0}
+}
+/* quick add on wide screens: one tidy row — title · start · target · project · status · private · add */
+@media (min-width:1181px){
+  .quick{grid-template-columns:minmax(220px,1fr) auto auto minmax(130px,180px) minmax(104px,124px) auto auto}
+  .quick .btn{grid-column:auto}
+}
+@media (min-width:861px) and (max-width:1180px){
+  .quick{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .quick input[name=title]{grid-column:1/-1}
+  .quick .btn{grid-column:auto}
+  .quick>*{min-width:0}.quick .qd input,.quick select{width:100%}
+}
+/* laptops / iPad landscape with the sidebar open: stack the week bar, keep Kanban columns readable */
+@media (min-width:861px) and (max-width:1180px){
+  .week-bar{grid-template-columns:minmax(0,1fr);gap:12px}
+  .kanban.three{grid-template-columns:repeat(3,minmax(264px,1fr))}
+  .kanban{scroll-snap-type:x proximity}.kcol{scroll-snap-align:start}
+}
+.wc-dates span,.wc-dates small{white-space:nowrap}
+.health>div{min-width:0}
