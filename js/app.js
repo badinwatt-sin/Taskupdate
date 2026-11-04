@@ -2,7 +2,8 @@
 /* ============================================================
    App shell: router, navigation, search, user switcher
    ============================================================ */
-const NAV = MENU_ORDER.map(k => [k, ...PAGE[k]]);   // [route, name, Thai gloss, icon] — vocabulary lives in labels.js
+const NAV = MENU_ORDER.map(k => [k, ...PAGE[k]]);
+const visibleNav = () => NAV.filter(n => !ADMIN_ONLY.includes(n[0]) || isAdmin());   // [route, name, Thai gloss, icon] — vocabulary lives in labels.js
 /* Feature flags — Meeting Hub is parked until the AI part is decided (code kept in views-c.js) */
 const FEATURES = { meetings: false };
 let lastRoute = '';
@@ -11,9 +12,9 @@ function route() { const h = location.hash.replace(/^#\/?/, '').split('/'); retu
 function render() {
   if (!Store.state) return;
   const r = route();
-  if (!V[r.name] || (r.name === 'meetings' && !FEATURES.meetings)) { location.hash = '#/dashboard'; return; }
+  if (!V[r.name] || (r.name === 'meetings' && !FEATURES.meetings) || (ADMIN_ONLY.includes(r.name) && !isAdmin())) { location.hash = '#/dashboard'; return; }
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
-  $('#nav').innerHTML = NAV.map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
+  $('#nav').innerHTML = visibleNav().map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
   $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · ${ACTION.account[0]}</small></div>`;
   const key = r.name + '/' + (r.id || '');

@@ -37,13 +37,12 @@ ACT.quickCreate = () => openQuickCreate();
 
 /* ---------- "more" sheet (mobile) ---------- */
 function openMore() {
-  const items = NAV.filter(n => !TABS.some(t => t[0] === n[0])), m = me();
+  const items = visibleNav().filter(n => !TABS.some(t => t[0] === n[0])), m = me();
   const themeLabel = () => (THEMES.find(x => x[0] === getTheme()) || THEMES[0])[1];
   modal({
     title: ACTION.more[0], cls: 'more-modal',
     body: `<div class="more-user">${avatar(m, 48)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก'} · ${esc(m.position)}</small></div></div>
       <div class="more-list">${items.map(([k, l, th, i]) => `<a href="#/${k}" class="more-it" data-mi="go">${ico(i, 20)}<div><b>${l}</b><small>${th}</small></div>${ico('right', 16)}</a>`).join('')}
-      <button type="button" class="more-it" data-mi="search">${ico('search', 20)}<div><b>${ACTION.search[0]}</b><small>${ACTION.search[1]}</small></div>${ico('right', 16)}</button>
       <button type="button" class="more-it" data-mi="theme">${ico('auto', 20)}<div><b>${ACTION.theme[0]}</b><small id="miTheme">${themeLabel()}</small></div><span class="muted small">แตะเพื่อสลับ</span></button>
       <button type="button" class="more-it" data-mi="style">${ico('edit', 20)}<div><b>${ACTION.style[0]}</b><small>${ACTION.style[1]}</small></div>${ico('right', 16)}</button>
       <button type="button" class="more-it" data-mi="account">${ico('lock', 20)}<div><b>${ACTION.account[0]}</b><small>${ACTION.account[1]}</small></div>${ico('right', 16)}</button></div>
@@ -53,7 +52,6 @@ function openMore() {
         const b = e.target.closest('[data-mi]'); if (!b) return; const k = b.dataset.mi;
         if (k === 'theme') { cycleTheme(); $('#miTheme', md.el).textContent = themeLabel(); return; }
         md.close();
-        if (k === 'search') setTimeout(openSearch, 10);
         if (k === 'account') setTimeout(openAccount, 10);
         if (k === 'style') setTimeout(() => openMyStyle(me().id), 10);
       });

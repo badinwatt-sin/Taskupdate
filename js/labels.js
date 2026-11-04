@@ -17,6 +17,7 @@ const PAGE = {   // route: [name, Thai gloss, icon]
 };
 const MENU_ORDER = ['dashboard', 'todo', 'projects', 'calendar', 'board', 'support', 'team'];   // sidebar order
 const TAB_ROUTES = ['dashboard', 'todo', 'projects', 'calendar'];                                 // phone tab bar (+ "More")
+const ADMIN_ONLY = ['team'];   // pages only Admin can see or open
 const pageName = k => PAGE[k]?.[0] || k;
 
 /* actions: same words on buttons, quick-create and sheets  [title, Thai gloss] */

@@ -327,7 +327,7 @@ V.team = root => {
     return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
       ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">${ico('sparkles', 16)}</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
-      <p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
+      ${admin ? `<div class="pwline" data-id="${m.id}"><span class="muted small">รหัสผ่านปัจจุบัน</span><code class="pwc">…</code></div>` : ''}<p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
   root.innerHTML = pageHead(pageName('team'), `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
@@ -354,7 +354,7 @@ V.team = root => {
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
       <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-ghost" data-act="startClean">เริ่มต้นใหม่ (ล้างงานตัวอย่าง เก็บรายชื่อทีม)</button><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
-  loadAccessTable();
+  loadAccessTable(); fillCardPasswords();
   const imp = $('#importIn'); if (imp) imp.onchange = () => {
     const file = imp.files[0]; if (!file) return;
     const r = new FileReader(); r.onload = async () => {
