@@ -430,7 +430,13 @@ input,select,textarea,button{font-family:inherit}
 /* ---------- calendar export (16:9) ---------- */
 .exp-bar{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.exp-bar .field{margin:0;min-width:180px}.exp-bar p{margin:0 0 8px;flex:1 1 240px}
 .exp-pv{border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--line),0 10px 30px rgba(0,0,0,.08);background:#f5f6fb}
-.exp-pv canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.exp-pv canvas{display:block;width:100%;height:auto}
+.exp-pv.portrait{max-width:min(100%,calc(68vh * .707));margin:0 auto}
+.exp-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.exp-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.exp-row select{width:auto;min-width:150px}
+.exp-l{font-weight:600;font-size:13.5px;color:var(--muted);min-width:64px}
+.exp-row .seg-chips{flex:1;min-width:0}
+.seg-chips button i{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:6px;vertical-align:-2px}
 .exp-modal{max-width:min(1180px,96vw)!important}
 
 /* ---------- project covers / posters ---------- */

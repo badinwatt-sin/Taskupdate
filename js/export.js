@@ -1,157 +1,338 @@
 'use strict';
 /* ============================================================
-   Event Calendar summary — one landscape 16:9 page (1920×1080)
-   drawn on a canvas, for executives and the sales team.
-   Download as PNG, or print / save as PDF.
+   Event Calendar export — designed one-page summaries
+   Layouts: year 16:9 · year A4 portrait · month 16:9 · month A4 portrait
+   Themes:  Aurora (light) · Midnight (dark) · Minimal (paper)
+   Text is never cut: names wrap in full and the layout picks the
+   largest type size that fits (auto-fit).
    ============================================================ */
 const EXP_FONT = '"IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-const EXP_COL = { planning: '#ff9500', confirmed: '#007aff', done: '#34c759' };
-const EXP_MON_EN = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const EXP_MON_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const EXP_HUES = ['#ff6b6b', '#f06595', '#cc5de8', '#845ef7', '#5c7cfa', '#339af0', '#22b8cf', '#20c997', '#40c057', '#94d82d', '#fab005', '#ff922b'];
+const EXP_ST = { confirmed: ['#0a84ff', 'ยืนยันแล้ว'], planning: ['#ff9f0a', 'วางแผน'], done: ['#30d158', 'จัดแล้ว'] };
+const EXP_THEMES = {
+  aurora: { label: 'Aurora', bg: '#f3f4fa', ink: '#15151a', sub: '#5b5b66', mute: '#a3a3ae', card: 'rgba(255,255,255,.93)', edge: 'rgba(20,20,60,.06)', line: '#e8e8f0', chip: '#f0f0f6', accent: '#0a84ff', shadow: 'rgba(30,30,80,.09)', blobs: [['#0a84ff', .22], ['#bf5af2', .17], ['#30d158', .13]], wm: .045 },
+  midnight: { label: 'Midnight', bg: '#090d1c', ink: '#f5f5f7', sub: '#b6bacb', mute: '#666d85', card: 'rgba(255,255,255,.065)', edge: 'rgba(255,255,255,.09)', line: 'rgba(255,255,255,.1)', chip: 'rgba(255,255,255,.08)', accent: '#64d2ff', shadow: 'rgba(0,0,0,.35)', blobs: [['#0a84ff', .42], ['#bf5af2', .34], ['#ff375f', .2]], wm: .06 },
+  paper: { label: 'Minimal', bg: '#fbf9f5', ink: '#141414', sub: '#57534c', mute: '#aaa59b', card: '#ffffff', edge: 'rgba(60,40,20,.08)', line: '#ece7de', chip: '#f4f0e9', accent: '#d4572a', shadow: 'rgba(60,40,20,.06)', blobs: [['#f4a261', .14], ['#e76f51', .08]], wm: .05 },
+};
+const EXP_LAYOUTS = {
+  'year-l': { label: 'รายปี · แนวนอน 16:9', W: 1920, H: 1080, page: 'A4 landscape' },
+  'year-p': { label: 'รายปี · แนวตั้ง A4', W: 1240, H: 1754, page: 'A4 portrait' },
+  'month-l': { label: 'รายเดือน · แนวนอน 16:9', W: 1920, H: 1080, page: 'A4 landscape' },
+  'month-p': { label: 'รายเดือน · แนวตั้ง A4', W: 1240, H: 1754, page: 'A4 portrait' },
+};
+const expVersion = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear() + 543}`; };
+const pad2 = n => String(n).padStart(2, '0');
 
-function expEvents(year) {
-  const y = String(year);
-  return S().events
-    .filter(e => e.status !== 'cancelled' && (e.start.startsWith(y) || e.end.startsWith(y) || (e.start.slice(0, 4) < y && e.end.slice(0, 4) > y)))
+/* ---------- data ---------- */
+function expEvents(from, to) {   // ISO range, inclusive; not cancelled
+  return S().events.filter(e => e.status !== 'cancelled' && e.start <= to && e.end >= from)
     .sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
 }
-const expVersion = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear() + 543}`; };
+const dayLabel = e => {
+  const s = parse(e.start), en = parse(e.end);
+  if (e.start === e.end) return `${s.getDate()} ${TH_MON[s.getMonth()]}`;
+  if (s.getMonth() === en.getMonth()) return `${s.getDate()}–${en.getDate()} ${TH_MON[s.getMonth()]}`;
+  return `${s.getDate()} ${TH_MON[s.getMonth()]} – ${en.getDate()} ${TH_MON[en.getMonth()]}`;
+};
+const dayShort = e => { const s = parse(e.start), en = parse(e.end); return e.start === e.end ? `${s.getDate()}` : s.getMonth() === en.getMonth() ? `${s.getDate()}–${en.getDate()}` : `${s.getDate()}–${en.getDate()} ${TH_MON[en.getMonth()]}`; };
 
-function drawCalendarSummary(cv, year) {
-  const W = 1920, H = 1080, S2 = 2;
-  cv.width = W * S2; cv.height = H * S2;
-  const g = cv.getContext('2d'); g.setTransform(S2, 0, 0, S2, 0, 0);
-  const font = (w, px) => `${w} ${px}px ${EXP_FONT}`;
-  const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); };
-  const fit = (t, max) => { if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; };
-
-  // background: soft colour fields like the app
-  g.fillStyle = '#f5f6fb'; g.fillRect(0, 0, W, H);
-  [[160, -80, 760, 'rgba(0,122,255,.16)'], [1780, 60, 700, 'rgba(175,82,222,.13)'], [1500, 1160, 820, 'rgba(52,199,89,.12)']].forEach(([x, y, r, c]) => {
-    const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, c); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H);
+/* ---------- drawing kit ---------- */
+function expKit(cv, W, H, th) {
+  const S2 = 2; cv.width = W * S2; cv.height = H * S2;
+  const g = cv.getContext('2d'); g.setTransform(S2, 0, 0, S2, 0, 0); g.textBaseline = 'alphabetic';
+  const k = {
+    g, W, H, th,
+    font: (w, px) => { g.font = `${w} ${Math.round(px * 10) / 10}px ${EXP_FONT}`; },
+    rr: (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); },
+    fit: (t, max) => { if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; },
+    wrap: (t, max) => {   // full word-aware wrap — never drops text
+      const segs = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(String(t))].map(x => x.segment) : String(t).split(/(\s+)/);
+      const out = []; let cur = '';
+      const push = () => { if (cur.trim()) out.push(cur.trim()); cur = ''; };
+      segs.forEach(seg => {
+        if (g.measureText(cur + seg).width <= max) { cur += seg; return; }
+        if (cur.trim()) push();
+        if (g.measureText(seg).width <= max) { cur = seg.trimStart(); return; }
+        for (const ch of [...seg]) { if (g.measureText(cur + ch).width > max && cur) push(); cur += ch; }   // a single very long word
+      });
+      push(); return out.length ? out : [''];
+    },
+    card: (x, y, w, h, r = 22) => {
+      g.save(); g.shadowColor = th.shadow; g.shadowBlur = 26; g.shadowOffsetY = 8; g.fillStyle = th.card; k.rr(x, y, w, h, r); g.fill(); g.restore();
+      g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, r); g.stroke();
+    },
+  };
+  return k;
+}
+/* background art: colour fields, rings, waves, dot grid and a big faint watermark */
+function expBackdrop(k, mark, hue) {
+  const { g, W, H, th } = k;
+  g.fillStyle = th.bg; g.fillRect(0, 0, W, H);
+  const spots = [[W * .05, -H * .08, W * .45], [W * .98, H * .02, W * .38], [W * .78, H * 1.08, W * .5]];
+  [...th.blobs, ...(hue ? [[hue, th.blobs[0][1] * .9]] : [])].forEach(([c, a], i) => {
+    const [x, y, r] = i < 3 ? spots[i] : [W * .35, H * .55, W * .35];
+    const rg = g.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, hexA(c, a)); rg.addColorStop(1, hexA(c, 0)); g.fillStyle = rg; g.fillRect(0, 0, W, H);
   });
-
-  const evs = expEvents(year), by = Array.from({ length: 12 }, () => []);
-  evs.forEach(e => { const s = e.start.slice(0, 4) < String(year) ? `${year}-01-01` : e.start; by[+s.slice(5, 7) - 1].push(e); });
-  const cnt = k => evs.filter(e => e.status === k).length;
-
-  // header
-  const X = 72;
-  g.fillStyle = '#007aff'; g.font = font(700, 20); g.fillText('AGENCY EXPERIENCE TEAM', X, 92);
-  g.fillStyle = '#1c1c1e'; g.font = font(700, 72); g.fillText(`Event Calendar ${year}`, X - 3, 170);
-  const tw = g.measureText(`Event Calendar ${year}`).width;
-  g.fillStyle = '#8e8e93'; g.font = font(500, 26); g.fillText(`พ.ศ. ${year + 543}`, X + tw + 22, 168);
-  g.font = font(500, 22); g.fillStyle = '#636366';
-  g.fillText(`ปฏิทินงานสำคัญประจำปี · ${evs.length} งาน`, X, 212);
-
-  // version + stats (right)
-  const R = W - 72;
-  g.textAlign = 'right';
-  g.font = font(600, 20); g.fillStyle = '#636366'; g.fillText(`Version ${expVersion()}`, R, 92);
-  const stats = [['จัดแล้ว', cnt('done'), EXP_COL.done], ['วางแผน', cnt('planning'), EXP_COL.planning], ['ยืนยันแล้ว', cnt('confirmed'), EXP_COL.confirmed]];   // drawn right → left, so it reads ยืนยันแล้ว · วางแผน · จัดแล้ว
-  let sx = R;
-  stats.forEach(([l, n, c]) => {
-    g.font = font(700, 44); const nw = g.measureText(String(n)).width; g.font = font(500, 18); const lw = g.measureText(l).width;
-    const bw = Math.max(nw, lw) + 44, bx = sx - bw;
-    g.fillStyle = 'rgba(255,255,255,.85)'; rr(bx, 118, bw, 96, 20); g.fill();
-    g.textAlign = 'center'; g.fillStyle = c; g.font = font(700, 44); g.fillText(String(n), bx + bw / 2, 172);
-    g.fillStyle = '#636366'; g.font = font(500, 18); g.fillText(l, bx + bw / 2, 200);
-    sx = bx - 14;
+  // watermark
+  g.save(); g.globalAlpha = th.wm; g.fillStyle = th.ink; k.font(800, Math.min(W, H) * .42); g.textAlign = 'right';
+  g.fillText(mark, W - 30, H * .98); g.restore();
+  // concentric rings, top right
+  g.save(); g.strokeStyle = hexA(hue || th.accent, .16); g.lineWidth = 1.4;
+  for (let i = 0; i < 6; i++) { g.beginPath(); g.arc(W - 120, 40, 60 + i * 34, 0, Math.PI * 2); g.stroke(); }
+  g.restore();
+  // waves along the bottom
+  g.save(); g.lineWidth = 1.6;
+  for (let i = 0; i < 4; i++) {
+    g.strokeStyle = hexA(hue || th.accent, .10 - i * .02); g.beginPath();
+    const base = H - 30 - i * 14; g.moveTo(-20, base);
+    for (let x = -20; x <= W + 40; x += 240) g.bezierCurveTo(x + 60, base - 26, x + 180, base + 26, x + 240, base);
+    g.stroke();
+  }
+  g.restore();
+  // dot grid patch, bottom left
+  g.save(); g.fillStyle = hexA(th.ink, .09);
+  for (let r = 0; r < 7; r++) for (let c = 0; c < 10; c++) { g.beginPath(); g.arc(28 + c * 16, H - 150 + r * 16, 1.6, 0, Math.PI * 2); g.fill(); }
+  g.restore();
+}
+function hexA(hex, a) {
+  const h = hex.replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+/* header: kicker, title, subtitle, version, status counters — returns the y where content may start */
+function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
+  const { g, W, th } = k, X = compact ? 60 : 72, R = W - X;
+  g.textAlign = 'left';
+  g.fillStyle = hue || th.accent; k.rr(X, compact ? 66 : 70, 34, 6, 3); g.fill();
+  k.font(700, 19); g.fillStyle = hue || th.accent; g.fillText(kicker, X + 46, compact ? 75 : 79);
+  k.font(800, compact ? 64 : 70); g.fillStyle = th.ink; g.fillText(title, X - 3, compact ? 148 : 160);
+  const tw = g.measureText(title).width;
+  if (small) { k.font(500, 25); g.fillStyle = th.mute; g.fillText(small, X + tw + 18, compact ? 146 : 158); }
+  k.font(500, 21); g.fillStyle = th.sub; g.fillText(sub, X, compact ? 190 : 204);
+  // version pill
+  k.font(600, 17); const vt = `Version ${expVersion()}`, vw = g.measureText(vt).width + 30;
+  g.fillStyle = th.chip; k.rr(R - vw, compact ? 52 : 56, vw, 34, 17); g.fill();
+  g.fillStyle = th.sub; g.textAlign = 'center'; g.fillText(vt, R - vw / 2, compact ? 75 : 79);
+  // counters
+  let sx = R, sy = compact ? 102 : 110;
+  [['done'], ['planning'], ['confirmed']].forEach(([st]) => {
+    const [c, l] = EXP_ST[st], n = evs.filter(e => e.status === st).length;
+    k.font(800, 38); const nw = g.measureText(String(n)).width; k.font(500, 16); const lw = g.measureText(l).width;
+    const bw = Math.max(nw, lw) + 40, bx = sx - bw;
+    k.card(bx, sy, bw, 84, 18);
+    g.fillStyle = c; k.font(800, 38); g.fillText(String(n), bx + bw / 2, sy + 46);
+    g.fillStyle = th.sub; k.font(500, 16); g.fillText(l, bx + bw / 2, sy + 71);
+    sx = bx - 12;
   });
   g.textAlign = 'left';
+  return compact ? 230 : 240;
+}
+function expFooter(k, X) {
+  const { g, W, H, th } = k, fy = H - 34;
+  let lx = X; k.font(500, 16);
+  Object.values(EXP_ST).forEach(([c, l]) => { g.fillStyle = c; k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
+  g.textAlign = 'right'; g.fillStyle = th.mute; g.fillText(`TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, W - X, fy); g.textAlign = 'left';
+}
 
-  // month grid: 6 × 2
-  const top = 250, gap = 18, cols = 6, cw = (W - 2 * X - gap * (cols - 1)) / cols, ch = (H - top - 92 - gap) / 2;
-  const now = new Date(), curY = now.getFullYear(), curM = now.getMonth();
-  by.forEach((list, m) => {
-    const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), isNow = year === curY && m === curM;
-    g.save(); g.shadowColor = 'rgba(0,0,0,.07)'; g.shadowBlur = 24; g.shadowOffsetY = 6;
-    g.fillStyle = '#ffffff'; rr(cx, cy, cw, ch, 24); g.fill(); g.restore();
-    if (isNow) { g.strokeStyle = '#007aff'; g.lineWidth = 3; rr(cx + 1.5, cy + 1.5, cw - 3, ch - 3, 23); g.stroke(); }
-    // month header
-    g.fillStyle = list.length ? '#1c1c1e' : '#aeaeb2'; g.font = font(700, 30); g.fillText(TH_MON_FULL[m], cx + 22, cy + 50);
-    g.fillStyle = '#aeaeb2'; g.font = font(600, 15); g.fillText(EXP_MON_EN[m], cx + 24, cy + 74);
-    if (list.length) {
-      g.font = font(700, 18); const t = String(list.length), bw = Math.max(34, g.measureText(t).width + 20);
-      g.fillStyle = isNow ? '#007aff' : '#f2f2f7'; rr(cx + cw - 22 - bw, cy + 26, bw, 32, 16); g.fill();
-      g.fillStyle = isNow ? '#fff' : '#1c1c1e'; g.textAlign = 'center'; g.fillText(t, cx + cw - 22 - bw / 2, cy + 48); g.textAlign = 'left';
-    }
-    g.strokeStyle = '#ececf1'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx + 22, cy + 92); g.lineTo(cx + cw - 22, cy + 92); g.stroke();
-    // events — names wrap to 2 lines when the month has room
-    const wrap = (t, max, lines) => {   // word-aware wrap (Intl.Segmenter knows Thai word breaks)
-      const segs = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(t)].map(x => x.segment) : t.split(/(\s+)/);
-      const out = []; let cur = '', i = 0;
-      for (; i < segs.length; i++) {
-        const seg = segs[i];
-        if (g.measureText(cur + seg).width <= max) { cur += seg; continue; }
-        if (!cur.trim()) { cur = fit(seg, max); continue; }   // one very long word
-        out.push(cur.trim()); cur = seg.trimStart(); if (out.length === lines) break;
-      }
-      if (out.length < lines && cur.trim()) { out.push(cur.trim()); i = segs.length; }
-      if (i < segs.length) out[lines - 1] = fit(out[lines - 1] + '…', max);
-      return out;
-    };
-    const avail = ch - 112, few = list.length <= 4, busy = list.length > 6, nameFont = few ? 18 : busy ? 15 : 16, nameLH = few ? 23 : 20;
-    if (!list.length) { g.fillStyle = '#c7c7cc'; g.font = font(500, 18); g.fillText('— ไม่มีงาน —', cx + 22, cy + 132); }
-    let ly = cy + 108, shown = 0;
+/* ---------- year: 12 month cards, names wrap in full, type auto-fits ---------- */
+function drawYear(cv, { year, theme, portrait }) {
+  const L = EXP_LAYOUTS[portrait ? 'year-p' : 'year-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k;
+  expBackdrop(k, String(year));
+  const evs = expEvents(`${year}-01-01`, `${year}-12-31`), by = Array.from({ length: 12 }, () => []);
+  evs.forEach(e => { const s = e.start < `${year}-01-01` ? `${year}-01-01` : e.start; by[+s.slice(5, 7) - 1].push(e); });
+  const X = portrait ? 60 : 72;
+  const top = expHeader(k, { kicker: 'AGENCY EXPERIENCE TEAM', title: `Event Calendar ${year}`, small: `พ.ศ. ${year + 543}`, sub: `ปฏิทินงานสำคัญประจำปี · ${evs.length} งาน`, evs, compact: portrait });
+  const cols = portrait ? 3 : 6, rows = portrait ? 4 : 2, gap = 16, cw = (W - 2 * X - gap * (cols - 1)) / cols, ch = (H - top - 80 - gap * (rows - 1)) / rows;
+  const headH = 84, padX = 18, inner = ch - headH - 16;
+  // measure one month's list at scale s
+  const measure = (list, s, venue) => {
+    let h = 0;
     for (const e of list) {
-      const sd = parse(e.start), ed = parse(e.end);
-      const day = e.start === e.end ? `${sd.getDate()}` : (sd.getMonth() === ed.getMonth() ? `${sd.getDate()}–${ed.getDate()}` : `${sd.getDate()}–${ed.getDate()} ${TH_MON[ed.getMonth()]}`);
-      g.font = font(700, 15); const dw = Math.max(44, g.measureText(day).width + 16), tw2 = cw - dw - 54;
-      g.font = font(600, nameFont); const lines = wrap(e.name, tw2, few ? 2 : 1);
-      const hasVenue = few && e.venue, h = Math.max(30, lines.length * nameLH + (hasVenue ? 18 : 0)) + (few ? 16 : busy ? 4 : 10);
-      const left = list.length - shown;
-      if (ly + h > cy + 108 + avail - (left > 1 ? 30 : 0)) break;
-      const c = EXP_COL[e.status] || '#8e8e93';
-      g.fillStyle = c + '1f'; rr(cx + 20, ly, dw, 28, 9); g.fill();
-      g.font = font(700, 15); g.fillStyle = c; g.textAlign = 'center'; g.fillText(day, cx + 20 + dw / 2, ly + 19.5); g.textAlign = 'left';
-      g.fillStyle = '#1c1c1e'; g.font = font(600, nameFont); lines.forEach((t, k) => g.fillText(t, cx + 30 + dw, ly + 20 + k * nameLH));
-      if (hasVenue) { g.fillStyle = '#8e8e93'; g.font = font(500, 13); g.fillText(fit(e.venue, tw2), cx + 30 + dw, ly + 20 + lines.length * nameLH - 2); }
-      ly += h; shown++;
+      k.font(700, 14 * s); const dw = Math.max(40 * s, g.measureText(dayShort(e)).width + 14 * s);
+      k.font(600, 17 * s); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10);
+      h += Math.max(26 * s, lines.length * 21 * s + (venue && e.venue ? 17 * s : 0)) + 10 * s;
     }
-    if (shown < list.length) { g.fillStyle = '#007aff'; g.font = font(600, 16); g.fillText(`+ อีก ${list.length - shown} งาน`, cx + 22, ly + 18); }
+    return h;
+  };
+  // each month picks the biggest type that fits its own list (a busy month doesn't shrink the quiet ones)
+  const fitOf = list => { for (let s = 1.15; s >= .55; s -= .05) for (const v of [true, false]) if (measure(list, s, v) <= inner) return [Math.min(s, 1.15), v]; return [.55, false]; };
+  const now = new Date();
+  by.forEach((list, m) => {
+    const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = EXP_HUES[m], isNow = year === now.getFullYear() && m === now.getMonth();
+    k.card(cx, cy, cw, ch);
+    // month badge + names
+    g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill();
+    g.fillStyle = list.length ? hue : th.mute; k.font(800, 20); g.textAlign = 'center'; g.fillText(pad2(m + 1), cx + padX + 23, cy + 50); g.textAlign = 'left';
+    g.fillStyle = list.length ? th.ink : th.mute; k.font(700, 25); g.fillText(TH_MON_FULL[m], cx + padX + 60, cy + 44);
+    g.fillStyle = th.mute; k.font(600, 13); g.fillText(EXP_MON_EN[m].toUpperCase(), cx + padX + 61, cy + 63);
+    if (list.length) {
+      k.font(700, 15); const t = `${list.length} งาน`, bw = g.measureText(t).width + 20;
+      g.fillStyle = isNow ? hue : th.chip; k.rr(cx + cw - padX - bw, cy + 28, bw, 28, 14); g.fill();
+      g.fillStyle = isNow ? '#fff' : th.sub; g.textAlign = 'center'; g.fillText(t, cx + cw - padX - bw / 2, cy + 47); g.textAlign = 'left';
+    }
+    if (isNow) { g.strokeStyle = hue; g.lineWidth = 2.5; k.rr(cx + 1, cy + 1, cw - 2, ch - 2, 21); g.stroke(); }
+    g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + padX, cy + headH); g.lineTo(cx + cw - padX, cy + headH); g.stroke();
+    if (!list.length) { g.fillStyle = th.mute; k.font(500, 16); g.fillText('— ไม่มีงาน —', cx + padX, cy + headH + 34); return; }
+    const [S, V] = fitOf(list);
+    let ly = cy + headH + 12;
+    for (const e of list) {
+      const [c] = EXP_ST[e.status] || ['#8e8e93'];
+      k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S);
+      k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && e.venue;
+      const h = Math.max(26 * S, lines.length * 21 * S + (hasV ? 17 * S : 0));
+      if (ly + h > cy + ch - 10) { g.fillStyle = th.accent; k.font(600, 14); g.fillText('+ งานเพิ่มเติม (ดูไฟล์ Excel)', cx + padX, cy + ch - 14); break; }
+      g.fillStyle = hexA(c, .16); k.rr(cx + padX, ly, dw, 26 * S, 8 * S); g.fill();
+      g.fillStyle = c; k.font(700, 14 * S); g.textAlign = 'center'; g.fillText(dl, cx + padX + dw / 2, ly + 18 * S); g.textAlign = 'left';
+      g.fillStyle = th.ink; k.font(600, 17 * S); lines.forEach((t, i) => g.fillText(t, cx + padX + dw + 10, ly + 18 * S + i * 21 * S));
+      if (hasV) { g.fillStyle = th.sub; k.font(500, 13 * S); g.fillText(k.fit(e.venue, cw - padX * 2 - dw - 10), cx + padX + dw + 10, ly + 16 * S + lines.length * 21 * S); }
+      ly += h + 10 * S;
+    }
   });
-
-  // footer legend
-  const fy = H - 44; let lx = X;
-  g.font = font(500, 17);
-  [['ยืนยันแล้ว', EXP_COL.confirmed], ['วางแผน', EXP_COL.planning], ['จัดแล้ว', EXP_COL.done]].forEach(([l, c]) => {
-    g.fillStyle = c; rr(lx, fy - 14, 18, 18, 6); g.fill(); g.fillStyle = '#636366'; g.fillText(l, lx + 26, fy); lx += g.measureText(l).width + 60;
-  });
-  g.textAlign = 'right'; g.fillStyle = '#aeaeb2'; g.fillText(`TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, R, fy); g.textAlign = 'left';
+  expFooter(k, X);
   return evs.length;
 }
 
+/* ---------- month: calendar grid (bars) + full details list ---------- */
+function drawMonth(cv, { year, month, theme, portrait, posters }) {
+  const L = EXP_LAYOUTS[portrait ? 'month-p' : 'month-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k, hue = EXP_HUES[month];
+  expBackdrop(k, pad2(month + 1), hue);
+  const days = new Date(year, month + 1, 0).getDate(), mFrom = `${year}-${pad2(month + 1)}-01`, mTo = `${year}-${pad2(month + 1)}-${pad2(days)}`;
+  const evs = expEvents(mFrom, mTo), X = portrait ? 60 : 72;
+  const top = expHeader(k, { kicker: `EVENT CALENDAR · ${EXP_MON_EN[month].toUpperCase()} ${year}`, title: `${TH_MON_FULL[month]} ${year + 543}`, small: '', sub: `${EXP_MON_EN[month]} ${year} · ${evs.length ? evs.length + ' งาน' : 'ไม่มีงานในเดือนนี้'}`, evs, hue, compact: portrait });
+  // geometry
+  const gx = X, gy = top, gw = portrait ? W - 2 * X : 1080, gh = portrait ? 700 : H - top - 80;
+  const lx = portrait ? X : gx + gw + 28, ly0 = portrait ? gy + gh + 24 : top, lw = portrait ? W - 2 * X : W - X - lx, lh = portrait ? H - ly0 - 80 : gh;
+  // ---- calendar grid
+  k.card(gx, gy, gw, gh, 24);
+  const off = new Date(year, month, 1).getDay(), weeks = Math.ceil((off + days) / 7), dowH = 46, cw = gw / 7, chh = (gh - dowH - 8) / weeks;
+  k.font(700, 15);
+  TH_DOW.forEach((d, i) => { g.fillStyle = i === 0 || i === 6 ? hexA(hue, .9) : th.sub; g.textAlign = 'center'; g.fillText(d, gx + cw * i + cw / 2, gy + 30); });
+  g.textAlign = 'left';
+  const t0 = today();
+  for (let w = 0; w < weeks; w++) for (let c = 0; c < 7; c++) {
+    const dn = w * 7 + c - off + 1, x = gx + c * cw, y = gy + dowH + w * chh;
+    g.strokeStyle = th.line; g.lineWidth = 1; g.strokeRect(Math.round(x) + .5, Math.round(y) + .5, cw, chh);
+    if (dn < 1 || dn > days) { g.fillStyle = hexA(th.ink, .025); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); continue; }
+    const iso_ = `${year}-${pad2(month + 1)}-${pad2(dn)}`, hol = holidayOf(iso_), wk = c === 0 || c === 6;
+    if (hol || wk) { g.fillStyle = hexA(hol ? '#ff3b30' : hue, .05); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); }
+    if (iso_ === t0) { g.fillStyle = hue; g.beginPath(); g.arc(x + 22, y + 21, 15, 0, Math.PI * 2); g.fill(); }
+    k.font(700, 16); g.fillStyle = iso_ === t0 ? '#fff' : hol ? '#ff3b30' : wk ? hexA(th.ink, .55) : th.ink; g.textAlign = 'center'; g.fillText(String(dn), x + 22, y + 27); g.textAlign = 'left';
+    if (hol) { k.font(500, 11); g.fillStyle = '#ff3b30'; g.fillText(k.fit(hol.name, cw - 46), x + 40, y + 25); }
+  }
+  // event bars, lane by lane per week
+  const barH = 22, lanesMax = Math.max(1, Math.floor((chh - 40) / (barH + 4)));
+  for (let w = 0; w < weeks; w++) {
+    const wFirst = w * 7 - off + 1, wLast = wFirst + 6, lanes = [], hidden = {};
+    evs.forEach(e => {
+      const ds = e.start < mFrom ? 1 : +e.start.slice(8), de = e.end > mTo ? days : +e.end.slice(8);
+      const a = Math.max(ds, wFirst, 1), b = Math.min(de, wLast, days); if (a > b) return;
+      let lane = lanes.findIndex(l => l.every(([x1, x2]) => b < x1 || a > x2)); if (lane < 0) { lanes.push([]); lane = lanes.length - 1; }
+      lanes[lane].push([a, b]);
+      if (lane >= lanesMax) { for (let d = a; d <= b; d++) hidden[d] = (hidden[d] || 0) + 1; return; }
+      const c1 = a - wFirst, c2 = b - wFirst, [col] = EXP_ST[e.status] || ['#8e8e93'];
+      const x = gx + c1 * cw + 4, y = gy + dowH + w * chh + 38 + lane * (barH + 4), bw = (c2 - c1 + 1) * cw - 8;
+      g.fillStyle = hexA(col, .9); k.rr(x, y, bw, barH, 7); g.fill();
+      k.font(600, 12.5); g.fillStyle = '#fff'; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
+    });
+    Object.entries(hidden).forEach(([d, n]) => { const c = +d - wFirst; k.font(700, 12); g.fillStyle = th.sub; g.fillText(`+${n}`, gx + c * cw + cw - 30, gy + dowH + w * chh + 24); });
+  }
+  // ---- details list (full names, auto-fit)
+  k.card(lx, ly0, lw, lh, 24);
+  k.font(700, 20); g.fillStyle = th.ink; g.fillText('รายละเอียดงาน', lx + 24, ly0 + 40);
+  k.font(500, 14); g.fillStyle = th.mute; g.fillText(`${evs.length} งาน · เรียงตามวันที่`, lx + 24, ly0 + 62);
+  const listTop = ly0 + 82, avail = lh - 82 - 20, twoCol = portrait && evs.length > 4, colW = twoCol ? (lw - 48 - 20) / 2 : lw - 48;
+  const item = (e, s, w, draw, x, y) => {   // returns height
+    const thumb = posters && e.projectId && posters.get(e.projectId), tW = thumb ? 62 * s : 0;
+    const dateW = 70 * s, textX = dateW + 14 * s + (thumb ? tW + 12 * s : 0), tw = w - textX;
+    k.font(700, 18 * s); const lines = k.wrap(e.name, tw);
+    const meta = [e.venue, member(e.ownerId)?.name].filter(Boolean).join(' · ');
+    k.font(500, 14 * s); const mlines = meta ? k.wrap(meta, tw) : [];
+    const h = Math.max(66 * s, 8 * s + lines.length * 23 * s + mlines.length * 19 * s + 30 * s);
+    if (draw) {
+      const [c, stl] = EXP_ST[e.status] || ['#8e8e93', ''], sd = parse(e.start);
+      g.fillStyle = hexA(c, .14); k.rr(x, y, dateW, 66 * s, 14 * s); g.fill();
+      g.fillStyle = c; g.textAlign = 'center'; k.font(800, 26 * s); g.fillText(String(sd.getDate()), x + dateW / 2, y + 33 * s);
+      k.font(600, 12 * s); g.fillText(e.start === e.end ? TH_MON[sd.getMonth()] : `ถึง ${parse(e.end).getDate()} ${TH_MON[parse(e.end).getMonth()]}`, x + dateW / 2, y + 53 * s); g.textAlign = 'left';
+      if (thumb) { g.save(); k.rr(x + dateW + 14 * s, y, tW, 66 * s, 12 * s); g.clip(); const r = Math.max(tW / thumb.width, 66 * s / thumb.height), iw = thumb.width * r, ih = thumb.height * r; g.drawImage(thumb, x + dateW + 14 * s + (tW - iw) / 2, y + (66 * s - ih) / 2, iw, ih); g.restore(); }
+      g.fillStyle = th.ink; k.font(700, 18 * s); lines.forEach((t, i) => g.fillText(t, x + textX, y + 20 * s + i * 23 * s));
+      let my = y + 20 * s + lines.length * 23 * s;
+      g.fillStyle = th.sub; k.font(500, 14 * s); mlines.forEach((t, i) => g.fillText(t, x + textX, my + i * 19 * s)); my += mlines.length * 19 * s;
+      k.font(600, 12 * s); const sw = g.measureText(`${dayLabel(e)} · ${stl}`).width + 16 * s;
+      g.fillStyle = hexA(c, .12); k.rr(x + textX, my - 6 * s, sw, 22 * s, 11 * s); g.fill(); g.fillStyle = c; g.fillText(`${dayLabel(e)} · ${stl}`, x + textX + 8 * s, my + 9 * s);
+    }
+    return h;
+  };
+  if (!evs.length) {
+    g.fillStyle = hexA(hue, .14); g.beginPath(); g.arc(lx + lw / 2, listTop + avail / 2 - 30, 46, 0, Math.PI * 2); g.fill();
+    g.fillStyle = hue; k.font(800, 40); g.textAlign = 'center'; g.fillText('✓', lx + lw / 2, listTop + avail / 2 - 16);
+    g.fillStyle = th.sub; k.font(500, 18); g.fillText('เดือนนี้ไม่มี Event', lx + lw / 2, listTop + avail / 2 + 50); g.textAlign = 'left';
+  } else {
+    const colsN = twoCol ? 2 : 1, gapY = 14;
+    const totalAt = s => { const hs = evs.map(e => item(e, s, colW, false)); if (colsN === 1) return hs.reduce((a, b) => a + b + gapY * s, 0); let c1 = 0, c2 = 0; hs.forEach((h, i) => { if (i % 2 === 0) c1 += h + gapY * s; else c2 += h + gapY * s; }); return Math.max(c1, c2); };
+    let S = .5; for (let s = 1; s >= .5; s -= .05) if (totalAt(s) <= avail) { S = s; break; }
+    const ys = [listTop, listTop];
+    evs.forEach((e, i) => {
+      const col = colsN === 2 ? i % 2 : 0, x = lx + 24 + col * (colW + 20), h = item(e, S, colW, false);
+      if (ys[col] + h > listTop + avail) { if (!ys.done) { ys.done = true; g.fillStyle = th.accent; k.font(600, 14); g.fillText('+ งานเพิ่มเติม (ดูไฟล์ Excel)', lx + 24, ly0 + lh - 16); } return; }
+      item(e, S, colW, true, x, ys[col]); ys[col] += h + gapY * S;
+    });
+  }
+  expFooter(k, X);
+  return evs.length;
+}
+
+/* ---------- export dialog ---------- */
 async function openCalExport() {
-  let year = ST.cal.y || new Date().getFullYear();
-  try { await Promise.all([document.fonts.load(`700 72px ${EXP_FONT}`), document.fonts.load(`500 18px ${EXP_FONT}`), document.fonts.load(`600 18px ${EXP_FONT}`)]); } catch (e) { }
-  const years = [...new Set([year - 1, year, year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
+  const now = new Date();
+  const st = { layout: 'year-l', theme: 'aurora', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  try { await Promise.all(['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`))); } catch (e) { }
+  const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
+  const posters = new Map();
+  const loadPosters = async () => {
+    const ids = [...new Set(S().events.map(e => e.projectId).filter(id => id && project(id)?.poster && !posters.has(id)))];
+    await Promise.all(ids.map(async id => { const d = await posterData(project(id)); if (!d) return; const im = new Image(); im.src = d; try { await im.decode(); posters.set(id, im); } catch (e) { } }));
+  };
   modal({
     title: 'Export ปฏิทิน', wide: true, cls: 'exp-modal',
-    body: `<div class="exp-bar"><label class="field"><span>ปี</span><select id="expYear">${years.map(y => opt(y, `${y} (พ.ศ. ${y + 543})`, year)).join('')}</select></label>
-        <p class="muted small">สรุปหน้าเดียวแนวนอน 16:9 สำหรับส่งผู้บริหารและฝ่ายขาย · ไม่รวมงานที่ยกเลิก · Version = วันที่ Export</p></div>
-      <div class="exp-pv"><canvas id="expCv" aria-label="ตัวอย่างสรุปปฏิทิน"></canvas></div>`,
+    body: `<div class="exp-opts">
+        <div class="exp-row"><span class="exp-l">รูปแบบ</span><div class="seg-chips" id="expLayout">${Object.entries(EXP_LAYOUTS).map(([k2, l]) => `<button type="button" data-l="${k2}" class="${k2 === st.layout ? 'on' : ''}">${l.label}</button>`).join('')}</div></div>
+        <div class="exp-row"><span class="exp-l">ธีม</span><div class="seg-chips" id="expTheme">${Object.entries(EXP_THEMES).map(([k2, t]) => `<button type="button" data-t="${k2}" class="${k2 === st.theme ? 'on' : ''}"><i style="background:${t.bg};box-shadow:inset 0 0 0 1px ${t.edge},0 0 0 3px ${hexA(t.accent, .35)}"></i>${t.label}</button>`).join('')}</div></div>
+        <div class="exp-row"><span class="exp-l">ช่วงเวลา</span><select id="expYear">${years.map(y => opt(y, `${y} (พ.ศ. ${y + 543})`, st.year)).join('')}</select><select id="expMonth">${TH_MON_FULL.map((m, i) => opt(i, m, st.month)).join('')}</select></div>
+      </div>
+      <div class="exp-pv" id="expPv"><canvas id="expCv" aria-label="ตัวอย่างไฟล์ Export"></canvas></div>
+      <p class="muted small mt">ไม่รวมงานที่ยกเลิก · ชื่องานแสดงเต็ม ระบบปรับขนาดตัวอักษรให้พอดีเอง · Version = วันที่ Export · รายเดือนแสดงโปสเตอร์ Project ถ้ามี</p>`,
     actions: [
-      { label: `${ico('download', 15)} Excel (ข้อมูลดิบ)`, cls: 'btn-ghost', left: true, onClick: () => { ACT.exportCal(); return false; } },
-      { label: `${ico('print', 15)} พิมพ์ / PDF`, cls: 'btn-ghost', onClick: () => { printCanvas($('#expCv'), year); return false; } },
-      { label: `${ico('image', 15)} ดาวน์โหลดรูป (PNG)`, cls: 'btn-primary', onClick: () => { downloadCanvas($('#expCv'), year); return false; } },
+      { label: `${ico('download', 15)} Excel`, cls: 'btn-ghost', left: true, onClick: () => { ACT.exportCal(); return false; } },
+      { label: `${ico('print', 15)} พิมพ์ / PDF`, cls: 'btn-ghost', onClick: () => { printCanvas($('#expCv'), st); return false; } },
+      { label: `${ico('image', 15)} ดาวน์โหลด PNG`, cls: 'btn-primary', onClick: () => { downloadCanvas($('#expCv'), st); return false; } },
     ],
-    onOpen(md) {
-      const cv = $('#expCv', md.el), paint = () => { const n = drawCalendarSummary(cv, year); if (!n) toast(`ปี ${year} ยังไม่มี Event`, 'error'); };
-      paint();
-      $('#expYear', md.el).onchange = e => { year = +e.target.value; paint(); };
+    async onOpen(md) {
+      const cv = $('#expCv', md.el), monthSel = $('#expMonth', md.el);
+      const paint = () => {
+        const L = EXP_LAYOUTS[st.layout], isMonth = st.layout.startsWith('month');
+        monthSel.hidden = !isMonth; $('#expPv', md.el).classList.toggle('portrait', L.H > L.W);
+        isMonth ? drawMonth(cv, { ...st, portrait: st.layout === 'month-p', posters }) : drawYear(cv, { ...st, portrait: st.layout === 'year-p' });
+      };
+      paint(); loadPosters().then(() => { if (posters.size) paint(); });
+      $('#expLayout', md.el).onclick = e => { const b = e.target.closest('[data-l]'); if (!b) return; st.layout = b.dataset.l; $$('#expLayout button', md.el).forEach(x => x.classList.toggle('on', x === b)); paint(); };
+      $('#expTheme', md.el).onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; st.theme = b.dataset.t; $$('#expTheme button', md.el).forEach(x => x.classList.toggle('on', x === b)); paint(); };
+      $('#expYear', md.el).onchange = e => { st.year = +e.target.value; paint(); };
+      monthSel.onchange = e => { st.month = +e.target.value; paint(); };
     },
   });
 }
-function downloadCanvas(cv, year) {
+const expFileName = st => `Event-Calendar-${st.year}${st.layout.startsWith('month') ? '-' + pad2(st.month + 1) : ''}_${st.layout.endsWith('p') ? 'A4' : '16x9'}_v${expVersion().replace(/\//g, '-')}`;
+function downloadCanvas(cv, st) {
   cv.toBlob(b => {
-    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `Event-Calendar-${year}_v${expVersion().replace(/\//g, '-')}.png`;
+    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = expFileName(st) + '.png';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('ดาวน์โหลดรูปแล้ว');
   }, 'image/png');
 }
-function printCanvas(cv, year) {
+function printCanvas(cv, st) {
   const w = window.open('', '_blank'); if (!w) return toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต Pop-up แล้วลองอีกครั้ง', 'error');
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Event Calendar ${year}</title><style>@page{size:A4 landscape;margin:0}html,body{margin:0;height:100%;background:#fff}img{width:100%;height:100%;object-fit:contain;display:block}</style></head><body><img src="${cv.toDataURL('image/png')}" alt="Event Calendar ${year}" onload="setTimeout(function(){window.focus();window.print()},150)"></body></html>`);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${expFileName(st)}</title><style>@page{size:${EXP_LAYOUTS[st.layout].page};margin:0}html,body{margin:0;height:100%;background:#fff}img{width:100%;height:100%;object-fit:contain;display:block}</style></head><body><img src="${cv.toDataURL('image/png')}" alt="Event Calendar" onload="setTimeout(function(){window.focus();window.print()},150)"></body></html>`);
   w.document.close();
 }
 ACT.calExport = () => openCalExport();
