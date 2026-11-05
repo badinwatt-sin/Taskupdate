@@ -14,10 +14,10 @@ const BRAND_HEAD = '"Brand Serif", "Source Serif 4", "IBM Plex Sans Thai", Georg
 const BRAND_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
 const BRAND_W = { 400: 600, 500: 600, 600: 600, 700: 600, 800: 900, 900: 900 };   // Source Sans Semibold / Black · Publico Roman / Black
 const EXP_THEMES = {
-  royal: { label: 'Royal Blue', bg: '#F7FAFF', ink: '#00228E', sub: '#3d4c80', mute: '#8b98c0', card: '#ffffff', edge: 'rgba(0,38,225,.10)', line: '#DFE6EF', chip: '#EDF3FF', accent: '#0026E1', shadow: 'rgba(0,34,142,.10)',
-    blobs: [['#3979FF', .22], ['#B5D2FF', .55], ['#0026E1', .10]], wm: .05, metal: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1', '#3979FF', '#0929A6'], st: { confirmed: '#0026E1' } },
-  royalNavy: { label: 'Royal Navy', bg: '#00228E', ink: '#F7FAFF', sub: '#B5D2FF', mute: '#7d94d6', card: 'rgba(247,250,255,.07)', edge: 'rgba(181,210,255,.20)', line: 'rgba(181,210,255,.18)', chip: 'rgba(181,210,255,.14)', accent: '#B5D2FF', shadow: 'rgba(0,0,40,.35)',
-    blobs: [['#0026E1', .9], ['#3979FF', .45], ['#0929A6', .7]], wm: .07, metal: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#B5D2FF', '#DFE6EF', '#8FB6FF'], st: { confirmed: '#B5D2FF' } },   // light tints only — readable on Deep Royal Blue
+  clean: { label: 'Clean', bg: '#FFFFFF', ink: '#0B1220', sub: '#5A6375', mute: '#9AA2B1', card: '#FFFFFF', edge: '#E3E8EF', line: '#ECEFF4', chip: '#F4F6F9', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
+    blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1'], st: { confirmed: '#0026E1', planning: '#8C97AD', done: '#C9CFD9' } },
+  cleanDark: { label: 'Clean Dark', bg: '#0E121A', ink: '#F4F6FA', sub: '#A8B0C0', mute: '#69728A', card: '#141925', edge: '#252C3B', line: '#20273A', chip: '#1A2030', accent: '#3979FF', shadow: 'rgba(0,0,0,0)',
+    blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#3979FF'], st: { confirmed: '#3979FF', planning: '#8C97AD', done: '#4B5468' } },
   aurora: { label: 'Aurora', bg: '#f3f4fa', ink: '#15151a', sub: '#5b5b66', mute: '#a3a3ae', card: 'rgba(255,255,255,.93)', edge: 'rgba(20,20,60,.06)', line: '#e8e8f0', chip: '#f0f0f6', accent: '#0a84ff', shadow: 'rgba(30,30,80,.09)', blobs: [['#0a84ff', .22], ['#bf5af2', .17], ['#30d158', .13]], wm: .045 },
   midnight: { label: 'Midnight', bg: '#090d1c', ink: '#f5f5f7', sub: '#b6bacb', mute: '#666d85', card: 'rgba(255,255,255,.065)', edge: 'rgba(255,255,255,.09)', line: 'rgba(255,255,255,.1)', chip: 'rgba(255,255,255,.08)', accent: '#64d2ff', shadow: 'rgba(0,0,0,.35)', blobs: [['#0a84ff', .42], ['#bf5af2', .34], ['#ff375f', .2]], wm: .06 },
   paper: { label: 'Minimal', bg: '#fbf9f5', ink: '#141414', sub: '#57534c', mute: '#aaa59b', card: '#ffffff', edge: 'rgba(60,40,20,.08)', line: '#ece7de', chip: '#f4f0e9', accent: '#d4572a', shadow: 'rgba(60,40,20,.06)', blobs: [['#f4a261', .14], ['#e76f51', .08]], wm: .05 },
@@ -68,6 +68,7 @@ function expKit(cv, W, H, th) {
       push(); return out.length ? out : [''];
     },
     card: (x, y, w, h, r = 22) => {
+      if (th.clean) { g.fillStyle = th.card; k.rr(x, y, w, h, 14); g.fill(); g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, 14); g.stroke(); return; }
       g.save(); g.shadowColor = th.shadow; g.shadowBlur = 26; g.shadowOffsetY = 8; g.fillStyle = th.card; k.rr(x, y, w, h, r); g.fill(); g.restore();
       g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, r); g.stroke();
     },
@@ -78,6 +79,14 @@ function expKit(cv, W, H, th) {
 function expBackdrop(k, mark, hue) {
   const { g, W, H, th } = k;
   g.fillStyle = th.bg; g.fillRect(0, 0, W, H);
+  if (th.clean) {   // editorial minimal: hairline arcs, one accent dot, a small dot grid — lots of white space
+    g.save(); g.strokeStyle = th.line; g.lineWidth = 1.2;
+    [150, 230, 310, 390].forEach(r => { g.beginPath(); g.arc(W, H, r, Math.PI, Math.PI * 1.5); g.stroke(); });
+    g.fillStyle = th.accent; g.beginPath(); g.arc(W - 230 * Math.cos(Math.PI / 5), H - 230 * Math.sin(Math.PI / 5), 7, 0, Math.PI * 2); g.fill();
+    g.fillStyle = th.edge; for (let r = 0; r < 3; r++) for (let c = 0; c < 8; c++) { g.beginPath(); g.arc(W - 64 - c * 14, 18 + r * 12, 1.4, 0, Math.PI * 2); g.fill(); }   // kept above the version line
+    g.restore();
+    return;
+  }
   const spots = [[W * .05, -H * .08, W * .45], [W * .98, H * .02, W * .38], [W * .78, H * 1.08, W * .5]];
   [...th.blobs, ...(hue ? [[hue, th.blobs[0][1] * .9]] : [])].forEach(([c, a], i) => {
     const [x, y, r] = i < 3 ? spots[i] : [W * .35, H * .55, W * .35];
@@ -118,6 +127,7 @@ function hexA(hex, a) {
 function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   const { g, W, th } = k, X = compact ? 60 : 72, R = W - X;
   g.textAlign = 'left';
+  if (th.clean) return cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R });
   if (th.metal) { const mg = g.createLinearGradient(X, 0, X + 34, 0); mg.addColorStop(0, th.accent); mg.addColorStop(1, '#B5D2FF'); g.fillStyle = mg; } else g.fillStyle = hue || th.accent;
   k.rr(X, compact ? 66 : 70, 34, 6, 3); g.fill();
   k.font(700, 19); g.fillStyle = hue || th.accent; g.fillText(kicker, X + 46, compact ? 75 : 79);
@@ -143,10 +153,39 @@ function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   g.textAlign = 'left';
   return compact ? 230 : 240;
 }
+function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
+  const { g, th } = k, y0 = compact ? 74 : 78;
+  g.fillStyle = th.accent; g.fillRect(X, y0 - 7, 28, 3);
+  k.font(600, 15); g.fillStyle = th.sub; if ('letterSpacing' in g) g.letterSpacing = '3px'; g.fillText(kicker, X + 40, y0); if ('letterSpacing' in g) g.letterSpacing = '0px';
+  const m = title.match(/^(.*?)(\d{4})$/), ty = compact ? 150 : 162;
+  k.font(800, compact ? 62 : 68);
+  if (m) { g.fillStyle = th.ink; g.fillText(m[1], X - 2, ty); const w1 = g.measureText(m[1]).width; g.fillStyle = th.accent; g.fillText(m[2], X - 2 + w1, ty); }
+  else { g.fillStyle = th.ink; g.fillText(title, X - 2, ty); }
+  const tw = g.measureText(title).width;
+  if (small) { k.font(500, 22); g.fillStyle = th.mute; g.fillText(small, X + tw + 18, ty - 4); }
+  k.font(500, 20); g.fillStyle = th.sub; g.fillText(sub, X, ty + 44);
+  // version, top right
+  k.font(600, 15); g.fillStyle = th.mute; g.textAlign = 'right'; g.fillText(`VERSION ${expVersion()}`, R, y0);
+  // flat counters separated by hairlines
+  let sx = R; const cy = compact ? 150 : 162;
+  ['done', 'planning', 'confirmed'].forEach((st, i) => {
+    const n = evs.filter(e => e.status === st).length, l = EXP_ST[st][1];
+    k.font(800, 44); const nw = g.measureText(String(n)).width; k.font(500, 15); const lw = g.measureText(l).width + 16, bw = Math.max(nw, lw);
+    g.textAlign = 'right'; k.font(800, 44); g.fillStyle = st === 'confirmed' ? th.accent : th.ink; g.fillText(String(n), sx, cy);
+    k.font(500, 15); g.fillStyle = th.sub; g.fillText(l, sx, cy + 26);
+    g.fillStyle = stc(th, st); g.beginPath(); g.arc(sx - g.measureText(l).width - 10, cy + 21, 4, 0, Math.PI * 2); g.fill();
+    if (i < 2) { g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(sx - bw - 22, cy - 40); g.lineTo(sx - bw - 22, cy + 30); g.stroke(); }
+    sx -= bw + 44;
+  });
+  g.textAlign = 'left';
+  // hairline under the header
+  g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X, (compact ? 222 : 232)); g.lineTo(R, (compact ? 222 : 232)); g.stroke();
+  return compact ? 246 : 256;
+}
 function expFooter(k, X) {
   const { g, W, H, th } = k, fy = H - 34;
   let lx = X; k.font(500, 16);
-  Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = stc(th, st); k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
+  Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = stc(th, st); if (th.clean) { g.beginPath(); g.arc(lx + 6, fy - 5, 5, 0, Math.PI * 2); } else k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
   g.textAlign = 'right'; g.fillStyle = th.mute; g.fillText(`TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, W - X, fy); g.textAlign = 'left';
 }
 
@@ -177,28 +216,33 @@ function drawYear(cv, { year, theme, portrait }) {
     const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = hueOf(th, m), isNow = year === now.getFullYear() && m === now.getMonth();
     k.card(cx, cy, cw, ch);
     // month badge + names
-    g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill();
-    g.fillStyle = list.length ? hue : th.mute; k.font(800, 20); g.textAlign = 'center'; g.fillText(pad2(m + 1), cx + padX + 23, cy + 50); g.textAlign = 'left';
+    if (!th.clean) { g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill(); }
+    g.fillStyle = list.length ? hue : th.mute; k.font(800, th.clean ? 24 : 20); g.textAlign = 'center'; g.fillText(pad2(m + 1), cx + padX + 23, cy + 50); g.textAlign = 'left';
     g.fillStyle = list.length ? th.ink : th.mute; k.font(700, 25); g.fillText(TH_MON_FULL[m], cx + padX + 60, cy + 44);
     g.fillStyle = th.mute; k.font(600, 13); g.fillText(EXP_MON_EN[m].toUpperCase(), cx + padX + 61, cy + 63);
     if (list.length) {
       k.font(700, 15); const t = `${list.length} งาน`, bw = g.measureText(t).width + 20;
-      g.fillStyle = isNow ? hue : th.chip; k.rr(cx + cw - padX - bw, cy + 28, bw, 28, 14); g.fill();
+      g.fillStyle = isNow ? hue : th.chip; if (!th.clean || isNow) { k.rr(cx + cw - padX - bw, cy + 28, bw, 28, 14); g.fill(); }
       g.fillStyle = isNow ? '#fff' : th.sub; g.textAlign = 'center'; g.fillText(t, cx + cw - padX - bw / 2, cy + 47); g.textAlign = 'left';
     }
-    if (isNow) { g.strokeStyle = hue; g.lineWidth = 2.5; k.rr(cx + 1, cy + 1, cw - 2, ch - 2, 21); g.stroke(); }
+    if (isNow && !th.clean) { g.strokeStyle = hue; g.lineWidth = 2.5; k.rr(cx + 1, cy + 1, cw - 2, ch - 2, 21); g.stroke(); }
     g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + padX, cy + headH); g.lineTo(cx + cw - padX, cy + headH); g.stroke();
     if (!list.length) { g.fillStyle = th.mute; k.font(500, 16); g.fillText('— ไม่มีงาน —', cx + padX, cy + headH + 34); return; }
     const [S, V] = fitOf(list);
     let ly = cy + headH + 12;
     for (const e of list) {
       const c = stc(th, e.status);
-      k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S);
+      k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S) + (th.clean ? 4 * S : 0);
       k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && e.venue;
       const h = Math.max(26 * S, lines.length * 21 * S + (hasV ? 17 * S : 0));
       if (ly + h > cy + ch - 10) { g.fillStyle = th.accent; k.font(600, 14); g.fillText('+ งานเพิ่มเติม (ดูไฟล์ Excel)', cx + padX, cy + ch - 14); break; }
-      g.fillStyle = hexA(c, .16); k.rr(cx + padX, ly, dw, 26 * S, 8 * S); g.fill();
-      g.fillStyle = c; k.font(700, 14 * S); g.textAlign = 'center'; g.fillText(dl, cx + padX + dw / 2, ly + 18 * S); g.textAlign = 'left';
+      if (th.clean) {   // dot + date in plain text
+        g.fillStyle = c; g.beginPath(); g.arc(cx + padX + 4 * S, ly + 13 * S, 4 * S, 0, Math.PI * 2); g.fill();
+        g.fillStyle = th.sub; k.font(700, 14 * S); g.fillText(dl, cx + padX + 14 * S, ly + 18 * S);
+      } else {
+        g.fillStyle = hexA(c, .16); k.rr(cx + padX, ly, dw, 26 * S, 8 * S); g.fill();
+        g.fillStyle = c; k.font(700, 14 * S); g.textAlign = 'center'; g.fillText(dl, cx + padX + dw / 2, ly + 18 * S); g.textAlign = 'left';
+      }
       g.fillStyle = th.ink; k.font(600, 17 * S); lines.forEach((t, i) => g.fillText(t, cx + padX + dw + 10, ly + 18 * S + i * 21 * S));
       if (hasV) { g.fillStyle = th.sub; k.font(500, 13 * S); g.fillText(k.fit(e.venue, cw - padX * 2 - dw - 10), cx + padX + dw + 10, ly + 16 * S + lines.length * 21 * S); }
       ly += h + 10 * S;
@@ -222,7 +266,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
   k.card(gx, gy, gw, gh, 24);
   const off = new Date(year, month, 1).getDay(), weeks = Math.ceil((off + days) / 7), dowH = 46, cw = gw / 7, chh = (gh - dowH - 8) / weeks;
   k.font(700, 15);
-  TH_DOW.forEach((d, i) => { g.fillStyle = i === 0 || i === 6 ? hexA(hue, .9) : th.sub; g.textAlign = 'center'; g.fillText(d, gx + cw * i + cw / 2, gy + 30); });
+  TH_DOW.forEach((d, i) => { g.fillStyle = i === 0 || i === 6 ? (th.clean ? th.mute : hexA(hue, .9)) : th.sub; g.textAlign = 'center'; g.fillText(d, gx + cw * i + cw / 2, gy + 30); });
   g.textAlign = 'left';
   const t0 = today();
   for (let w = 0; w < weeks; w++) for (let c = 0; c < 7; c++) {
@@ -230,7 +274,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
     g.strokeStyle = th.line; g.lineWidth = 1; g.strokeRect(Math.round(x) + .5, Math.round(y) + .5, cw, chh);
     if (dn < 1 || dn > days) { g.fillStyle = hexA(th.ink, .025); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); continue; }
     const iso_ = `${year}-${pad2(month + 1)}-${pad2(dn)}`, hol = holidayOf(iso_), wk = c === 0 || c === 6;
-    if (hol || wk) { g.fillStyle = hexA(hol ? '#ff3b30' : hue, .05); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); }
+    if (hol || wk) { g.fillStyle = th.clean && !hol ? hexA(th.ink, .025) : hexA(hol ? '#ff3b30' : hue, .05); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); }
     if (iso_ === t0) { g.fillStyle = hue; g.beginPath(); g.arc(x + 22, y + 21, 15, 0, Math.PI * 2); g.fill(); }
     k.font(700, 16); g.fillStyle = iso_ === t0 ? '#fff' : hol ? '#ff3b30' : wk ? hexA(th.ink, .55) : th.ink; g.textAlign = 'center'; g.fillText(String(dn), x + 22, y + 27); g.textAlign = 'left';
     if (hol) { k.font(500, 11); g.fillStyle = '#ff3b30'; g.fillText(k.fit(hol.name, cw - 46), x + 40, y + 25); }
@@ -247,8 +291,9 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
       if (lane >= lanesMax) { for (let d = a; d <= b; d++) hidden[d] = (hidden[d] || 0) + 1; return; }
       const c1 = a - wFirst, c2 = b - wFirst, col = stc(th, e.status);
       const x = gx + c1 * cw + 4, y = gy + dowH + w * chh + 38 + lane * (barH + 4), bw = (c2 - c1 + 1) * cw - 8;
-      g.fillStyle = hexA(col, .9); k.rr(x, y, bw, barH, 7); g.fill();
-      k.font(600, 12.5); g.fillStyle = '#fff'; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
+      const solid = !th.clean || e.status === 'confirmed';
+      g.fillStyle = solid ? hexA(col, .92) : hexA(col, .22); k.rr(x, y, bw, barH, th.clean ? 5 : 7); g.fill();
+      k.font(600, 12.5); g.fillStyle = solid ? '#fff' : th.ink; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
     });
     Object.entries(hidden).forEach(([d, n]) => { const c = +d - wFirst; k.font(700, 12); g.fillStyle = th.sub; g.fillText(`+${n}`, gx + c * cw + cw - 30, gy + dowH + w * chh + 24); });
   }
@@ -266,15 +311,18 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
     const h = Math.max(66 * s, 8 * s + lines.length * 23 * s + mlines.length * 19 * s + 30 * s);
     if (draw) {
       const c = stc(th, e.status), stl = (EXP_ST[e.status] || ['', ''])[1], sd = parse(e.start);
-      g.fillStyle = hexA(c, .14); k.rr(x, y, dateW, 66 * s, 14 * s); g.fill();
-      g.fillStyle = c; g.textAlign = 'center'; k.font(800, 26 * s); g.fillText(String(sd.getDate()), x + dateW / 2, y + 33 * s);
+      if (th.clean) { g.fillStyle = c; g.fillRect(x, y + 4 * s, 3 * s, 58 * s); }
+      else { g.fillStyle = hexA(c, .14); k.rr(x, y, dateW, 66 * s, 14 * s); g.fill(); }
+      g.fillStyle = th.clean ? (e.status === 'confirmed' ? th.accent : th.ink) : c; g.textAlign = 'center'; k.font(800, (th.clean ? 30 : 26) * s); g.fillText(String(sd.getDate()), x + dateW / 2, y + 33 * s);
+      if (th.clean) g.fillStyle = th.mute;
       k.font(600, 12 * s); g.fillText(e.start === e.end ? TH_MON[sd.getMonth()] : `ถึง ${parse(e.end).getDate()} ${TH_MON[parse(e.end).getMonth()]}`, x + dateW / 2, y + 53 * s); g.textAlign = 'left';
       if (thumb) { g.save(); k.rr(x + dateW + 14 * s, y, tW, 66 * s, 12 * s); g.clip(); const r = Math.max(tW / thumb.width, 66 * s / thumb.height), iw = thumb.width * r, ih = thumb.height * r; g.drawImage(thumb, x + dateW + 14 * s + (tW - iw) / 2, y + (66 * s - ih) / 2, iw, ih); g.restore(); }
       g.fillStyle = th.ink; k.font(700, 18 * s); lines.forEach((t, i) => g.fillText(t, x + textX, y + 20 * s + i * 23 * s));
       let my = y + 20 * s + lines.length * 23 * s;
       g.fillStyle = th.sub; k.font(500, 14 * s); mlines.forEach((t, i) => g.fillText(t, x + textX, my + i * 19 * s)); my += mlines.length * 19 * s;
       k.font(600, 12 * s); const sw = g.measureText(`${dayLabel(e)} · ${stl}`).width + 16 * s;
-      g.fillStyle = hexA(c, .12); k.rr(x + textX, my - 6 * s, sw, 22 * s, 11 * s); g.fill(); g.fillStyle = c; g.fillText(`${dayLabel(e)} · ${stl}`, x + textX + 8 * s, my + 9 * s);
+      if (th.clean) { g.fillStyle = c; g.beginPath(); g.arc(x + textX + 4 * s, my + 5 * s, 4 * s, 0, Math.PI * 2); g.fill(); g.fillStyle = th.sub; g.fillText(`${dayLabel(e)} · ${stl}`, x + textX + 14 * s, my + 9 * s); }
+      else { g.fillStyle = hexA(c, .12); k.rr(x + textX, my - 6 * s, sw, 22 * s, 11 * s); g.fill(); g.fillStyle = c; g.fillText(`${dayLabel(e)} · ${stl}`, x + textX + 8 * s, my + 9 * s); }
     }
     return h;
   };
@@ -300,7 +348,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 /* ---------- export dialog ---------- */
 async function openCalExport() {
   const now = new Date();
-  const st = { layout: 'year-l', theme: 'royal', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  const st = { layout: 'year-l', theme: 'clean', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
   const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
   const posters = new Map();
