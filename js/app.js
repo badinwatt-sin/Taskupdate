@@ -22,7 +22,7 @@ function render() {
   document.body.dataset.route = r.name;
   view.className = 'view v-' + r.name + (key !== lastRoute ? ' enter' : '');
   V[r.name](view, r.id);
-  renderTabbar(r); renderAdd(r);
+  renderTabbar(r); renderAdd(r); renderBell();
   const tu = $('#tbUser'); if (tu) tu.innerHTML = avatar(m, 32);
   document.title = pageName(r.name) + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
@@ -75,7 +75,7 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
   $('#menuBtn').onclick = () => document.body.classList.toggle('nav-open');
   $('#scrim').onclick = () => document.body.classList.remove('nav-open');
   $('#userBtn').onclick = openAccount;
-  $('#searchBtn').onclick = openSearch;
+  $('#searchBtn').onclick = openSearch; $('#bellBtn').onclick = openBell;
   $('#addBtn').onclick = runPageAdd; $('#fab').onclick = runPageAdd; $('#tbUser').onclick = openMore;
   if (innerWidth < 720) ST.cal.mode = 'agenda';
   await Store.detect();
@@ -91,7 +91,8 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
     id = await Auth.restore();
     if (!id) id = await showLogin();
   }
-  AEX.meId = id; AEX.onRemote = () => { if (!modalStack.length) render(); };
+  AEX.meId = id; takeSnap(); if (Store.mode === 'server') swReady();
+  AEX.onRemote = () => { if (!modalStack.length) render(); };
   if (!member(AEX.meId)) AEX.meId = S().members[0].id;
   render();
 })();

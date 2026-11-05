@@ -133,6 +133,7 @@ const Store = {
       try { const raw = localStorage.getItem(LS_KEY); if (raw) { this.state = JSON.parse(raw); loaded = true; } } catch (e) { }
     }
     if (!loaded) { this.state = seed(); if (this.mode === 'server') await this.push(true); else this.save(); }
+    this.snap = null;   // the first save after load only records the baseline
     this.migrate();
     if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => { if (!document.hidden) this.poll(); }, 60000); }
     this.setSync();
@@ -145,17 +146,19 @@ const Store = {
   /* server mode, first ever start: create the shared dataset (allowed once, before any login exists) */
   async bootstrap() { this.state = seed(); this.migrate(); await this.push(true); this.hasState = true; },
   migrate() {
-    const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= [];
+    const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= []; st.notices ||= []; st.noticeSeen ||= {};
     if (this.mode === 'local') st.auth ||= { defaultPassword: 'welcome1', pw: {} };   // demo-only: server mode keeps passwords out of the shared data
     else delete st.auth;
   },
   save() {
+    if (window.noticeDiff) noticeDiff();   // create notifications from what changed since the last save
     if (this.mode === 'local') { try { localStorage.setItem(LS_KEY, JSON.stringify(this.state)); } catch (e) { toast('พื้นที่จัดเก็บในเบราว์เซอร์เต็ม — ลองลบไฟล์แนบขนาดใหญ่', 'error'); } }
     if (this.mode === 'server') { this.pending = true; this.setSync(); clearTimeout(this.timer); this.timer = setTimeout(() => this.push(), 500); }
   },
   async push(first) {
     try {
-      const r = await fetch('api/state', { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ state: this.state }) });
+      const notify = (this.notify || []).splice(0);
+      const r = await fetch('api/state', { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ state: this.state, notify }) });
       if (r.status === 401) return Auth.expired();
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'save failed'); this.rev = j.rev; if (j.initialPassword) this.initialPassword = j.initialPassword; this.pending = false; this.setSync();
     } catch (e) { this.setSync('err'); }
@@ -166,7 +169,7 @@ const Store = {
       const r = await fetch('api/state?rev=' + this.rev, { cache: 'no-store', headers: this.headers() });
       if (r.status === 304) return; if (r.status === 401) return Auth.expired();
       const j = await r.json();
-      if (j.state && j.rev !== this.rev) { this.rev = j.rev; this.state = j.state; this.migrate(); AEX.onRemote && AEX.onRemote(); }
+      if (j.state && j.rev !== this.rev) { this.rev = j.rev; this.state = j.state; this.migrate(); if (window.takeSnap) takeSnap(); AEX.onRemote && AEX.onRemote(); }
     } catch (e) { this.setSync('err'); }
   },
   setSync(err) {
