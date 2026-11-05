@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "description": "TEAM Hub — Agency Experience team planning app",
-  "scripts": { "start": "node server.js" },
-  "engines": { "node": "22.x" }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.5.0"
+  }
 }

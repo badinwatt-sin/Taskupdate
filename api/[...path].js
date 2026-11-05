@@ -27,4 +27,4 @@ module.exports = async (req, res) => {
   }
   return hub(req, res);
 };
-module.exports.config = { api: { bodyParser: { sizeLimit: '4mb' } } };
+module.exports.config = { maxDuration: 60, api: { bodyParser: { sizeLimit: '4mb' } } };   // AI import can take up to ~40 s

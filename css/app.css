@@ -420,3 +420,9 @@ input,select,textarea,button{font-family:inherit}
 .style-pv{position:sticky;top:0}
 .pv-ava{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0 16px}.pv-ava b{font-size:14px}
 @media (max-width:720px){ .style-modal .style-grid{grid-template-columns:minmax(0,1fr)} .style-pv{position:static;order:-1} .style-pv .preview-board{display:flex;align-items:center;gap:14px} .style-pv .pv-ava{margin:0} .style-pv .postit{flex:1;min-width:0} }
+
+/* ---------- import: modes & AI ---------- */
+.imp-acts{display:flex;gap:8px;flex-wrap:wrap}
+.imp-mode{margin:10px 0}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}

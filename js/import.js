@@ -110,6 +110,67 @@ function detectLayout(rows) {
   return { hi, header, data, cols, map, how };
 }
 
+/* ---------- month-grid layout: ม.ค. … ธ.ค. as column headers, events/days inside the cells ---------- */
+function cellMonth(v) {
+  if (v instanceof Date && !isNaN(v)) return { mi: v.getMonth(), y: v.getFullYear() };
+  const t = normTxt(v); if (!t || t.length > 24) return null;
+  const word = t.replace(/[\d'’]+/g, ' ').trim().split(/[\s\-/]+/)[0] || '';
+  const mi = monthIdx(word); if (mi < 0) return null;
+  const yd = t.match(/(\d{4}|\d{2})\s*$/); return { mi, y: yd ? normYear(yd[1]) : null };
+}
+function detectMonthGrid(rows) {
+  for (let r = 0; r < Math.min(rows.length, 20); r++) {
+    const mcols = rows[r].map((v, c) => { const m = cellMonth(v); return m ? { c, ...m } : null; }).filter(Boolean);
+    if (mcols.length < 4 || new Set(mcols.map(x => x.mi)).size < 4) continue;
+    const data = rows.slice(r + 1).filter(x => x.some(v => String(v ?? '').trim() !== ''));
+    const mset = new Set(mcols.map(x => x.c)), header = rows[r].map(v => String(v ?? '').trim());
+    const others = header.map((h, c) => ({ c, h, hn: hnorm(h) })).filter(x => !mset.has(x.c));
+    const pick = syn => others.find(x => syn.some(s => x.hn === hnorm(s) || (hnorm(s).length > 2 && x.hn.includes(hnorm(s)))))?.c;
+    let nameCol = pick(IMPORT_FIELDS[0].syn);
+    if (nameCol == null) {   // longest text column left of / outside the month block
+      const score = c => data.reduce((a, row) => a + (typeof row[c] === 'string' ? row[c].trim().length : 0), 0);
+      nameCol = others.map(x => x.c).sort((a, b) => score(b) - score(a))[0];
+    }
+    // year: from the month headers, else any 4-digit year in the rows above, else this year
+    let year = mcols.find(x => x.y)?.y || null;
+    if (!year) for (let i = 0; i <= r && !year; i++) for (const v of rows[i]) { const m = normTxt(v).match(/(25\d\d|20\d\d)/); if (m) { year = normYear(m[1]); break; } }
+    return { hi: r, data, header, mcols, nameCol, venueCol: pick(IMPORT_FIELDS.find(f => f.k === 'venue').syn), ownerCol: pick(IMPORT_FIELDS.find(f => f.k === 'owner').syn), year: year || new Date().getFullYear(), yearGuessed: !year };
+  }
+  return null;
+}
+function buildGridRows(g) {
+  const out = []; let i = 0;
+  g.data.forEach(row => {
+    const rowName = g.nameCol != null ? String(row[g.nameCol] ?? '').trim() : '';
+    let lastMi = -1, y = g.year;
+    g.mcols.forEach(mc => {
+      if (mc.y) y = mc.y; else if (lastMi >= 0 && mc.mi < lastMi) y++;   // Dec → Jan rolls into next year
+      lastMi = mc.mi;
+      const v = row[mc.c]; if (v == null || String(v).trim() === '') return;
+      const notes = []; let d1 = null, d2 = null, label = '';
+      if (v instanceof Date && !isNaN(v)) { d1 = d2 = iso(v); }
+      else if (typeof v === 'number' && v > 20000 && window.XLSX) { const p = XLSX.SSF.parse_date_code(v); d1 = d2 = mkDate(p.y, p.m - 1, p.d); }
+      else {
+        const t = normTxt(v), m = t.match(/^(\d{1,2})(?:\s*-\s*(\d{1,2}))?(?:\s*[,&]\s*\d{1,2}(?:\s*-\s*\d{1,2})?)*\s*(.*)$/);
+        if (m && +m[1] >= 1 && +m[1] <= 31) { d1 = mkDate(y, mc.mi, +m[1]); d2 = mkDate(y, mc.mi, +(m[2] || m[1])); label = m[3].replace(/^[:.\-–)\s]+/, '').trim(); }
+        else { label = /[A-Za-zก-๙]{2,}/.test(t) ? t : ''; d1 = d2 = mkDate(y, mc.mi, 1); notes.push('ไม่ระบุวันที่ในเซลล์ — ใช้วันที่ 1 ของเดือน'); }
+      }
+      if (g.yearGuessed) notes.push(`ไม่พบปีในไฟล์ ใช้ปี ${y + 543}`);
+      const name = label && rowName ? `${rowName} · ${label}` : (label || rowName);
+      out.push({ i: i++, include: true, name, start: d1 || '', end: d2 || d1 || '', venue: g.venueCol != null ? String(row[g.venueCol] ?? '').trim() : '', audience: '',
+        ownerText: g.ownerCol != null ? String(row[g.ownerCol] ?? '').trim() : '', owner: g.ownerCol != null ? matchOwner(row[g.ownerCol]) : '', status: 'planning',
+        raw: `${g.header[mc.c] || ''}: ${v instanceof Date ? iso(v) : String(v).trim()}`, pre: notes });
+    });
+  });
+  return out.map(validateRow);
+}
+/* rows that came back from the AI reader */
+function aiToRows(list) {
+  return list.map((e, i) => validateRow({ i, include: true, name: String(e.name || '').trim(), start: /^\d{4}-\d\d-\d\d$/.test(e.start) ? e.start : '', end: /^\d{4}-\d\d-\d\d$/.test(e.end) ? e.end : '',
+    venue: String(e.venue || '').trim(), audience: String(e.audience || '').trim(), ownerText: String(e.owner || '').trim(), owner: matchOwner(e.owner),
+    status: ['planning', 'confirmed', 'done', 'cancelled'].includes(e.status) ? e.status : 'planning', raw: 'AI', pre: e.note ? ['AI: ' + String(e.note)] : [] }));
+}
+
 /* ---------- row building & validation ---------- */
 const STATUS_SYN = [[/ยกเลิก|cancel/i, 'cancelled'], [/เสร็จ|จัดแล้ว|done|complete|finished/i, 'done'], [/ยืนยัน|confirm|approved|อนุมัติ/i, 'confirmed'], [/วางแผน|plan|draft|รอ|tbc|pending/i, 'planning']];
 function matchOwner(t) { t = String(t || '').toLowerCase(); if (!t) return ''; return S().members.find(m => t.includes(m.name.toLowerCase()) || (m.alias && t.includes(m.alias)))?.id || ''; }
@@ -155,11 +216,11 @@ function validateRow(r) {
 /* ---------- UI ---------- */
 function openImportEvents() {
   if (!canManageEvents()) return toast('คุณไม่มีสิทธิ์เพิ่ม Event', 'error');
-  let wb = null, layout = null, map = {}, rows = [];
+  let wb = null, layout = null, map = {}, rows = [], mode = 'list', aiRows = null, busy = false;
   modal({
     title: 'นำเข้า Event จาก Excel', wide: true, cls: 'import-modal',
     body: `<div id="impStep1"><label class="dropzone" id="drop"><input type="file" id="impFile" accept=".xlsx,.xls,.xlsm,.csv" hidden>${ico('upload', 28)}<b>เลือกไฟล์ Excel หรือ CSV</b><span>ลากไฟล์มาวางได้ · รองรับ .xlsx .xls .csv · คอลัมน์จะเรียงแบบไหนก็ได้</span></label>
-      <div class="note mt">${ico('sparkles', 14)} ระบบตรวจชื่อคอลัมน์และเนื้อหาในเซลล์เพื่อจับว่าคอลัมน์ไหนคือชื่องาน วันที่ สถานที่ ฯลฯ รองรับวันที่แบบ Excel, 15/12/2026, 15 ธ.ค. 69, 15-17 ธันวาคม 2569 และปี พ.ศ./ค.ศ. · ทำงานในเครื่องคุณ ไม่ส่งข้อมูลออกนอกระบบ · <b>กรุณาตรวจผลในตารางก่อนนำเข้าเสมอ</b></div></div>
+      <div class="note mt">${ico('sparkles', 14)} ระบบตรวจชื่อคอลัมน์และเนื้อหาในเซลล์เพื่อจับว่าคอลัมน์ไหนคือชื่องาน วันที่ สถานที่ ฯลฯ รองรับวันที่แบบ Excel, 15/12/2026, 15 ธ.ค. 69, 15-17 ธันวาคม 2569 และปี พ.ศ./ค.ศ. · ทำงานในเครื่องคุณ ไม่ส่งข้อมูลออกนอกระบบ · <b>กรุณาตรวจผลในตารางก่อนนำเข้าเสมอ</b><br>ถ้าไฟล์มีรูปแบบพิเศษ (เช่น ปฏิทินที่มีเดือนเป็นคอลัมน์) ระบบจะอ่านแบบปฏิทินให้ หรือกด “ให้ AI ช่วยอ่าน” เพื่อให้ AI สรุปให้ (ส่งข้อมูลชีตไปประมวลผลที่ Anthropic)</div></div>
       <div id="impStep2" hidden></div>`,
     actions: [{ label: 'ปิด' }, { label: 'นำเข้า', cls: 'btn-primary', onClick: () => doImport() }],
     onOpen(md) {
@@ -181,10 +242,11 @@ function openImportEvents() {
         const ws = wb.Sheets[wb.SheetNames[idx]];
         const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
         if (grid.length < 2) return toast('ไม่พบข้อมูลในชีตนี้', 'error');
-        layout = detectLayout(grid); map = { ...layout.map }; layout.fname = fname || layout.fname; layout.sheet = idx;
+        layout = detectLayout(grid); map = { ...layout.map }; layout.fname = fname || layout.fname; layout.sheet = idx; layout.ws = ws;
+        layout.mgrid = detectMonthGrid(grid); mode = layout.mgrid ? 'grid' : 'list'; aiRows = null;
         $('#impStep1', md.el).hidden = true; step2.hidden = false; $('#impGo', md.el).hidden = false; draw();
       }
-      function reparse() { rows = buildRows(layout, map); }
+      function reparse() { rows = mode === 'ai' && aiRows ? aiRows : mode === 'grid' && layout.mgrid ? buildGridRows(layout.mgrid) : buildRows(layout, map); }
       function summary() {
         const ok = rows.filter(r => r.include).length, err = rows.filter(r => r.issues.some(i => i[0] === 'err')).length, warn = rows.filter(r => r.issues.some(i => i[0] === 'warn') && !r.issues.some(i => i[0] === 'err')).length;
         $('#impSum', md.el).innerHTML = `<b>${rows.length}</b> แถว · <span class="ok">พร้อมนำเข้า ${ok}</span> · <span class="warnc">ควรตรวจ ${warn}</span> · <span class="late">ผิดพลาด ${err}</span>`;
@@ -193,8 +255,11 @@ function openImportEvents() {
       function draw() {
         reparse();
         const colOpts = k => opt('', '— ไม่มี —', map[k] ?? '') + layout.cols.map(c => opt(c.c, c.h || `คอลัมน์ ${c.c + 1}`, map[k] ?? '')).join('');
-        step2.innerHTML = `<div class="imp-head"><div><b>${esc(layout.fname || 'ไฟล์ที่เลือก')}</b>${wb.SheetNames.length > 1 ? ` · ชีต <select id="impSheet">${wb.SheetNames.map((n, i) => opt(i, n, layout.sheet)).join('')}</select>` : ''}</div><button class="btn btn-ghost btn-sm" id="impAgain">เลือกไฟล์ใหม่</button></div>
-        <div class="map-grid">${IMPORT_FIELDS.map(f => `<label class="field"><span>${f.label}${f.req ? ' *' : ''} ${map[f.k] != null ? `<em class="how ${layout.how[f.k] || 'manual'}">${layout.how[f.k] === 'header' ? 'ตรวจพบจากหัวคอลัมน์' : layout.how[f.k] === 'content' ? 'เดาจากเนื้อหา' : 'ตั้งเอง'}</em>` : ''}</span><select data-map="${f.k}">${colOpts(f.k)}</select></label>`).join('')}</div>
+        step2.innerHTML = `<div class="imp-head"><div><b>${esc(layout.fname || 'ไฟล์ที่เลือก')}</b>${wb.SheetNames.length > 1 ? ` · ชีต <select id="impSheet">${wb.SheetNames.map((n, i) => opt(i, n, layout.sheet)).join('')}</select>` : ''}</div><div class="imp-acts"><button class="btn btn-ghost btn-sm" id="impAi">${ico('sparkles', 14)} ${mode === 'ai' ? 'ให้ AI อ่านใหม่' : 'ให้ AI ช่วยอ่าน'}</button><button class="btn btn-ghost btn-sm" id="impAgain">เลือกไฟล์ใหม่</button></div></div>
+        <div class="seg-ctl imp-mode">${[['list', 'อ่านแบบรายการ'], ...(layout.mgrid ? [['grid', 'อ่านแบบปฏิทินรายเดือน']] : []), ...(aiRows ? [['ai', 'ผลจาก AI']] : [])].map(([k, l]) => `<button type="button" class="${mode === k ? 'on' : ''}" data-mode="${k}">${l}</button>`).join('')}</div>
+        ${mode === 'grid' ? `<div class="note">${ico('calendar', 14)} พบตารางที่มีเดือนเรียงเป็นคอลัมน์ (${layout.mgrid.mcols.length} เดือน) — อ่านวันที่จากช่องใต้แต่ละเดือน และใช้คอลัมน์ “${esc(layout.mgrid.header[layout.mgrid.nameCol] || 'แรก')}” เป็นชื่องาน</div>` : ''}
+        ${mode === 'ai' ? `<div class="note">${ico('sparkles', 14)} AI อ่านทั้งชีตแล้วสรุปเป็นรายการด้านล่าง — <b>ตรวจชื่อและวันที่ก่อนนำเข้าเสมอ</b> แก้ไขในตารางได้เลย</div>` : ''}
+        <div class="map-grid" ${mode === 'list' ? '' : 'hidden'}>${IMPORT_FIELDS.map(f => `<label class="field"><span>${f.label}${f.req ? ' *' : ''} ${map[f.k] != null ? `<em class="how ${layout.how[f.k] || 'manual'}">${layout.how[f.k] === 'header' ? 'ตรวจพบจากหัวคอลัมน์' : layout.how[f.k] === 'content' ? 'เดาจากเนื้อหา' : 'ตั้งเอง'}</em>` : ''}</span><select data-map="${f.k}">${colOpts(f.k)}</select></label>`).join('')}</div>
         <div id="impSum" class="imp-sum"></div>
         <div class="table-wrap imp-table"><table class="tbl"><thead><tr><th></th><th>ชื่องาน</th><th>วันเริ่ม</th><th>วันสิ้นสุด</th><th>สถานที่</th><th>เจ้าของงาน</th><th>ผลตรวจ</th></tr></thead><tbody id="impBody">${rows.map(rowHTML).join('')}</tbody></table></div>`;
         summary(); bind();
@@ -209,6 +274,8 @@ function openImportEvents() {
         <td><select class="i-owner">${opt('', r.ownerText ? `(ไม่พบ: ${r.ownerText})` : '— ฉัน —', r.owner)}${S().members.map(m => opt(m.id, m.name, r.owner)).join('')}</select></td>
         <td class="iss-cell">${issuesHTML(r)}</td></tr>`;
       function bind() {
+        $$('[data-mode]', md.el).forEach(b => b.onclick = () => { mode = b.dataset.mode; draw(); });
+        $('#impAi', md.el).onclick = () => readWithAi();
         $('#impAgain', md.el).onclick = () => { step2.hidden = true; $('#impStep1', md.el).hidden = false; $('#impGo', md.el).hidden = true; fin.value = ''; };
         const sh = $('#impSheet', md.el); if (sh) sh.onchange = () => useSheet(+sh.value, layout.fname);
         $$('[data-map]', md.el).forEach(s => s.onchange = () => { const k = s.dataset.map; if (s.value === '') delete map[k]; else map[k] = +s.value; layout.how[k] = 'manual'; draw(); });
@@ -218,8 +285,22 @@ function openImportEvents() {
           r.name = $('.i-name', tr).value.trim(); r.start = $('.i-start', tr).value; r.end = $('.i-end', tr).value; r.venue = $('.i-venue', tr).value; r.owner = $('.i-owner', tr).value; r.pre = r.pre.filter(n => !/ใช้ปี|เดือน\/วัน|รวมจาก/.test(n));
           const wasErr = r.issues.some(i => i[0] === 'err'); r.include = e.target.classList.contains('i-inc') ? e.target.checked : (r.include || wasErr);
           validateRow(r); if (!r.issues.some(i => i[0] === 'err') && !e.target.classList.contains('i-inc')) r.include = true;
-          tr.outerHTML = rowHTML(r); summary();
+          tr.outerHTML = rowHTML(r); summary();   // rows[] is the live list for the current mode (list / grid / ai)
         };
+      }
+      async function readWithAi() {
+        if (busy) return;
+        if (Store.mode !== 'server') return toast('AI ใช้ได้เมื่อแอปเชื่อมกับเซิร์ฟเวอร์ (บน Vercel) เท่านั้น', 'error');
+        const csv = XLSX.utils.sheet_to_csv(layout.ws, { blankrows: false }).replace(/,+$/gm, '');
+        const b = $('#impAi', md.el); busy = true; b.disabled = true; b.innerHTML = `<span class="spin"></span> AI กำลังอ่าน… (อาจใช้ 10–40 วินาที)`;
+        try {
+          const r = await fetch('api/ai-events', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ text: csv, sheet: wb.SheetNames[layout.sheet], today: today() }) });
+          const t = await r.text(); let j = {}; try { j = JSON.parse(t); } catch (e) { }
+          if (!r.ok) throw new Error(j.error || `AI อ่านไม่สำเร็จ (${r.status})`);
+          if (!j.events?.length) throw new Error('AI ไม่พบรายการ Event ในชีตนี้');
+          aiRows = aiToRows(j.events); mode = 'ai'; toast(`AI พบ ${aiRows.length} รายการ — ตรวจสอบก่อนนำเข้า`);
+        } catch (e) { toast(e.message, 'error'); }
+        busy = false; draw();
       }
       window.__impDo = () => rows.filter(r => r.include && !r.issues.some(i => i[0] === 'err'));
     },
