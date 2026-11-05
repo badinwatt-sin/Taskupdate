@@ -63,17 +63,36 @@ function expKit(cv, W, H, th) {
     font: (w, px) => { const fam = w >= 800 ? (th.fh || EXP_FONT) : (th.fb || EXP_FONT); g.font = `${th.wmap ? th.wmap[w] || w : w} ${Math.round(px * 10) / 10}px ${fam}`; },
     rr: (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); },
     fit: (t, max) => { if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; },
-    wrap: (t, max) => {   // full word-aware wrap — never drops text
-      const segs = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(String(t))].map(x => x.segment) : String(t).split(/(\s+)/);
-      const out = []; let cur = '';
+    segs: t => {   // word segments; brackets/punctuation stick to their word, spaces stay with the previous word
+      const raw = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(String(t))].map(x => x.segment) : String(t).split(/(\s+)/);
+      const out = [];
+      raw.forEach(x => {
+        if (!out.length) return out.push(x);
+        if (/^\s+$/.test(x) || /^[)\]}.,!?:;%”’'"…\-–]+$/.test(x)) out[out.length - 1] += x;   // closing marks join the word before
+        else if (/[(\[{“‘]$/.test(out[out.length - 1]) && !/\s$/.test(out[out.length - 1])) out[out.length - 1] += x;   // opening marks join the word after
+        else out.push(x);
+      });
+      return out;
+    },
+    wrap: (t, max) => {   // full word-aware wrap — never drops text; two-line results are balanced
+      const segs = k.segs(t), out = []; let cur = '';
       const push = () => { if (cur.trim()) out.push(cur.trim()); cur = ''; };
       segs.forEach(seg => {
         if (g.measureText(cur + seg).width <= max) { cur += seg; return; }
         if (cur.trim()) push();
-        if (g.measureText(seg).width <= max) { cur = seg.trimStart(); return; }
+        if (g.measureText(seg.trimEnd()).width <= max) { cur = seg.trimStart(); return; }
         for (const ch of [...seg]) { if (g.measureText(cur + ch).width > max && cur) push(); cur += ch; }   // a single very long word
       });
-      push(); return out.length ? out : [''];
+      push();
+      if (out.length === 2 && segs.length > 1) {   // rebalance: pick the break that makes both lines closest in width
+        let best = null;
+        for (let b = 1; b < segs.length; b++) {
+          const a1 = segs.slice(0, b).join('').trim(), a2 = segs.slice(b).join('').trim(), w1 = g.measureText(a1).width, w2 = g.measureText(a2).width;
+          if (w1 <= max && w2 <= max && (!best || Math.max(w1, w2) < best[0])) best = [Math.max(w1, w2), a1, a2];
+        }
+        if (best) return [best[1], best[2]];
+      }
+      return out.length ? out : [''];
     },
     card: (x, y, w, h, r = 22) => {
       if (th.art === 'bauhaus') { g.fillStyle = th.card; k.rr(x, y, w, h, 4); g.fill(); g.strokeStyle = th.ink; g.lineWidth = 1.5; k.rr(x + .75, y + .75, w - 1.5, h - 1.5, 4); g.stroke(); return; }
@@ -272,17 +291,27 @@ function drawYear(cv, { year, theme, portrait }) {
   const cols = portrait ? 3 : 6, rows = portrait ? 4 : 2, gap = 16, cw = (W - 2 * X - gap * (cols - 1)) / cols, ch = (H - top - 80 - gap * (rows - 1)) / rows;
   const headH = 84, padX = 18, inner = ch - headH - 16;
   // measure one month's list at scale s
-  const measure = (list, s, venue) => {
-    let h = 0;
+  const dwOf = (e, s) => { k.font(700, 14 * s); return Math.max(40 * s, g.measureText(dayShort(e)).width + 14 * s) + (th.clean ? 4 * s : 0); };
+  const dwList = (list, s) => Math.max(0, ...list.map(e => dwOf(e, s)));
+  const measure = (list, s, venue, oneLine) => {
+    let h = 0; const dwc = dwList(list, s);
     for (const e of list) {
-      k.font(700, 14 * s); const dw = Math.max(40 * s, g.measureText(dayShort(e)).width + 14 * s);
-      k.font(600, 17 * s); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10);
+      const tw = cw - padX * 2 - dwc - 10;
+      k.font(600, 17 * s);
+      if (oneLine && g.measureText(e.name).width > tw) return Infinity;
+      const lines = oneLine ? [e.name] : k.wrap(e.name, tw);
       h += Math.max(26 * s, lines.length * 21 * s + (venue && e.venue ? 17 * s : 0)) + 10 * s;
     }
     return h;
   };
+  // 1) one size for every month with each name on a single line  2) same, allowing balanced 2-line names  3) per-month fallback
+  let uni = null;
+  for (const oneLine of [true, false]) {
+    for (let s2 = 1.1; s2 >= (oneLine ? .74 : .66) && !uni; s2 -= .04) for (const v of [true, false]) if (by.every(l => measure(l, s2, v, oneLine) <= inner)) { uni = [s2, v, oneLine]; break; }
+    if (uni) break;
+  }
   // each month picks the biggest type that fits its own list (a busy month doesn't shrink the quiet ones)
-  const fitOf = list => { for (let s = 1.15; s >= .55; s -= .05) for (const v of [true, false]) if (measure(list, s, v) <= inner) return [Math.min(s, 1.15), v]; return [.55, false]; };
+  const fitOf = list => { if (uni) return uni; for (let s = 1.1; s >= .55; s -= .05) for (const v of [true, false]) if (measure(list, s, v, false) <= inner) return [s, v, false]; return [.55, false, false]; };
   const now = new Date();
   by.forEach((list, m) => {
     const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = hueOf(th, m), isNow = year === now.getFullYear() && m === now.getMonth();
@@ -309,12 +338,12 @@ function drawYear(cv, { year, theme, portrait }) {
     if (isNow && !th.clean) { g.strokeStyle = hue; g.lineWidth = 2.5; k.rr(cx + 1, cy + 1, cw - 2, ch - 2, 21); g.stroke(); }
     g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + padX, cy + headH); g.lineTo(cx + cw - padX, cy + headH); g.stroke();
     if (!list.length) { g.fillStyle = th.mute; k.font(500, 16); g.fillText('— ไม่มีงาน —', cx + padX, cy + headH + 34); return; }
-    const [S, V] = fitOf(list);
+    const [S, V, ONE] = fitOf(list), DW = dwList(list, S);
     let ly = cy + headH + 12;
     for (const e of list) {
       const c = stc(th, e.status);
-      k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S) + (th.clean ? 4 * S : 0);
-      k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && (e.venue || (EXP_CATS.length !== 1 && e.cat));
+      const dl = dayShort(e), dw = DW;
+      k.font(600, 17 * S); const lines = ONE ? [e.name] : k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && (e.venue || (EXP_CATS.length !== 1 && e.cat));
       const showCat = EXP_CATS.length !== 1 && e.cat, vtext = [showCat ? catLabel(e.cat) : '', V ? e.venue : ''].filter(Boolean).join(' · ');
       const h = Math.max(26 * S, lines.length * 21 * S + (hasV ? 17 * S : 0));
       if (ly + h > cy + ch - 10) { g.fillStyle = th.accent; k.font(600, 14); g.fillText('+ งานเพิ่มเติม (ดูไฟล์ Excel)', cx + padX, cy + ch - 14); break; }
