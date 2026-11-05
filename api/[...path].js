@@ -16,6 +16,8 @@ const store = {
   async setState(state) { await cmd(['SET', 'tmh:state', JSON.stringify(state)]); return +(await cmd(['INCR', 'tmh:rev'])); },
   async getAuth() { const v = await cmd(['GET', 'tmh:auth']); return v ? JSON.parse(v) : null; },
   async saveAuth(a) { await cmd(['SET', 'tmh:auth', JSON.stringify(a)]); },
+  async getBlob(k) { return await cmd(['GET', 'tmh:img:' + k]); },
+  async setBlob(k, v) { await cmd(v == null ? ['DEL', 'tmh:img:' + k] : ['SET', 'tmh:img:' + k, v]); },
 };
 const hub = createHub(store);
 

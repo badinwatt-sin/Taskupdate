@@ -14,6 +14,8 @@ const store = {
   async getRev() { return db.rev || 0; }, async getState() { return db; },
   async setState(state) { db = { rev: (db.rev || 0) + 1, state }; write(DATA, db); return db.rev; },
   async getAuth() { return read(AUTH); }, async saveAuth(a) { write(AUTH, a); },
+  async getBlob(k) { try { return fs.readFileSync(path.join(DIR, 'img', k + '.txt'), 'utf8'); } catch (e) { return null; } },
+  async setBlob(k, v) { const d = path.join(DIR, 'img'); fs.mkdirSync(d, { recursive: true }); if (v == null) { try { fs.unlinkSync(path.join(d, k + '.txt')); } catch (e) { } } else fs.writeFileSync(path.join(d, k + '.txt'), v); },
 };
 const hub = createHub(store, { log: a => console.log(`\n  Initial password for every member: ${a.default}\n  (Admin can change it, and set per-person passwords, in Team & Access)\n`) });
 hub.init().catch(e => console.error(e));

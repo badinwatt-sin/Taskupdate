@@ -261,6 +261,70 @@ V.board = root => {
 };
 ACT.boardTab = el => { const [k, t] = el.dataset.id.split(':'); ST[k].tab = t; render(); };
 
+/* ======================= PROJECT POSTERS ======================= */
+const POSTERS = new Map();   // "id@v" -> data URL
+async function posterData(p) {
+  if (!p || !p.poster) return null;
+  if (p.poster.data) return p.poster.data;   // demo / local mode keeps it inline
+  const key = `${p.poster.id}@${p.poster.v}`; if (POSTERS.has(key)) return POSTERS.get(key);
+  const pr = fetch('api/img?id=' + encodeURIComponent(p.poster.id), { headers: Store.headers() }).then(r => r.ok ? r.json() : null).then(j => j?.data || null).catch(() => null);
+  POSTERS.set(key, pr); const d = await pr; POSTERS.set(key, d); return d;
+}
+/* cover = poster (blurred backdrop + whole image) or, when there is none, a generated cover in the project colour */
+const coverHTML = (p, cls = '') => {
+  const words = (p.name || '').replace(/\d{4}/g, '').trim().split(/\s+/).filter(Boolean);
+  const mono = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || 'P').slice(0, 2)).toUpperCase();
+  return `<div class="pcover ${cls} ${p.poster ? 'has-img' : ''}" style="--c:${p.color}" data-cover="${p.id}"><span class="pc-mono">${esc(mono)}</span></div>`;
+};
+function hydrateCovers(root) {
+  $$('[data-cover]', root).forEach(async el => {
+    const p = project(el.dataset.cover), d = await posterData(p); if (!d || !el.isConnected) return;
+    el.style.setProperty('--img', `url("${d}")`); el.innerHTML = `<img src="${d}" alt="โปสเตอร์ ${esc(p.name)}" loading="lazy">`; el.classList.add('ready');
+  });
+}
+function compressImage(file, maxSide = 1100, maxBytes = 420000) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\//.test(file.type)) return reject(new Error('เลือกไฟล์รูปภาพ (JPG / PNG)'));
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const k = Math.min(1, maxSide / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+      let q = .86, d = cv.toDataURL('image/jpeg', q);
+      while (d.length > maxBytes && q > .45) { q -= .08; d = cv.toDataURL('image/jpeg', q); }
+      if (d.length > maxBytes) { const c2 = document.createElement('canvas'); c2.width = cv.width * .7; c2.height = cv.height * .7; c2.getContext('2d').drawImage(cv, 0, 0, c2.width, c2.height); d = c2.toDataURL('image/jpeg', .7); }
+      resolve(d);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('อ่านรูปนี้ไม่ได้ — ลองไฟล์ JPG หรือ PNG')); };
+    img.src = url;
+  });
+}
+async function savePoster(p, data) {   // data URL or null (remove)
+  if (Store.mode !== 'server') { p.poster = data ? { data, v: Date.now() } : null; return; }
+  const id = 'pp_' + p.id.replace(/[^a-z0-9_]/gi, '');
+  const r = await fetch('api/img?id=' + id, { method: 'PUT', headers: Store.headers(true), body: JSON.stringify({ data }) });
+  if (!r.ok) { let m = 'อัปโหลดรูปไม่สำเร็จ'; try { m = (await r.json()).error || m; } catch (e) { } throw new Error(m); }
+  p.poster = data ? { id, v: Date.now() } : null;
+  if (data) POSTERS.set(`${id}@${p.poster.v}`, data);
+}
+function pickPoster(p, done) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    try { const d = await compressImage(f); await savePoster(p, d); commit(); toast('อัปเดตโปสเตอร์แล้ว'); done && done(d); } catch (e) { toast(e.message, 'error'); }
+  };
+  inp.click();
+}
+ACT.posterPick = el => { const p = project(el.dataset.id); if (p && canManageProject(p)) pickPoster(p); };
+ACT.posterView = async el => {
+  const p = project(el.dataset.id), d = await posterData(p);
+  if (!d) return canManageProject(p) ? pickPoster(p) : null;
+  modal({ title: p.name, wide: true, cls: 'poster-modal', body: `<img class="poster-full" src="${d}" alt="โปสเตอร์ ${esc(p.name)}">`,
+    actions: canManageProject(p) ? [{ label: ico('trash', 15) + ' ลบโปสเตอร์', cls: 'btn-danger-ghost', left: true, onClick: async () => { try { await savePoster(p, null); commit(); toast('ลบโปสเตอร์แล้ว'); } catch (e) { toast(e.message, 'error'); return false; } } },
+      { label: 'เปลี่ยนรูป', onClick: () => { pickPoster(p); } }, { label: 'ปิด', cls: 'btn-primary' }] : [{ label: 'ปิด', cls: 'btn-primary' }] });
+};
+
 /* ======================= PROJECTS ======================= */
 V.projects = (root, id) => {
   if (id) return projectDetail(root, id);
@@ -269,7 +333,7 @@ V.projects = (root, id) => {
     '') +
     (ps.length ? `<div class="pcards">${ps.map(p => {
       const s = projectStats(p), pm = member(p.pmId);
-      return `<a class="pcard" href="#/projects/${p.id}" style="--c:${p.color}">
+      return `<a class="pcard has-cover" href="#/projects/${p.id}" style="--c:${p.color}">${coverHTML(p)}
         <div class="pc-top"><h3>${esc(p.name)}</h3>${s.delayed ? `<span class="badge st-delayed">${s.delayed} ล่าช้า</span>` : ''}</div>
         <p class="goal clip2">${esc(p.goal || 'ยังไม่ได้ระบุเป้าหมาย')}</p>
         <div class="pc-meta"><span>PM: ${personChip(pm, 20)}</span><span>${s.end ? fmtRange(s.start, s.end) : '–'}</span></div>
@@ -277,6 +341,7 @@ V.projects = (root, id) => {
     }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', isAdmin() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : ''));
 };
 ACT.newProject = () => openProject(null);
+const _vProjects = V.projects; V.projects = (root, id) => { _vProjects(root, id); hydrateCovers(root); };
 
 function projectDetail(root, id) {
   const p = project(id); if (!p || !visibleProjects().includes(p)) { location.hash = '#/projects'; return; }
@@ -303,7 +368,7 @@ function projectDetail(root, id) {
     content = projTools(p, zoomCtl('proj')) + ganttHTML(tasks, f.zoom, false, { p, by: ['group', 'who', 'none'].includes(f.groupBy) ? f.groupBy : 'group' });
   }
   root.innerHTML = `<a class="back" href="#/projects">${ico('left', 16)} ${pageName('projects')}</a>
-    <div class="proj-head" style="--c:${p.color}"><div><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.total} งาน · ${s.pct}% เสร็จ${s.delayed ? ` · <span class="late">${s.delayed} งานล่าช้า</span>` : ''}</p></div>
+    <div class="proj-head with-cover" style="--c:${p.color}"><button type="button" class="ph-cover" data-act="posterView" data-id="${p.id}" aria-label="${p.poster ? 'ดูโปสเตอร์' : can ? 'เพิ่มโปสเตอร์' : 'โปสเตอร์'}">${coverHTML(p, 'sm')}${can && !p.poster ? `<span class="ph-add">${ico('image', 14)} เพิ่มโปสเตอร์</span>` : ''}</button><div class="ph-text"><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.total} งาน · ${s.pct}% เสร็จ${s.delayed ? ` · <span class="late">${s.delayed} งานล่าช้า</span>` : ''}</p></div>
       <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="editGroups" data-id="${p.id}">${ico('layers', 16)} กลุ่มงาน</button><button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}</div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${f.tab === k ? 'on' : ''}" data-act="boardTab" data-id="proj:${k}">${l}</button>`).join('')}</div>${content}`;
   if (f.tab === 'kanban') bindKanban(root); else if (f.tab === 'gantt') bindGantt(root); else if (f.tab === 'tasks') bindTaskList(root, p);
@@ -321,6 +386,7 @@ function openProject(id) {
   const orig = id ? project(id) : null;
   const p = orig ? JSON.parse(JSON.stringify(orig)) : { id: uid('p_'), name: '', pmId: me().id, goal: '', squad: [me().id], start: today(), dayMode: null, color: ['#4f46e5', '#0891b2', '#db2777', '#d97706', '#059669', '#7c3aed'][S().projects.length % 6] };
   const full = !orig || isAdmin() || orig.pmId === me().id;
+  let posterNew;   // undefined = unchanged · data URL = new image · null = remove
   modal({
     title: orig ? 'แก้ไข Project' : 'สร้าง Project ใหม่', wide: true,
     body: `<form id="pjForm" class="form-grid" autocomplete="off">
@@ -330,26 +396,37 @@ function openProject(id) {
       <label class="field full"><span>เป้าหมาย Project</span><textarea name="goal" rows="2">${esc(p.goal)}</textarea></label>
       <label class="field"><span>วิธีนับระยะเวลางาน</span><select name="dayMode">${opt('', `ตามค่าเริ่มต้นของทีม (${S().settings.dayMode === 'working' ? 'วันทำงาน' : 'วันปฏิทิน'})`, p.dayMode || '')}${opt('working', 'วันทำงาน (ข้ามเสาร์–อาทิตย์ + วันหยุดบริษัท)', p.dayMode)}${opt('calendar', 'วันปฏิทิน (นับทุกวัน)', p.dayMode)}</select></label>
       <label class="field"><span>สีประจำ Project</span><input type="color" name="color" value="${p.color}"></label>
+      <div class="field full"><span>โปสเตอร์ / ภาพประกอบงาน <small class="muted">(ไม่ใส่ก็ได้ — ระบบทำปกให้อัตโนมัติจากชื่อและสี)</small></span>
+        <div class="poster-edit"><div id="pjCover">${coverHTML(p, 'sm')}</div><div class="pe-btns"><button type="button" class="btn btn-ghost btn-sm" id="pjPosterPick">${ico('image', 14)} ${p.poster ? 'เปลี่ยนรูป' : 'เลือกรูป'}</button>${p.poster ? '<button type="button" class="btn btn-danger-ghost btn-sm" id="pjPosterDel">ลบรูป</button>' : ''}<small class="muted">JPG / PNG · ระบบย่อรูปให้อัตโนมัติ</small></div></div></div>
       <div class="field full"><span>Squad — เลือกสมาชิกข้ามหน้าที่</span><div class="squad-pick">
         ${S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<div class="sp-g"><div>${groupChip(g)}</div><div class="sp-m">${ms.map(m => `<label class="pill"><input type="checkbox" value="${m.id}" ${p.squad.includes(m.id) ? 'checked' : ''}><span>${avatar(m, 20)}${esc(m.name)}</span></label>`).join('')}</div></div>` : ''; }).join('')}</div></div></form>`,
     actions: (orig && full ? [{ label: ico('trash', 15) + ' ลบ Project', cls: 'btn-danger-ghost', left: true, onClick: async () => {
       const n = S().tasks.filter(t => t.projectId === p.id).length;
       if (await confirmBox(`ลบ Project “${esc(p.name)}” และงานทั้งหมด ${n} รายการ? การกระทำนี้ย้อนกลับไม่ได้`, 'ลบ Project', true)) {
+        if (p.poster) savePoster(p, null).catch(() => { });
         S().projects = S().projects.filter(x => x.id !== p.id); S().tasks = S().tasks.filter(t => t.projectId !== p.id);
         S().events.forEach(e => { if (e.projectId === p.id) e.projectId = null; });
         location.hash = '#/projects'; commit(); toast('ลบ Project แล้ว'); return true;
       } return false;
     } }] : []).concat([{ label: 'ยกเลิก' }, {
-      label: 'บันทึก', cls: 'btn-primary', onClick: () => {
+      label: 'บันทึก', cls: 'btn-primary', onClick: async () => {
         const f = $('#pjForm'); if (!f.reportValidity()) return false;
         const squad = $$('.squad-pick input:checked', f).map(i => i.value);
         if (!squad.includes(f.elements.pmId.value)) squad.push(f.elements.pmId.value);
         Object.assign(p, { name: f.elements.name.value.trim(), pmId: f.elements.pmId.value, start: f.elements.start.value, goal: f.elements.goal.value, dayMode: f.elements.dayMode.value || null, color: f.elements.color.value, squad });
+        if (posterNew !== undefined) { try { await savePoster(p, posterNew); } catch (e) { toast(e.message, 'error'); return false; } }
         if (orig) Object.assign(orig, p); else S().projects.push(p);
         commit(); toast('บันทึก Project แล้ว'); if (!orig) location.hash = '#/projects/' + p.id;
       },
     }]),
-    onOpen(m) { $('#pjForm', m.el).addEventListener('submit', e => e.preventDefault()); },
+    onOpen(m) {
+      $('#pjForm', m.el).addEventListener('submit', e => e.preventDefault());
+      const show = d => { const c = $('#pjCover', m.el); if (d) c.innerHTML = `<div class="pcover sm has-img ready" style="--img:url('${d}')"><img src="${d}" alt=""></div>`; else { c.innerHTML = coverHTML({ ...p, poster: null, color: $('#pjForm', m.el).elements.color.value, name: $('#pjForm', m.el).elements.name.value || p.name }, 'sm'); } };
+      hydrateCovers(m.el);
+      $('#pjPosterPick', m.el).onclick = () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = async () => { try { posterNew = await compressImage(inp.files[0]); show(posterNew); } catch (e) { toast(e.message, 'error'); } }; inp.click(); };
+      const del = $('#pjPosterDel', m.el); if (del) del.onclick = () => { posterNew = null; show(null); del.remove(); };
+      ['name', 'color'].forEach(n => $('#pjForm', m.el).elements[n].addEventListener('input', () => { if (posterNew === undefined ? !p.poster : !posterNew) show(null); }));
+    },
   });
 }
 
