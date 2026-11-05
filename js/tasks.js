@@ -28,7 +28,7 @@ function newTask(kind, over = {}) {
     return t;
 }
 
-function openTask(taskOrId, preset) {
+function openTask(taskOrId, preset, opts = {}) {
   const isNew = !taskOrId || typeof taskOrId === 'object' && !S().tasks.includes(taskOrId);
   const orig = typeof taskOrId === 'string' ? S().tasks.find(t => t.id === taskOrId) : taskOrId;
   if (!orig) return;
@@ -49,7 +49,8 @@ function openTask(taskOrId, preset) {
     <input type="hidden" name="source" value="${t.source}">
     <div class="seg-pills" role="radiogroup" aria-label="สถานะ">${Object.keys(STATUS).map(k => `<label class="sp sp-${k}"><input type="radio" name="status" value="${k}" ${t.status === k ? 'checked' : ''} ${dis(1)}><span>${STATUS[k].th}</span></label>`).join('')}</div>
     <div class="form-grid">
-      <label class="field"><span>${ico('users', 14)} ผู้รับผิดชอบ</span><select name="assigneeId" ${dis()}></select></label>
+      <div class="field full"><span>${ico('users', 14)} ผู้รับผิดชอบ <small class="muted">เลือกได้สูงสุด 2 คน · คนแรกคือผู้รับผิดชอบหลัก</small></span><div class="ppl-chips" id="pplChips"></div>
+        <input type="hidden" name="assigneeId" value="${esc(t.assigneeId || '')}"><input type="hidden" name="coId" value="${esc(t.coId || '')}"></div>
       <label class="field"><span>${ico('folder', 14)} Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— งานส่วนตัว (ไม่ผูก Project) —')}</select></label>
       <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน)</label>
       <div class="field full"><span>${ico('calendar', 14)} ช่วงเวลา</span><div class="triad">
@@ -59,10 +60,9 @@ function openTask(taskOrId, preset) {
         <div class="quick-due">${full ? DUE.map(([k, l]) => `<button type="button" class="chip-s" data-due="${k}">${l}</button>`).join('') : ''}<small class="muted" id="modeOut"></small></div></div>
       <div class="field full"><span>ความสำคัญ</span><div class="seg-pills prio-pills">${['high', 'med', 'low'].map(k => `<label class="sp"><input type="radio" name="priority" value="${k}" ${t.priority === k ? 'checked' : ''} ${dis()}><span><i class="prio p-${k}"></i>${PRIO[k].th}</span></label>`).join('')}</div></div>
     </div>
-    <details class="more-box" ${hasExtra ? 'open' : ''}><summary>${ico('down', 15)}<span>รายละเอียดเพิ่มเติม</span><small class="muted">กลุ่มงาน · ประเภท · ทำหลังจาก · หมายเหตุ · ไฟล์</small></summary>
+    <details class="more-box" ${hasExtra ? 'open' : ''}><summary>${ico('down', 15)}<span>รายละเอียดเพิ่มเติม</span><small class="muted">กลุ่มงาน · ทำหลังจาก · หมายเหตุ · ไฟล์</small></summary>
       <div class="form-grid">
         <label class="field" id="grpBox"><span>กลุ่มงานใน Project</span><select name="groupId" ${dis()}></select></label>
-        <label class="field"><span>ประเภทงาน</span><select name="type" ${dis()}>${opt('', '— ไม่ระบุ —', t.type)}${st.types.map(x => opt(x, x, t.type)).join('')}</select></label>
         <div class="field full" id="depsBox"><span>ต้องทำหลังจากงาน (Dependency)</span><div class="deps" id="depsList"></div></div>
         <label class="field full"><span>รายละเอียด / หมายเหตุ</span><textarea name="desc" rows="2" ${dis()}>${esc(t.desc)}</textarea></label>
         <div class="full attach-box" id="attachBox">
@@ -86,7 +86,7 @@ function openTask(taskOrId, preset) {
         const src = v('source');
         if (src === 'project' && !v('projectId')) { toast('งาน Project ต้องเลือก Project', 'error'); return false; }
         Object.assign(t, {
-          title: v('title').trim(), source: src, projectId: v('projectId') || null, assigneeId: v('assigneeId'), type: v('type'),
+          title: v('title').trim(), source: src, projectId: v('projectId') || null, assigneeId: v('assigneeId'), coId: v('coId') || null, type: t.type || '',
           groupId: v('groupId') || '', start: v('start'), duration: Math.max(1, parseInt(v('duration'), 10) || 1), priority: v('priority'), desc: v('desc'),
           private: !v('projectId') && src === 'personal' && f.elements.private.checked,
           deps: $$('#depsList input:checked').map(i => i.value),
@@ -106,9 +106,17 @@ function openTask(taskOrId, preset) {
   });
 
   modal({
-    title: isNew ? 'สร้างงานใหม่' : (full ? 'แก้ไขงาน' : 'รายละเอียดงาน'), body, actions, wide: true,
+    title: opts.title || (isNew ? 'สร้างงานใหม่' : (full ? 'แก้ไขงาน' : 'รายละเอียดงาน')), body, actions, wide: true,
     onOpen(m) {
       const f = $('#taskForm', m.el);
+      let pick = [t.assigneeId, t.coId].filter(Boolean);
+      $('#pplChips', m.el).addEventListener('click', e => {
+        const b = e.target.closest('[data-pp]'); if (!b || b.disabled) return; const id = b.dataset.pp;
+        if (pick.includes(id)) pick = pick.filter(x => x !== id);
+        else if (pick.length >= 2) return toast('เลือกผู้รับผิดชอบได้สูงสุด 2 คน — เอาคนเดิมออกก่อน', 'error');
+        else pick.push(id);
+        refresh();
+      });
       let order = ['start', 'duration'];
       const recalc = ch => {
         const e = f.elements, pid = e.projectId.value, p = pid && project(pid), mode = (p && p.dayMode) || st.dayMode;
@@ -127,12 +135,12 @@ function openTask(taskOrId, preset) {
         $('#attachBox', m.el).hidden = src !== 'project';
         const gs = f.elements.groupId, gcur = gs.value || t.groupId || '', gl = (pid && project(pid)?.taskGroups) || [];
         $('#grpBox', m.el).hidden = !gl.length; gs.innerHTML = opt('', '— ไม่ระบุกลุ่ม —', gcur) + gl.map(g => opt(g.id, g.name, gcur)).join('');   // To-Do items: no links / files
-        const as = f.elements.assigneeId, curA = as.value || t.assigneeId;
         let pool = isAdmin() ? S().members : [me(), ...assignablePeople().filter(x => x.id !== me().id)];
         const pj = pid && project(pid);
         if (pj && canManageProject(pj)) pool = [...new Map([...pool, ...[pj.pmId, ...pj.squad].map(member).filter(Boolean)].map(x => [x.id, x])).values()];
-        if (curA && !pool.find(x => x.id === curA) && member(curA)) pool = [...pool, member(curA)];
-        as.innerHTML = opt('', '— ยังไม่ระบุ —', curA) + pool.map(x => opt(x.id, x.name, curA)).join('');
+        pick.forEach(id => { if (!pool.find(x => x.id === id) && member(id)) pool = [...pool, member(id)]; });
+        f.elements.assigneeId.value = pick[0] || ''; f.elements.coId.value = pick[1] || '';
+        $('#pplChips', m.el).innerHTML = pool.map(x => { const on = pick.includes(x.id); return `<button type="button" class="pp-chip ${on ? 'on' : ''} ${!on && pick.length >= 2 ? 'dim' : ''}" data-pp="${x.id}" aria-pressed="${on}" ${dis()}>${avatar(x, 22)}<span>${esc(x.name)}</span>${on ? `<em>${pick[0] === x.id ? 'หลัก' : 'ร่วม'}</em>` : ''}</button>`; }).join('');
         $('em[data-req]', m.el).textContent = '';
         const p = pid && project(pid); const mode = (p && p.dayMode) || st.dayMode;
         recalc();

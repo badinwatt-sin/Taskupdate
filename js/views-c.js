@@ -6,7 +6,7 @@
 /* ============================ MY TO-DO ============================ */
 function todoBuckets(uid_) {
   const t0 = today();
-  const mine = visibleTasks().filter(t => t.assigneeId === uid_ && t.status !== 'cancelled');
+  const mine = visibleTasks().filter(t => isOwner(t, uid_) && t.status !== 'cancelled');
   return {
     today: sortBy(mine.filter(t => isActive(t) && taskStart(t) <= t0 && taskEnd(t) >= t0), t => taskEnd(t)),
     upcoming: sortBy(mine.filter(t => isActive(t) && taskStart(t) > t0), t => taskStart(t)),
@@ -17,40 +17,56 @@ function todoBuckets(uid_) {
 ACT.myStyle = el => openMyStyle(el.dataset.id || me().id);
 function openMyStyle(id) {
   const m = member(id); if (!m || (id !== me().id && !isAdmin())) return toast('ปรับแต่งได้เฉพาะโปรไฟล์ของตัวเอง', 'error');
-  let emoji = m.emoji || '', { color, pattern } = postitOf(m);
+  let emoji = m.emoji || '', iconColor = m.iconColor || '', { color, pattern } = postitOf(m), cat = Object.keys(EMOJI_SETS)[0];
+  for (const [k, v] of Object.entries(EMOJI_SETS)) if (emoji && v.split(' ').includes(emoji)) cat = k;
   const prev = () => {
-    const fake = { ...m, emoji };
-    return `<div class="kcard postit pat-${pattern}" style="--pc:${color};cursor:default;transform:rotate(-1.5deg)"><div class="pi-who">${avatar(fake, 28)}<span>${esc(m.name)}</span></div><div class="pi-title">ตัวอย่างงานของฉัน</div><div class="pi-foot"><span class="badge st-doing">กำลังทำ</span><span class="grow"></span><span>${ico('clock', 12)} ${fmtD(today())}</span></div></div>`;
+    const fake = { ...m, emoji, iconColor };
+    return `<div class="pv-ava">${avatar(fake, 64)}<b>${esc(m.name)}</b></div>
+      <div class="kcard postit pat-${pattern}" style="--pc:${color};cursor:default;transform:rotate(-1.5deg)"><div class="pi-who">${avatar(fake, 28)}<span>${esc(m.name)}</span></div><div class="pi-title">ตัวอย่างงานของฉัน</div><div class="pi-foot"><span class="badge st-doing">กำลังทำ</span><span class="grow"></span><span>${ico('clock', 12)} ${fmtD(today())}</span></div></div>`;
   };
+  const emojiGrid = () => EMOJI_SETS[cat].split(' ').map(e => { const o = emojiOwner(e, m.id); return `<button type="button" data-e="${e}" ${o ? `disabled title="${esc(o.name)} ใช้อยู่"` : ''} class="${e === emoji ? 'on' : ''}">${e}</button>`; }).join('');
+  const sw = (list, cur, attr) => list.map(c => `<button type="button" class="swatch ${c === cur ? 'on' : ''}" data-${attr}="${c}" style="background:${c}" aria-label="สี ${c}"></button>`).join('');
   modal({
-    title: `ปรับแต่ง Post-it & Icon — ${m.name}`, wide: true,
-    body: `<div class="style-grid"><div>
-      <div class="field"><span>Icon / Emoji ประจำตัว <small>(ห้ามซ้ำกับเพื่อนร่วมทีม)</small></span>
-        <div class="emoji-grid" id="emGrid">${EMOJIS.map(e => { const o = emojiOwner(e, m.id); return `<button type="button" data-e="${e}" ${o ? `disabled title="${esc(o.name)} ใช้อยู่"` : ''} class="${e === emoji ? 'on' : ''}">${e}</button>`; }).join('')}</div></div>
-      <div class="field"><span>หรือสร้าง icon ของคุณเอง <small>(พิมพ์ emoji หรืออักษร 1–3 ตัว)</small></span>
-        <div class="inline-add" style="grid-template-columns:140px auto 1fr"><input id="emCustom" maxlength="6" placeholder="เช่น 🦦 / KG" value="${esc(emoji && !EMOJIS.includes(emoji) ? emoji : '')}"><button type="button" class="btn btn-ghost btn-sm" id="emClear">ใช้ตัวอักษรย่อ</button><span class="dup-msg" id="dupMsg"></span></div></div>
-      <div class="field"><span>สี Post-it</span><div class="swatches" id="swatches">${POSTIT_COLORS.map(c => `<button type="button" class="swatch ${c === color ? 'on' : ''}" data-c="${c}" style="background:${c}" aria-label="สี ${c}"></button>`).join('')}</div></div>
-      <div class="field"><span>ลาย</span><div class="pat-pick" id="pats">${Object.entries(POSTIT_PATTERNS).map(([k, l]) => `<button type="button" class="pat-${k} ${k === pattern ? 'on' : ''}" data-p="${k}" style="--pc:${color}">${l}</button>`).join('')}</div></div>
-    </div><div><span class="muted small">ตัวอย่างบน Kanban</span><div class="preview-board" id="pv">${prev()}</div></div></div>`,
+    title: `${ACTION.style[0]} — ${m.name}`, wide: true, cls: 'style-modal',
+    body: `<div class="style-grid"><div class="style-opts">
+      <section><h4>1 · ไอคอนประจำตัว <small>ห้ามซ้ำกับเพื่อนร่วมทีม</small></h4>
+        <div class="seg-chips" id="emCats">${Object.keys(EMOJI_SETS).map(k => `<button type="button" data-cat="${esc(k)}" class="${k === cat ? 'on' : ''}">${esc(k)}</button>`).join('')}</div>
+        <div class="emoji-grid" id="emGrid">${emojiGrid()}</div>
+        <div class="em-own"><input id="emCustom" maxlength="6" placeholder="พิมพ์ emoji ใดก็ได้ หรืออักษรย่อ" value="${esc(emoji && !EMOJIS.includes(emoji) ? emoji : '')}" aria-label="ไอคอนของคุณเอง"><button type="button" class="btn btn-ghost btn-sm" id="emClear">ใช้ตัวอักษรย่อชื่อ</button></div>
+        <p class="dup-msg" id="dupMsg"></p></section>
+      <section><h4>2 · สีไอคอน</h4>
+        <div class="swatches" id="icoSw"><button type="button" class="swatch auto ${!iconColor ? 'on' : ''}" data-ic="" title="ใช้สีของทีม" aria-label="ใช้สีของทีม">ทีม</button>${sw(ICON_COLORS, iconColor, 'ic')}<label class="swatch pick" title="เลือกสีเอง"><input type="color" id="icCustom" value="${iconColor || group(m.group).color}" aria-label="เลือกสีไอคอนเอง"></label></div></section>
+      <section><h4>3 · สี Post-it</h4>
+        <div class="swatches" id="swatches">${sw(POSTIT_COLORS, color, 'c')}<label class="swatch pick" title="เลือกสีเอง"><input type="color" id="pcCustom" value="${color}" aria-label="เลือกสี Post-it เอง"></label></div></section>
+      <section><h4>4 · ลาย Post-it</h4>
+        <div class="pat-pick" id="pats">${Object.entries(POSTIT_PATTERNS).map(([k, l]) => `<button type="button" class="pat-${k} ${k === pattern ? 'on' : ''}" data-p="${k}" style="--pc:${color}"><span>${l}</span></button>`).join('')}</div></section>
+    </div><div class="style-pv"><span class="muted small">ตัวอย่าง</span><div class="preview-board" id="pv">${prev()}</div></div></div>`,
     actions: [{ label: 'ยกเลิก' }, {
       label: 'บันทึก', cls: 'btn-primary', onClick: () => {
         const dup = emoji && emojiOwner(emoji, m.id);
         if (dup) { toast(`icon นี้ ${dup.name} ใช้อยู่แล้ว`, 'error'); return false; }
-        m.emoji = emoji; m.postit = { color, pattern }; commit(); toast('บันทึกสไตล์ของคุณแล้ว');
+        m.emoji = emoji; m.iconColor = iconColor || null; m.postit = { color, pattern }; commit(); toast('บันทึกสไตล์ของคุณแล้ว');
       },
     }],
     onOpen(md) {
       const refresh = () => {
         $('#pv', md.el).innerHTML = prev();
         $$('#emGrid button', md.el).forEach(b => b.classList.toggle('on', b.dataset.e === emoji));
-        $$('#swatches .swatch', md.el).forEach(b => b.classList.toggle('on', b.dataset.c === color));
+        $$('#icoSw [data-ic]', md.el).forEach(b => b.classList.toggle('on', b.dataset.ic === iconColor));
+        $$('#swatches [data-c]', md.el).forEach(b => b.classList.toggle('on', b.dataset.c === color));
         $$('#pats button', md.el).forEach(b => { b.classList.toggle('on', b.dataset.p === pattern); b.style.setProperty('--pc', color); });
+        $('#icCustom', md.el).closest('.pick').classList.toggle('on', !!iconColor && !ICON_COLORS.includes(iconColor));
+        $('#pcCustom', md.el).closest('.pick').classList.toggle('on', !POSTIT_COLORS.includes(color));
         const dup = emoji && emojiOwner(emoji, m.id); $('#dupMsg', md.el).textContent = dup ? `${dup.name} ใช้ icon นี้แล้ว — เลือกอันอื่น` : '';
       };
+      $('#emCats', md.el).onclick = e => { const b = e.target.closest('[data-cat]'); if (!b) return; cat = b.dataset.cat; $$('#emCats button', md.el).forEach(x => x.classList.toggle('on', x === b)); $('#emGrid', md.el).innerHTML = emojiGrid(); };
       $('#emGrid', md.el).onclick = e => { const b = e.target.closest('button[data-e]'); if (b && !b.disabled) { emoji = b.dataset.e; $('#emCustom', md.el).value = ''; refresh(); } };
       $('#emCustom', md.el).oninput = e => { emoji = e.target.value.trim(); refresh(); };
       $('#emClear', md.el).onclick = () => { emoji = ''; $('#emCustom', md.el).value = ''; refresh(); };
+      $('#icoSw', md.el).onclick = e => { const b = e.target.closest('[data-ic]'); if (b) { iconColor = b.dataset.ic; refresh(); } };
+      $('#icCustom', md.el).oninput = e => { iconColor = e.target.value; refresh(); };
       $('#swatches', md.el).onclick = e => { const b = e.target.closest('[data-c]'); if (b) { color = b.dataset.c; refresh(); } };
+      $('#pcCustom', md.el).oninput = e => { color = e.target.value; refresh(); };
       $('#pats', md.el).onclick = e => { const b = e.target.closest('[data-p]'); if (b) { pattern = b.dataset.p; refresh(); } };
     },
   });
@@ -73,14 +89,13 @@ V.todo = root => {
   if (!f.user || !ppl.find(m => m.id === f.user)) f.user = me().id;
   const who = member(f.user), own = f.user === me().id;
   const ws = weekStartOf(off), we = addDays(ws, 6);
-  const mine = visibleTasks().filter(t => t.assigneeId === f.user && t.status !== 'cancelled');
+  const mine = visibleTasks().filter(t => isOwner(t, f.user) && t.status !== 'cancelled');
   const inWeek = mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws);
   const carry = off === 0 ? mine.filter(t => isActive(t) && taskEnd(t) < ws) : [];
   const list = [...new Set(inWeek.concat(carry))];
   const H = weekHealth(list, off), label = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
-  const myProjects = visibleProjects().filter(p => inProject(p));
   const col = (st, th) => { const ts = sortBy(list.filter(t => t.status === st), t => taskEnd(t));
-    return `<div class="kcol k-${st}"><div class="kcol-h"><b>${th}</b><em>${ts.length}</em></div><div class="kcol-body" data-drop="${st}">${ts.map(wcard).join('') || '<p class="kempty">ลากงานมาวางที่นี่</p>'}</div></div>`; };
+    return `<div class="kcol k-${st}"><div class="kcol-h"><b>${th}</b><em>${ts.length}</em></div><div class="kcol-body" data-drop="${st}">${ts.map(wcard).join('') || `<p class="kempty">${st === 'todo' && own ? 'ยังไม่มีงาน — กด “+ เพิ่มงาน”' : 'ลากงานมาวางที่นี่'}</p>`}</div></div>`; };
   const wcard = t => {
     const p = t.projectId && project(t.projectId), late = isDelayed(t), full = canFullEdit(t);
     return `<article class="kcard wcard ${late ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
@@ -89,27 +104,12 @@ V.todo = root => {
       ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>${advBtn(t)}
         ${full && own && t.status !== 'done' ? `<button type="button" class="mini-btn nextwk" data-act="nextWeek" data-id="${t.id}" title="เลื่อนแผนงานนี้ไปสัปดาห์หน้า">สัปดาห์หน้า ${ico('right', 13)}</button>` : ''}</div></article>`;
   };
-  root.innerHTML = pageHead(own ? pageName('todo') : `แผนของ ${who.name}`, 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า',
-    `${canAssign() ? `<button class="btn btn-primary" data-act="assignTask">${ico('users', 15)} ${ACTION.assign[0]}</button>` : ''}<button class="btn btn-ghost" data-act="myStyle">${ico('edit', 15)} ${ACTION.style[0]}</button>${ppl.length > 1 ? `<select data-f="todo.user" aria-label="ดูของ">${ppl.map(m => opt(m.id, m.name, f.user)).join('')}</select>` : ''}`) + `
+  const chips = ppl.length > 1 ? `<div class="who-bar" role="tablist" aria-label="ดูแผนของ">${[me(), ...ppl.filter(m => m.id !== me().id)].map(m => `<button type="button" role="tab" class="who-chip ${m.id === f.user ? 'on' : ''}" aria-selected="${m.id === f.user}" data-act="planWho" data-id="${m.id}">${avatar(m, 26)}<span>${m.id === me().id ? 'ของฉัน' : esc(m.name)}</span></button>`).join('')}</div>` : '';
+  root.innerHTML = pageHead(own ? pageName('todo') : `แผนของ ${who.name}`, own ? 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า' : `คุณกำลังดูแผนของ ${esc(who.name)} · กด “+ มอบหมายงาน” เพื่อเพิ่มงานให้`) + chips + `
   <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
     <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
-  ${own ? `<form class="quick" id="quickAdd" autocomplete="off"><input name="title" placeholder="เพิ่มงานในแผนสัปดาห์นี้… พิมพ์ชื่องานแล้วกด Enter" maxlength="140" aria-label="ชื่องาน">
-    <label class="qd"><small>เริ่ม</small><input type="date" name="start" value="${off === 0 ? today() : ws}"></label><label class="qd"><small>เป้าหมายเสร็จ</small><input type="date" name="end" value="${off === 0 ? today() : ws}"></label>
-    <select name="pid" aria-label="เชื่อมกับ Project">${opt('', 'ส่วนตัว', '')}${myProjects.map(p => opt(p.id, p.name, '')).join('')}</select>
-    <select name="status" aria-label="สถานะ"><option value="todo">To do</option><option value="doing">Doing</option><option value="done">Done</option></select>
-    <label class="check" title="เห็นเฉพาะฉัน (ไม่ขึ้น Kanban ทีม)"><input type="checkbox" name="priv">${ico('lock', 14)}</label><button class="btn btn-primary">${ico('plus', 16)} เพิ่ม</button></form>` : ''}
   <div class="kanban three">${col('todo', 'To do')}${col('doing', 'Doing')}${col('done', 'Done')}</div>
-  <p class="muted small kb-hint">งานที่เพิ่มจะขึ้น Kanban ของทีมอัตโนมัติ (ติ๊กรูปกุญแจ = เห็นเฉพาะคุณ) · ลากการ์ด หรือกดปุ่มสถานะบนการ์ดเพื่อเลื่อน To do ⇄ Doing ⇄ Done · “สัปดาห์หน้า” ย้ายแผนงานไปสัปดาห์ถัดไป · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด</p>`;
-  const qa = $('#quickAdd');
-  if (qa) qa.onsubmit = e => {
-    e.preventDefault(); const v = qa.elements, title = v.title.value.trim(); if (!title) { v.title.focus(); return; }
-    if (v.end.value < v.start.value) return toast('วันเป้าหมายต้องไม่ก่อนวันเริ่ม', 'error');
-    const pid = v.pid.value, t = newTask(pid ? 'project' : 'personal', { title, start: v.start.value, projectId: pid || null, private: v.priv.checked && !pid, type: 'Admin / อื่นๆ' });
-    t.duration = countDays(t.start, v.end.value, taskMode(t)) || 1;
-    t.status = v.status.value || 'todo'; t.doneAt = t.status === 'done' ? today() : null;
-    S().tasks.push(t); commit(); toast(t.private || pid ? 'เพิ่มงานเข้าแผนแล้ว' : 'เพิ่มงานแล้ว — ขึ้นบน Kanban ทีมอัตโนมัติ');
-    setTimeout(() => $('#quickAdd input[name=title]')?.focus(), 30);
-  };
+  <p class="muted small kb-hint">กด “+ เพิ่มงาน” เพื่อเพิ่มงาน · งานจะขึ้น Kanban ของทีมอัตโนมัติ (ยกเว้นงานที่ตั้งเป็นส่วนตัว) · ลากการ์ด หรือกดปุ่มสถานะบนการ์ดเพื่อเลื่อน To do ⇄ Doing ⇄ Done · “สัปดาห์หน้า” ย้ายแผนงานไปสัปดาห์ถัดไป · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด</p>`;
   bindKanban(root);
 };
 /* ---------------- Assign Task (leaders / admin only) ---------------- */
@@ -136,6 +136,7 @@ function openAssign(preset) {
     onOpen(m) { $('#asForm', m.el).addEventListener('submit', ev => ev.preventDefault()); },
   });
 }
+ACT.planWho = el => { ST.todo.user = el.dataset.id; render(); };
 ACT.assignTask = el => openAssign(el.dataset.id || (ST.todo.user !== me().id ? ST.todo.user : ''));
 ACT.weekGo = el => { const d = +el.dataset.d; ST.todo.week = d === 0 ? 0 : (ST.todo.week || 0) + d; render(); };
 ACT.shiftTask = el => {
@@ -326,7 +327,7 @@ V.team = root => {
       ${admin ? `<div class="pwline" data-id="${m.id}"><span class="muted small">รหัสผ่านปัจจุบัน</span><code class="pwc">…</code></div>` : ''}<p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
   };
   root.innerHTML = pageHead(pageName('team'), `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
-    admin ? `<button class="btn btn-ghost" data-act="setAllPwDialog">${ico('lock', 16)} ตั้งรหัสผ่านให้ทุกคน</button><button class="btn btn-primary" data-act="newMember">${ico('plus', 16)} เพิ่มสมาชิก</button>` : '') + `
+    admin ? `<button class="btn btn-ghost" data-act="setAllPwDialog">${ico('lock', 16)} ตั้งรหัสผ่านให้ทุกคน</button>` : '') + `
   <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
   <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
   ${ST.team.tab === 'org' ? orgTree(admin) : S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}

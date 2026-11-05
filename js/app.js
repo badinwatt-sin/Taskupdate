@@ -22,7 +22,7 @@ function render() {
   document.body.dataset.route = r.name;
   view.className = 'view v-' + r.name + (key !== lastRoute ? ' enter' : '');
   V[r.name](view, r.id);
-  renderTabbar(r);
+  renderTabbar(r); renderAdd(r);
   const tu = $('#tbUser'); if (tu) tu.innerHTML = avatar(m, 32);
   document.title = pageName(r.name) + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
@@ -76,7 +76,7 @@ function cycleTheme() { const i = THEMES.findIndex(x => x[0] === getTheme()); tr
   $('#scrim').onclick = () => document.body.classList.remove('nav-open');
   $('#userBtn').onclick = openAccount;
   $('#searchBtn').onclick = openSearch;
-  $('#addBtn').onclick = openQuickCreate; $('#fab').onclick = openQuickCreate; $('#tbUser').onclick = openMore;
+  $('#addBtn').onclick = runPageAdd; $('#fab').onclick = runPageAdd; $('#tbUser').onclick = openMore;
   if (innerWidth < 720) ST.cal.mode = 'agenda';
   await Store.detect();
   let id = null, note = '';

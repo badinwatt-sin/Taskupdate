@@ -16,7 +16,7 @@ function renderTabbar(r) {
 /* ---------- quick create ---------- */
 function quickActions() {   // [key, icon, title, subtitle, color, action]
   const mine = visibleProjects().filter(p => inProject(p) || canManageProject(p)), A = ACTION;
-  const a = [['task', 'check', A.newTask[0], A.newTask[1], '#007aff', () => openTask(newTask('personal'))]];
+  const a = [['task', 'check', A.newTask[0], A.newTask[1], '#007aff', () => openPlanTask()]];
   if (mine.length) a.push(['ptask', 'folder', A.projectTask[0], A.projectTask[1], '#5856d6', () => openTask(newTask('project', { projectId: (mine.find(p => canManageProject(p)) || mine[0]).id }))]);
   if (canAssign()) a.push(['assign', 'users', A.assign[0], A.assign[1], '#ff9500', () => openAssign()]);
   a.push(['off', 'inbox', A.logOffsite[0], A.logOffsite[1], '#34c759', () => openOffsite(null)]);
@@ -32,6 +32,44 @@ function openQuickCreate() {
     onOpen(m) { m.el.addEventListener('click', e => { const b = e.target.closest('[data-qc]'); if (!b) return; const fn = qa.find(x => x[0] === b.dataset.qc)[5]; m.close(); setTimeout(fn, 10); }); },
   });
 }
+/* ---------- one "+" per page: same place on every screen, action depends on the page ---------- */
+function pageAdd(r) {
+  switch (r.name) {
+    case 'dashboard': return { label: 'สร้าง', fn: openQuickCreate };
+    case 'todo': {
+      const who = ST.todo.user || me().id;
+      if (who === me().id) return { label: 'เพิ่มงาน', fn: () => openPlanTask() };
+      return canAssign() ? { label: 'มอบหมายงาน', fn: () => openAssign(who) } : null;
+    }
+    case 'projects': {
+      if (r.id) { const p = project(r.id); return p ? { label: 'เพิ่มงาน', fn: () => ACT.newTask({ dataset: { pid: p.id } }) } : null; }
+      return (isAdmin() || isPM()) ? { label: 'New Project', fn: () => openProject(null) } : null;
+    }
+    case 'calendar': return canManageEvents() ? { label: 'เพิ่ม Event', fn: () => openEvent(null) } : null;
+    case 'board': { const q = quickActions().find(x => x[0] === 'ptask'); return q ? { label: 'เพิ่มงาน', fn: q[5] } : null; }
+    case 'support': return { label: 'บันทึก Offsite', fn: () => openOffsite(null) };
+    case 'team': return isAdmin() ? { label: 'เพิ่มสมาชิก', fn: () => openMember(null) } : null;
+  }
+  return null;
+}
+let PAGE_ADD = null;
+function renderAdd(r) {
+  PAGE_ADD = pageAdd(r);
+  const b = $('#addBtn'), f = $('#fab'); if (!b || !f) return;
+  b.hidden = f.hidden = !PAGE_ADD;
+  if (!PAGE_ADD) return;
+  b.innerHTML = `${ico('plus', 16)}<span>${PAGE_ADD.label}</span>`;
+  f.innerHTML = `${ico('plus', 22)}<span>${PAGE_ADD.label}</span>`;
+  b.title = f.title = PAGE_ADD.label; f.setAttribute('aria-label', PAGE_ADD.label);
+}
+const runPageAdd = () => { if (PAGE_ADD && !modalStack.length) PAGE_ADD.fn(); };
+/* add a task to My Plan (the single way to create your own task) */
+function openPlanTask() {
+  const off = location.hash.startsWith('#/todo') ? (ST.todo.week || 0) : 0;
+  const start = off === 0 ? today() : weekStartOf(off);
+  openTask(newTask('personal', { start }), undefined, { title: 'เพิ่มงานใน My Plan' });
+}
+
 ACT.quick = el => { const q = quickActions().find(x => x[0] === el.dataset.id); if (q) q[5](); };
 ACT.quickCreate = () => openQuickCreate();
 

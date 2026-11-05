@@ -22,14 +22,14 @@ const pageName = k => PAGE[k]?.[0] || k;
 
 /* actions: same words on buttons, quick-create and sheets  [title, Thai gloss] */
 const ACTION = {
-  newTask: ['New Task', 'เพิ่มงานเข้าแผนของฉัน'],
+  newTask: ['Add to My Plan', 'เพิ่มงานในแผนของฉัน'],
   projectTask: ['Project Task', 'เพิ่มงานในตาราง Project'],
   assign: ['Assign Task', 'มอบหมายงานให้คนในทีม'],
   logOffsite: ['Log Offsite', 'บันทึกการไปปฏิบัติงานนอกสถานที่'],
   newEvent: ['Events', 'เพิ่มงานสำคัญในปฏิทิน'],
   newProject: ['New Project', 'สร้าง Project และจัด Squad'],
   more: ['More', 'เมนูทั้งหมด'],
-  account: ['Account', 'รหัสผ่านและออกจากระบบ'],
+  account: ['Account', 'โปรไฟล์ · รหัสผ่าน · ออกจากระบบ'],
   search: ['Search', 'งาน Project Event สมาชิก'],
   theme: ['Theme', 'สว่าง มืด หรืออัตโนมัติ'],
   style: ['Post-it & Icon', 'สีและไอคอนประจำตัว'],

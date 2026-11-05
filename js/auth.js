@@ -111,17 +111,46 @@ function showLogin(bootMsg) {
 
 /* ---------- account menu + change password ---------- */
 function openAccount() {
-  const m = me();
+  const m = me(), mgr = member(m.managerId), g = group(m.group), pms = S().projects.filter(p => p.pmId === m.id), w = workload(m.id);
+  const role = m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก';
+  const themeLabel = () => (THEMES.find(x => x[0] === getTheme()) || THEMES[0])[1];
   modal({
-    title: ACTION.account[0],
-    body: `<div class="acct"><div class="person">${avatar(m, 52)}<div><b style="font-size:17px">${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : isLeader() ? 'หัวหน้าทีม' : 'สมาชิก'} · ${esc(m.position)}</small></div></div></div>
-      <form id="pwForm" class="form-grid mt" autocomplete="off"><div class="full"><b>เปลี่ยนรหัสผ่าน</b></div>
-        <label class="field full"><span>รหัสผ่านปัจจุบัน</span><input type="password" name="cur" autocomplete="current-password" required></label>
-        <label class="field"><span>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</span><input type="password" name="n1" minlength="4" autocomplete="new-password" required></label>
-        <label class="field"><span>ยืนยันรหัสผ่านใหม่</span><input type="password" name="n2" minlength="4" autocomplete="new-password" required></label>
-        <div class="full muted small">หมายเหตุ: Admin สามารถเห็นรหัสผ่านของทุกคนได้ เพื่อช่วยเหลือกรณีลืมรหัส จึงไม่ควรใช้รหัสเดียวกับที่อื่น</div></form>
+    title: ACTION.account[0], cls: 'acct-modal',
+    body: `<div class="acct-card">${avatar(m, 64)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small>(${esc(m.alias)})</small>` : ''}</b><span>${role} · ${esc(m.position || '–')}</span></div></div>
+      <dl class="acct-facts">
+        <div><dt>ทีม / หน้าที่</dt><dd>${esc(g?.name || '–')}</dd></div>
+        <div><dt>รายงานต่อ</dt><dd>${mgr ? esc(mgr.name) : '–'}</dd></div>
+        <div><dt>งานที่เปิดอยู่</dt><dd>${w.active} งาน${w.delayed ? ` · <span class="late">${w.delayed} ล่าช้า</span>` : ''}</dd></div>
+        ${pms.length ? `<div><dt>ดูแล Project</dt><dd>${pms.map(p => esc(p.name)).join(', ')}</dd></div>` : ''}
+      </dl>
+      <div class="more-list">
+        <button type="button" class="more-it" data-ai="style">${ico('sparkles', 20)}<div><b>${ACTION.style[0]}</b><small>สี ลาย Post-it และไอคอนประจำตัว</small></div>${ico('right', 16)}</button>
+        <button type="button" class="more-it" data-ai="theme">${ico('auto', 20)}<div><b>${ACTION.theme[0]}</b><small id="acTheme">${themeLabel()}</small></div><span class="muted small">แตะเพื่อสลับ</span></button>
+        <button type="button" class="more-it" data-ai="pw">${ico('lock', 20)}<div><b>เปลี่ยนรหัสผ่าน</b><small>ตั้งรหัสผ่านใหม่ของคุณ</small></div>${ico('right', 16)}</button>
+      </div>
       <p class="muted small center mt">TEAM Hub · เวอร์ชัน <b>${esc(Store.version || (Store.mode === 'local' ? 'สาธิต' : '–'))}</b></p>`,
-    actions: [{ label: ico('left', 15) + ' ออกจากระบบ', cls: 'btn-danger-ghost', left: true, onClick: () => { Auth.logout(); return false; } }, { label: 'ปิด' }, {
+    actions: [{ label: ico('left', 15) + ' ออกจากระบบ', cls: 'btn-danger-ghost', left: true, onClick: () => { Auth.logout(); return false; } }, { label: 'ปิด' }],
+    onOpen(md) {
+      md.el.addEventListener('click', e => {
+        const b = e.target.closest('[data-ai]'); if (!b) return; const k = b.dataset.ai;
+        if (k === 'theme') { cycleTheme(); $('#acTheme', md.el).textContent = themeLabel(); return; }
+        if (k === 'logout') { Auth.logout(); return; }
+        md.close();
+        if (k === 'style') setTimeout(() => openMyStyle(me().id), 10);
+        if (k === 'pw') setTimeout(openChangePassword, 10);
+      });
+    },
+  });
+}
+function openChangePassword() {
+  modal({
+    title: 'เปลี่ยนรหัสผ่าน',
+    body: `<form id="pwForm" class="form-grid" autocomplete="off">
+        <label class="field full"><span>รหัสผ่านปัจจุบัน</span><input type="password" name="cur" autocomplete="current-password" required></label>
+        <label class="field full"><span>รหัสผ่านใหม่ (อย่างน้อย 4 ตัว)</span><input type="password" name="n1" minlength="4" autocomplete="new-password" required></label>
+        <label class="field full"><span>ยืนยันรหัสผ่านใหม่</span><input type="password" name="n2" minlength="4" autocomplete="new-password" required></label>
+        <p class="full muted small">Admin มองเห็นรหัสผ่านของทุกคนได้ เพื่อช่วยกรณีลืมรหัส — อย่าใช้รหัสเดียวกับบัญชีอื่น</p></form>`,
+    actions: [{ label: 'ยกเลิก' }, {
       label: 'บันทึกรหัสใหม่', cls: 'btn-primary', onClick: async () => {
         const f = $('#pwForm'); if (!f.reportValidity()) return false;
         if (f.elements.n1.value !== f.elements.n2.value) { toast('รหัสผ่านใหม่ทั้งสองช่องไม่ตรงกัน', 'error'); return false; }

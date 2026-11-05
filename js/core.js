@@ -210,7 +210,7 @@ const visibleProjects = () => S().projects.filter(p => inProject(p) || (myScope(
 const isPostit = t => !t.projectId && t.source !== 'ram' && !t.private && t.status !== 'cancelled';   // auto: no Submit step — mark a task private to keep it off the board
 function taskVisible(t) {
   if (t.private && t.assigneeId !== me().id) return false;
-  if (isAdmin() || inScope(t.assigneeId) || isPostit(t)) return true;
+  if (isAdmin() || inScope(t.assigneeId) || (t.coId && inScope(t.coId)) || isPostit(t)) return true;
   const p = t.projectId && project(t.projectId); return !!(p && inProject(p));
 }
 const visibleTasks = () => S().tasks.filter(taskVisible);
@@ -222,7 +222,9 @@ function canFullEdit(t) {
   if (t.source === 'personal') return t.assigneeId === me().id;
   return t.createdBy === me().id;
 }
-const canStatus = t => canFullEdit(t) || t.assigneeId === me().id;
+const owners = t => [t.assigneeId, t.coId].filter(Boolean);   // up to 2 people per task (main + co-owner)
+const isOwner = (t, id) => t.assigneeId === id || t.coId === id;
+const canStatus = t => canFullEdit(t) || isOwner(t, me().id);
 const canManageProject = p => isAdmin() || p.pmId === me().id;
 
 /* Dependencies that could affect this task */
@@ -269,7 +271,7 @@ function projectStats(p) {
 }
 
 function workload(mid) {
-  const ts = visibleTasks().filter(t => t.assigneeId === mid && isActive(t));
+  const ts = visibleTasks().filter(t => isOwner(t, mid) && isActive(t));
   const t0 = today(), t14 = addDays(t0, 14);
   const next = ts.slice().sort((a, b) => taskEnd(a).localeCompare(taskEnd(b)))[0];
   return {

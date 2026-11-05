@@ -34,7 +34,7 @@ V.dashboard = root => {
   const scope = scopeMembers().filter(x => !f.group || x.group === f.group), ids = new Set(scope.map(x => x.id));
   const live = visibleTasks().filter(t => ids.has(t.assigneeId) && t.status !== 'cancelled');
   /* ---- me ---- */
-  const mine = visibleTasks().filter(t => t.assigneeId === m.id && t.status !== 'cancelled');
+  const mine = visibleTasks().filter(t => isOwner(t, m.id) && t.status !== 'cancelled');
   const ws = weekStartOf(0), we = addDays(ws, 6);
   const myWeek = [...new Set(mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws).concat(mine.filter(t => isActive(t) && taskEnd(t) < ws)))];
   const H = weekHealth(myWeek, 0), hLabel = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
@@ -167,7 +167,7 @@ V.support = root => {
   const cd = parse(f.cur), title = f.view === 'month' ? `${TH_MON_FULL[cd.getMonth()]} ${cd.getFullYear() + 543}` : f.view === 'week' ? `${fmtD(rg[0])} – ${fmtD(rg[1])} ${parse(rg[1]).getFullYear() + 543}` : '';
   const periodLabel = rg ? (f.view === 'week' ? 'สัปดาห์นี้ที่เลือก' : 'เดือน' + TH_MON_FULL[cd.getMonth()]) : (f.month ? 'เดือน ' + TH_MON_FULL[+f.month.slice(5) - 1] : 'ทุกช่วงเวลา');
   root.innerHTML = pageHead(pageName('support'), 'บันทึกการปฏิบัติงานนอกสำนักงาน — Event และการสนับสนุนกิจกรรมที่ DCAO / RAM / อื่น ๆ',
-    `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button><button class="btn btn-primary" data-act="newOffsite">${ico('plus', 16)} ${ACTION.logOffsite[0]}</button>`) + `
+    `<button class="btn btn-ghost" data-act="exportOffsite">${ico('download', 16)} Export Excel</button>`) + `
   <div class="cal-bar"><div class="seg-ctl">${[['list', 'รายการ'], ['week', 'ปฏิทินสัปดาห์'], ['month', 'ปฏิทินเดือน']].map(([k, l]) => `<button class="${f.view === k ? 'on' : ''}" data-act="offView" data-id="${k}">${l}</button>`).join('')}</div>
     ${f.view !== 'list' ? `<div class="cal-nav"><button class="icon-btn" data-act="offNav" data-d="-1" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="offNav" data-d="1" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="offNav" data-d="0">วันนี้</button></div>` : ''}</div>
   <div class="filters">
@@ -269,7 +269,7 @@ function calHeader(title) {
 }
 V.calendar = root => {
   const c = ST.cal;
-  const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>${canManageEvents() ? `<button class="btn btn-primary" data-act="newEvent">${ico('plus', 16)} ${ACTION.newEvent[0]}</button>` : ''}`;
+  const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="exportCal">${ico('download', 16)} Export Excel</button><button class="btn btn-ghost hide-sm" onclick="window.print()">${ico('print', 16)} พิมพ์ / PDF</button>`;
   const year = c.mode === 'year' ? c.y : c.y;
   const evYear = sortBy(S().events.filter(e => e.start.startsWith(year) || e.end.startsWith(year) || (e.start.slice(0, 4) <= String(year) && e.end.slice(0, 4) >= String(year))), e => e.start);
   const legend = `<div class="legend cal-legend">${Object.values(EV_STATUS).map(s => `<span><i class="${s.cls}"></i>${s.th}</span>`).join('')}<span><i class="ram"></i>Event Support (RAM/Other)</span><span><i class="hol"></i>วันหยุด</span></div>`;

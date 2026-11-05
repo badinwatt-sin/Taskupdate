@@ -11,7 +11,7 @@ function boardTasks(f, fixedProject) {
   else if (pj === '__postit') ts = ts.filter(isPostit);
   else if (pj) ts = ts.filter(t => t.projectId === pj);
   if (f.group) ts = ts.filter(t => member(t.assigneeId)?.group === f.group);
-  if (f.who) ts = ts.filter(t => t.assigneeId === f.who);
+  if (f.who) ts = ts.filter(t => isOwner(t, f.who));
   if (f.tg) ts = ts.filter(t => t.groupId === f.tg);
   return ts;
 }
@@ -50,7 +50,7 @@ function kcard(t) {
     <b class="kc-title">${esc(t.title)}</b>
     <div class="kc-meta"><span class="${isDelayed(t) ? 'late' : 'muted'}">${ico('clock', 13)} ${fmtD(taskEnd(t))}</span>
       ${risks.length ? `<span class="risk" title="ติดงานก่อนหน้าที่ยังไม่เสร็จ/ล่าช้า">${ico('alert', 13)}</span>` : ''}${t.private ? ico('lock', 13) : ''}
-      <span class="grow"></span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}${advBtn(t)}${avatar(member(t.assigneeId), 24)}</div></article>`;
+      <span class="grow"></span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}${advBtn(t)}<span class="squad">${owners(t).map(id => avatar(member(id), 24)).join('')}</span></div></article>`;
 }
 function bindKanban(root) {
   let dragId = null;
@@ -180,22 +180,16 @@ const TL_ORDER = {};
 function taskListHTML(p, f) {
   const all = S().tasks.filter(t => t.projectId === p.id), idx = new Map(all.map((t, i) => [t.id, i + 1]));
   let rows = all;
-  if (f.group) rows = rows.filter(t => member(t.assigneeId)?.group === f.group);
-  if (f.who) rows = rows.filter(t => t.assigneeId === f.who);
-  if (f.tg) rows = rows.filter(t => t.groupId === f.tg);
-  const by = f.groupBy || 'group', secs = groupTasks(rows, p, by, !f.who && !f.group && !f.tg);
+  const by = ['group', 'who', 'none'].includes(f.groupBy) ? f.groupBy : 'group', secs = groupTasks(rows, p, by, !f.who && !f.group && !f.tg);
   const squad = [...new Set([p.pmId, ...p.squad])].map(member).filter(Boolean);
-  const whoOpts = sel => opt('', '— เลือกผู้รับผิดชอบ —', sel) + squad.map(m => opt(m.id, m.name, sel)).join('');
   const grpOpts = sel => opt('', '—', sel) + (p.taskGroups || []).map(g => opt(g.id, g.name, sel)).join('');
-  const typeOpts = sel => opt('', '—', sel) + S().settings.types.map(x => opt(x, x, sel)).join('');
   const row = t => {
     const full = canFullEdit(t), d = full ? '' : 'disabled', risk = depRisks(t).length, g = projGroupOf(t);
     return `<tr data-id="${t.id}" class="${isDelayed(t) ? 'is-late' : ''} ${t.status === 'done' ? 'is-done' : ''}">
       <td class="rn">${idx.get(t.id)}</td>
       <td data-l="งาน"><input class="c-title" value="${esc(t.title)}" placeholder="ชื่องาน" ${d}></td>
       <td data-l="กลุ่มงาน"><select class="c-grp" ${d} ${g ? `style="--gc:${g.color}"` : ''}>${grpOpts(t.groupId)}</select></td>
-      <td data-l="ประเภท"><select class="c-type" ${d}>${typeOpts(t.type)}</select></td>
-      <td data-l="ผู้รับผิดชอบ"><select class="c-who" ${d}>${whoOpts(t.assigneeId)}</select></td>
+      <td data-l="ผู้รับผิดชอบ"><button type="button" class="who-pick" data-act="pickWho" data-id="${t.id}" ${d}>${whoLabel(t)}</button></td>
       <td data-l="เริ่ม"><input type="date" class="c-start" value="${taskStart(t)}" ${d}></td>
       <td data-l="สิ้นสุด"><input type="date" class="c-end" value="${taskEnd(t)}" ${d}></td>
       <td data-l="วัน"><input type="number" min="1" class="c-dur" value="${t.duration}" ${d}></td>
@@ -208,14 +202,14 @@ function taskListHTML(p, f) {
     if (sec.name == null) return sec.tasks.map(row).join('');
     const ck = `${p.id}|${by}|${sec.key}`, closed = (ST.proj.collapsed || {})[ck], done = sec.tasks.filter(t => t.status === 'done').length, tot = sec.tasks.filter(t => t.status !== 'cancelled').length;
     let range = ''; if (sec.tasks.length) { const ss = sec.tasks.map(taskStart).sort(), ee = sec.tasks.map(taskEnd).sort(); range = fmtRange(ss[0], ee[ee.length - 1]); }
-    return `<tr class="gh"><td colspan="11"><div class="gh-in"><button class="gh-t" data-act="tlToggle" data-id="${esc(ck)}" aria-expanded="${!closed}">${ico(closed ? 'right' : 'down', 15)}<i style="background:${sec.color}"></i><b>${esc(sec.name)}</b></button>
+    return `<tr class="gh"><td colspan="10"><div class="gh-in"><button class="gh-t" data-act="tlToggle" data-id="${esc(ck)}" aria-expanded="${!closed}">${ico(closed ? 'right' : 'down', 15)}<i style="background:${sec.color}"></i><b>${esc(sec.name)}</b></button>
       <span class="muted small">${sec.tasks.length} งาน${range ? ' · ' + range : ''}</span><span class="gh-prog"><span class="progress"><i style="width:${tot ? Math.round(done / tot * 100) : 0}%;background:${sec.color}"></i></span><small>${done}/${tot}</small></span>
       ${canAdd || by === 'who' ? `<button class="btn btn-ghost btn-sm" data-act="addRow" data-id="${p.id}" data-gk="${esc(sec.key)}" data-by="${by}">${ico('plus', 13)} เพิ่มงาน</button>` : ''}</div></td></tr>` + (closed ? '' : sec.tasks.map(row).join(''));
   }).join('');
-  return `<section class="card flush tl"><div class="table-wrap"><table class="tbl grid"><thead><tr><th>#</th><th>งาน</th><th>กลุ่มงาน</th><th>ประเภท</th><th>ผู้รับผิดชอบ (Squad)</th><th>เริ่ม</th><th>สิ้นสุด</th><th>วัน</th><th>สถานะ</th><th>ทำหลังแถว</th><th></th></tr></thead>
+  return `<section class="card flush tl"><div class="table-wrap"><table class="tbl grid"><thead><tr><th>#</th><th>งาน</th><th>กลุ่มงาน</th><th>ผู้รับผิดชอบ <small>(สูงสุด 2)</small></th><th>เริ่ม</th><th>สิ้นสุด</th><th>วัน</th><th>สถานะ</th><th>ทำหลังแถว</th><th></th></tr></thead>
     <tbody id="tlBody">${body}</tbody></table></div>
     <div class="tl-foot"><button class="btn btn-ghost btn-sm" data-act="addRow" data-id="${p.id}">${ico('plus', 14)} เพิ่มบรรทัด</button>
-    <span class="muted small">กรอกชื่องาน เลือกกลุ่มงานและคนใน Squad แล้วกรอกวันที่ 2 ใน 3 ช่อง (เริ่ม / สิ้นสุด / วัน) ระบบคำนวณที่เหลือให้ · กด Enter ที่ช่องชื่อเพื่อขึ้นบรรทัดใหม่ · ปรับวันแบบลากได้ที่แท็บ Gantt Chart</span></div></section>`;
+    <span class="muted small">กรอกชื่องาน เลือกกลุ่มงานและผู้รับผิดชอบ (ได้ 2 คน) แล้วกรอกวันที่ 2 ใน 3 ช่อง (เริ่ม / สิ้นสุด / วัน) ระบบคำนวณที่เหลือให้ · กด Enter ที่ช่องชื่อเพื่อขึ้นบรรทัดใหม่ · ปรับวันแบบลากได้ที่แท็บ Gantt Chart</span></div></section>`;
 }
 function bindTaskList(root, p) {
   const body = $('#tlBody', root); if (!body) return;
@@ -228,9 +222,7 @@ function bindTaskList(root, p) {
   body.addEventListener('change', e => {
     const el = e.target, t = get(el); if (!t) return;
     if (el.classList.contains('c-title')) { t.title = el.value.trim(); Store.save(); }
-    else if (el.classList.contains('c-who')) { t.assigneeId = el.value; (ST.proj.groupBy === 'who') ? commit() : Store.save(); }
     else if (el.classList.contains('c-grp')) { t.groupId = el.value; commit(); }
-    else if (el.classList.contains('c-type')) { t.type = el.value; (ST.proj.groupBy === 'type') ? commit() : Store.save(); }
     else if (el.classList.contains('c-status')) setStatus(t, el.value);
     else if (el.classList.contains('c-dep')) {
       const all = S().tasks.filter(x => x.projectId === p.id);
@@ -252,7 +244,7 @@ ACT.addRow = el => {
   const p = project(el.dataset.id), all = S().tasks.filter(t => t.projectId === p.id), last = all[all.length - 1];
   const by = el.dataset.by || ST.proj.groupBy || 'group', gk = el.dataset.gk || '', inh = el.inherit || null;
   const t = newTask('project', { projectId: p.id, assigneeId: by === 'who' && gk ? gk : '', start: last ? addDays(taskEnd(last), 1) : today(), duration: 1,
-    groupId: by === 'group' ? (gk || inh?.groupId || '') : '', type: by === 'type' ? (gk || inh?.type || '') : '' });
+    groupId: by === 'group' ? (gk || inh?.groupId || '') : '' });
   if (taskMode(t) === 'working') t.start = nextWork(t.start);
   S().tasks.push(t); commit(); setTimeout(() => { const i = $$('#tlBody .c-title'); i.length && i[i.length - 1].focus(); }, 30);
 };
@@ -263,7 +255,7 @@ V.board = root => {
   const f = ST.board, tasks = boardTasks(f);
   const tabs = `<div class="seg-ctl"><button class="${f.tab === 'kanban' ? 'on' : ''}" data-act="boardTab" data-id="board:kanban">${ico('board', 15)} Kanban</button><button class="${f.tab === 'gantt' ? 'on' : ''}" data-act="boardTab" data-id="board:gantt">${ico('gantt', 15)} Gantt Chart</button></div>`;
   const extra = f.tab === 'gantt' ? zoomCtl('board') + `<label class="check"><input type="checkbox" data-f="board.hideDone" ${f.hideDone ? 'checked' : ''}> ซ่อนงานที่เสร็จแล้ว</label>` : '';
-  root.innerHTML = pageHead(pageName('board'), 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs + `<button class="btn btn-primary" data-act="newTask">${ico('plus', 16)} สร้างงาน</button>`)
+  root.innerHTML = pageHead(pageName('board'), 'งานเดียวกัน ดูได้หลายมุม — เปลี่ยนสถานะที่ไหนก็อัปเดตตรงกันทุกหน้า', tabs)
     + filterBar('board', null, extra) + (f.tab === 'kanban' ? kanbanHTML(tasks) : ganttHTML(tasks, f.zoom, f.hideDone));
   if (f.tab === 'kanban') bindKanban(root); else bindGantt(root);
 };
@@ -274,7 +266,7 @@ V.projects = (root, id) => {
   if (id) return projectDetail(root, id);
   const ps = visibleProjects();
   root.innerHTML = pageHead(pageName('projects'), 'โครงการและ Squad — สร้าง Project จัด Squad ข้ามหน้าที่ และติดตามความคืบหน้า',
-    (isAdmin() || isPM() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : '')) +
+    '') +
     (ps.length ? `<div class="pcards">${ps.map(p => {
       const s = projectStats(p), pm = member(p.pmId);
       return `<a class="pcard" href="#/projects/${p.id}" style="--c:${p.color}">
@@ -289,6 +281,7 @@ ACT.newProject = () => openProject(null);
 function projectDetail(root, id) {
   const p = project(id); if (!p || !visibleProjects().includes(p)) { location.hash = '#/projects'; return; }
   const f = ST.proj, s = projectStats(p), pm = member(p.pmId), can = canManageProject(p);
+  f.group = ''; f.who = ''; f.tg = '';   // project pages show everything — filters were removed
   const tabs = [['tasks', 'Task List'], ['gantt', 'Gantt Chart'], ['kanban', 'Kanban'], ['overview', 'Overview']];
   const mode = p.dayMode || S().settings.dayMode;
   const tasks = boardTasks(f, p.id);
@@ -303,16 +296,15 @@ function projectDetail(root, id) {
       ${(p.taskGroups || []).length ? `<section class="card mt"><div class="card-h"><h3>ความคืบหน้าตามกลุ่มงาน</h3>${can ? `<button class="btn btn-ghost btn-sm" data-act="editGroups" data-id="${p.id}">จัดการกลุ่มงาน</button>` : ''}</div><div class="grp-prog">${groupTasks(S().tasks.filter(t => t.projectId === p.id && t.status !== 'cancelled'), p, 'group', true).map(g => { const d = g.tasks.filter(t => t.status === 'done').length, late = g.tasks.filter(isDelayed).length; return `<div class="gp"><div class="gp-h"><i style="background:${g.color}"></i><b>${esc(g.name)}</b>${late ? `<span class="badge st-delayed">${late} ล่าช้า</span>` : ''}</div>${progressBar(g.tasks.length ? Math.round(d / g.tasks.length * 100) : 0, g.color)}<small class="muted">${d}/${g.tasks.length} งาน</small></div>`; }).join('')}</div></section>` : ''}
       <section class="card mt"><div class="card-h"><h3>งานที่ใกล้ถึงกำหนด</h3></div>${upcoming.length ? `<ul class="list">${upcoming.map(t => `<li class="clickable" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '')}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small></span></li>`).join('')}</ul>` : '<p class="muted pad">ไม่มีงานค้าง</p>'}</section>`;
   } else if (f.tab === 'tasks') {
-    content = filterBar('proj', p.id, projFilterExtra(p)) + taskListHTML(p, f);
+    content = projTools(p) + taskListHTML(p, f);
   } else if (f.tab === 'kanban') {
-    content = filterBar('proj', p.id, projFilterExtra(p, false)) + kanbanHTML(tasks);
+    content = kanbanHTML(tasks);
   } else {
-    content = filterBar('proj', p.id, zoomCtl('proj') + projFilterExtra(p)) + ganttHTML(tasks, f.zoom, false, { p, by: f.groupBy || 'group' });
+    content = projTools(p, zoomCtl('proj')) + ganttHTML(tasks, f.zoom, false, { p, by: ['group', 'who', 'none'].includes(f.groupBy) ? f.groupBy : 'group' });
   }
   root.innerHTML = `<a class="back" href="#/projects">${ico('left', 16)} ${pageName('projects')}</a>
     <div class="proj-head" style="--c:${p.color}"><div><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.total} งาน · ${s.pct}% เสร็จ${s.delayed ? ` · <span class="late">${s.delayed} งานล่าช้า</span>` : ''}</p></div>
-      <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="editGroups" data-id="${p.id}">${ico('layers', 16)} กลุ่มงาน</button><button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}
-      <button class="btn btn-primary" data-act="newTask" data-pid="${p.id}">${ico('plus', 16)} เพิ่มงาน</button></div></div>
+      <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="editGroups" data-id="${p.id}">${ico('layers', 16)} กลุ่มงาน</button><button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}</div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${f.tab === k ? 'on' : ''}" data-act="boardTab" data-id="proj:${k}">${l}</button>`).join('')}</div>${content}`;
   if (f.tab === 'kanban') bindKanban(root); else if (f.tab === 'gantt') bindGantt(root); else if (f.tab === 'tasks') bindTaskList(root, p);
 }
@@ -364,12 +356,55 @@ function openProject(id) {
 ACT.tlToggle = el => { const c = (ST.proj.collapsed ||= {}); c[el.dataset.id] = !c[el.dataset.id]; render(); };
 
 /* ---------------- project task groups manager ---------------- */
-function projFilterExtra(p, withGroupBy = true) {
-  const f = ST.proj;
-  return `<select data-f="proj.tg" aria-label="กลุ่มงาน">${opt('', 'ทุกกลุ่มงาน', f.tg || '')}${(p.taskGroups || []).map(g => opt(g.id, g.name, f.tg || '')).join('')}</select>
-  ${withGroupBy ? `<select data-f="proj.groupBy" aria-label="จัดกลุ่มตาม">${[['group', 'จัดกลุ่มตาม: กลุ่มงาน'], ['type', 'จัดกลุ่มตาม: ประเภทงาน'], ['who', 'จัดกลุ่มตาม: ผู้รับผิดชอบ'], ['none', 'ไม่จัดกลุ่ม']].map(([k, l]) => opt(k, l, f.groupBy || 'group')).join('')}</select>` : ''}
-  ${canManageProject(p) ? `<button class="btn btn-ghost btn-sm" data-act="editGroups" data-id="${p.id}">${ico('layers', 14)} จัดการกลุ่มงาน</button>` : ''}`;
+function projTools(p, extra = '') {
+  const g = ['group', 'who', 'none'].includes(ST.proj.groupBy) ? ST.proj.groupBy : 'group';
+  return `<div class="proj-tools"><div class="seg-ctl" role="group" aria-label="จัดกลุ่มตาม">${[['group', 'ตามกลุ่มงาน'], ['who', 'ตามผู้รับผิดชอบ'], ['none', 'ไม่จัดกลุ่ม']].map(([k, l]) => `<button type="button" class="${g === k ? 'on' : ''}" data-act="projGroupBy" data-id="${k}">${l}</button>`).join('')}</div>${extra}</div>`;
 }
+ACT.projGroupBy = el => { ST.proj.groupBy = el.dataset.id; render(); };
+/* who's on a task: up to 2 people, picked with check boxes */
+const whoLabel = t => { const ps = owners(t).map(member).filter(Boolean); return ps.length ? `<span class="squad">${ps.map(m => avatar(m, 22)).join('')}</span><span class="wl-n">${ps.map(m => esc(m.name)).join(', ')}</span>` : `<span class="wl-add">${ico('plus', 13)} เลือก</span>`; };
+let POP = null;
+function closePop() {
+  if (!POP) return; const P = POP; POP = null;
+  P.el.remove(); document.removeEventListener('pointerdown', P.out, true); document.removeEventListener('keydown', P.key, true); removeEventListener('scroll', P.scroll, true);
+  P.done && P.done();
+}
+function pickPeople(anchor, pool, sel, onChange, onDone, max = 2) {
+  closePop(); sel = sel.filter(Boolean).slice(0, max);
+  const el = document.createElement('div'); el.className = 'pop ppl-pop'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'เลือกผู้รับผิดชอบ');
+  const draw = () => {
+    el.innerHTML = `<div class="pop-h"><b>ผู้รับผิดชอบ</b><small>เลือกได้สูงสุด ${max} คน · คนแรกคือผู้รับผิดชอบหลัก</small></div><div class="pop-list">${pool.map(m => {
+      const on = sel.includes(m.id), dis = !on && sel.length >= max;
+      return `<label class="pp-row ${on ? 'on' : ''} ${dis ? 'dis' : ''}"><input type="checkbox" value="${m.id}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}>${avatar(m, 28)}<span class="grow">${esc(m.name)}<small>${esc(m.position || '')}</small></span>${on ? `<em>${sel[0] === m.id ? 'หลัก' : 'ร่วม'}</em>` : ''}</label>`;
+    }).join('') || '<p class="muted small pad">ยังไม่มีคนใน Squad — เพิ่มได้ที่ “แก้ไข” Project</p>'}</div><div class="pop-f"><button type="button" class="btn btn-primary btn-sm" data-pop="done">เสร็จ</button></div>`;
+  };
+  draw(); document.body.appendChild(el);
+  el.addEventListener('change', e => { const v = e.target.value; if (e.target.checked) { if (sel.length < max) sel.push(v); } else sel = sel.filter(x => x !== v); onChange(sel.slice()); draw(); });
+  el.addEventListener('click', e => { if (e.target.closest('[data-pop=done]')) closePop(); });
+  const W = Math.min(320, innerWidth - 24); el.style.width = W + 'px';
+  const place = () => {
+    const r = anchor.getBoundingClientRect(), h = el.offsetHeight;
+    let top = r.bottom + 6; if (top + h > innerHeight - 12) top = Math.max(12, r.top - h - 6);
+    el.style.top = top + 'px'; el.style.left = Math.min(Math.max(12, r.left), innerWidth - W - 12) + 'px';
+    return r;
+  };
+  place();
+  POP = { el, done: onDone,
+    out: e => { if (!el.contains(e.target) && !anchor.contains(e.target)) closePop(); },
+    key: e => { if (e.key === 'Escape') { e.stopPropagation(); closePop(); } },
+    scroll: e => { if (el.contains(e.target)) return; const r = place(); if (!anchor.isConnected || r.bottom < 0 || r.top > innerHeight) closePop(); } };   // follow the button; close once it leaves the screen
+  setTimeout(() => { if (!POP || POP.el !== el) return; document.addEventListener('pointerdown', POP.out, true); document.addEventListener('keydown', POP.key, true); addEventListener('scroll', POP.scroll, true); if (matchMedia('(pointer:fine)').matches) el.querySelector('input:not([disabled])')?.focus({ preventScroll: true }); }, 0);
+}
+ACT.pickWho = el => {
+  const t = S().tasks.find(x => x.id === el.dataset.id); if (!t) return;
+  if (!canFullEdit(t)) return toast('แก้ผู้รับผิดชอบได้เฉพาะ PM, ผู้สร้างงาน หรือ Admin', 'error');
+  if (POP && POP.anchor === el) return closePop();
+  const p = project(t.projectId), pool = [...new Set([p?.pmId, ...(p?.squad || []), ...owners(t)])].map(member).filter(Boolean);
+  let changed = false;
+  pickPeople(el, pool, owners(t), ids => { t.assigneeId = ids[0] || ''; t.coId = ids[1] || null; changed = true; Store.save(); el.innerHTML = whoLabel(t); },
+    () => { if (changed) render(); });
+  POP.anchor = el;
+};
 function openTaskGroups(pid) {
   const p = project(pid); if (!p || !canManageProject(p)) return;
   const PAL = ['#5856d6', '#007aff', '#34c759', '#ff9500', '#ff2d92', '#af52de', '#00c7be', '#8e8e93'];

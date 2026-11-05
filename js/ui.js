@@ -95,13 +95,23 @@ const confirmBox = (msg, ok = 'ยืนยัน', danger = false, title = 'ย
 /* ---------- Components ---------- */
 function avatar(m, size = 28) {
   if (!m) return `<span class="avatar" style="--s:${size}px;background:#cbd5e1" title="ยังไม่ระบุ">?</span>`;
-  if (m.emoji) return `<span class="avatar emo" title="${esc(m.name)}" style="--s:${size}px;background:color-mix(in srgb,${group(m.group).color} 22%,#fff);box-shadow:0 0 0 2px ${group(m.group).color}">${esc(m.emoji)}</span>`;
-  return `<span class="avatar" title="${esc(m.name)}" style="--s:${size}px;background:${group(m.group).color}">${esc(initials(m))}</span>`;
+  const c = m.iconColor || group(m.group).color;   // personal icon colour (falls back to the team colour)
+  if (m.emoji) return `<span class="avatar emo" title="${esc(m.name)}" style="--s:${size}px;background:color-mix(in srgb,${c} 22%,#fff);box-shadow:0 0 0 2px ${c}">${esc(m.emoji)}</span>`;
+  return `<span class="avatar" title="${esc(m.name)}" style="--s:${size}px;background:${c}">${esc(initials(m))}</span>`;
 }
 /* ---------- Post-it style & emoji ---------- */
-const POSTIT_COLORS = ['#fde68a', '#fbcfe8', '#bfdbfe', '#bbf7d0', '#fed7aa', '#ddd6fe', '#99f6e4', '#e5e7eb'];
-const POSTIT_PATTERNS = { plain: 'เรียบ', lines: 'เส้นบรรทัด', dots: 'จุด', grid: 'ตาราง', stripes: 'ริ้วเฉียง', stars: 'ดาว' };
-const EMOJIS = '😀 😎 🤓 🥳 😺 🐶 🦊 🐼 🐨 🦁 🐯 🐸 🐵 🐧 🦄 🐝 🦋 🐢 🐙 🐬 🦖 🌵 🌻 🌸 🍀 🍄 🌈 ⭐ 🔥 ⚡ 🌙 ☀️ 🍎 🍉 🍓 🍕 🍔 🍩 🍪 ☕ 🧋 🎧 🎨 🎬 📸 🎮 🚀 ✈️ ⚽ 🏀 🎸 🎯 💡 📚 💎 👑 🧩 🪄 🧸'.split(' ');
+const POSTIT_COLORS = ['#fde68a', '#fef08a', '#fed7aa', '#fecaca', '#fbcfe8', '#f5d0fe', '#ddd6fe', '#c7d2fe', '#bfdbfe', '#a5f3fc', '#99f6e4', '#bbf7d0', '#d9f99d', '#e7e5e4', '#e5e7eb', '#f1e4c9'];
+const ICON_COLORS = ['#007aff', '#5856d6', '#af52de', '#ff2d55', '#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#00c7be', '#30b0c7', '#8e8e93', '#1c1c1e'];
+const POSTIT_PATTERNS = { plain: 'เรียบ', lines: 'เส้นบรรทัด', notebook: 'สมุดจด', dots: 'จุด', grid: 'ตาราง', gingham: 'ลายสก็อต', stripes: 'ริ้วเฉียง', waves: 'คลื่น', stars: 'ดาว', hearts: 'หัวใจ', confetti: 'คอนเฟตตี', cross: 'บวก', tape: 'เทปแปะ', kraft: 'กระดาษคราฟท์' };
+const EMOJI_SETS = {
+  'สัตว์': '🦁 🐯 🐶 🐱 🦊 🐼 🐨 🐻 🐰 🐹 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🦉 🦄 🐴 🦓 🦒 🐘 🦛 🦏 🐊 🐢 🦎 🐍 🦖 🐙 🦑 🐬 🐳 🦈 🐠 🦀 🐝 🦋 🐞 🦔 🦦 🦥 🦩 🦚 🐿️ 🐲',
+  'หน้า & คน': '😀 😃 😄 😁 😊 🙂 😉 😍 🥰 😎 🤓 🧐 🥳 🤩 😇 🤠 🥸 🤖 👻 👽 😺 😸 🙌 👍 ✌️ 🤘 👋 💪 🧠 👀 🧑‍💻 🧑‍🎨 🧑‍🚀 🧑‍🍳 🦸 🧙 🧚 🥷',
+  'ธรรมชาติ': '🌸 🌺 🌻 🌼 🌷 🌹 🍀 🌿 🌵 🌴 🌲 🍁 🍄 🌾 🌈 ☀️ 🌤️ ⛅ 🌙 ⭐ 🌟 ✨ ⚡ 🔥 ❄️ ☃️ 🌊 💧 🌍 🪐 ☄️ 🌋 🏔️ 🌅',
+  'อาหาร': '🍎 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍒 🍑 🥭 🍍 🥥 🥑 🌽 🌶️ 🍕 🍔 🍟 🌭 🌮 🍣 🍜 🍙 🍩 🍪 🎂 🧁 🍫 🍿 🍦 ☕ 🧋 🍵 🥤 🧃',
+  'กิจกรรม': '⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🏸 ⛳ 🎳 🏹 🎣 🥊 🛹 🏄 🚴 🏊 🧗 🎮 🎲 🧩 ♟️ 🎯 🎨 🎬 🎤 🎧 🎸 🎹 🥁 🎷 🎺 📸 🎭 🎪',
+  'ของ & สัญลักษณ์': '🚀 ✈️ 🚗 🏎️ 🚲 ⛵ 🛸 🏠 🏰 🗼 💡 📚 📌 📎 ✏️ 🖍️ 📷 💻 ⌚ 📱 🔑 🎁 🎈 🎉 🏆 🥇 👑 💎 🔮 🪄 🧸 🪁 ❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💯 ✅ ⭕ 🔶 🔷',
+};
+const EMOJIS = Object.values(EMOJI_SETS).join(' ').split(' ');
 function postitOf(m) {
   const n = m ? [...m.id].reduce((a, c) => a + c.charCodeAt(0), 0) : 0;
   return { color: m?.postit?.color || POSTIT_COLORS[n % POSTIT_COLORS.length], pattern: m?.postit?.pattern || 'plain' };
