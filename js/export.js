@@ -14,6 +14,12 @@ const BRAND_HEAD = '"Brand Serif", "Source Serif 4", "IBM Plex Sans Thai", Georg
 const BRAND_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
 const BRAND_W = { 400: 600, 500: 600, 600: 600, 700: 600, 800: 900, 900: 900 };   // Source Sans Semibold / Black · Publico Roman / Black
 const EXP_THEMES = {
+  bauhaus: { label: 'Bauhaus', bg: '#F3EFE6', ink: '#111318', sub: '#4E5260', mute: '#9A9585', card: '#FFFFFF', edge: '#111318', line: '#E6DFD0', chip: '#EFE9DD', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
+    blobs: [], wm: 0, clean: true, art: 'bauhaus', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
+    hues: ['#0026E1', '#FF5A36', '#111318', '#3979FF', '#F2B705', '#0929A6'], st: { confirmed: '#0026E1', planning: '#FF5A36', done: '#111318' } },
+  neon: { label: 'Neon Night', bg: '#07080D', ink: '#F5F6FA', sub: '#AEB4C6', mute: '#646B82', card: 'rgba(255,255,255,.055)', edge: 'rgba(255,255,255,.14)', line: 'rgba(255,255,255,.09)', chip: 'rgba(255,255,255,.08)', accent: '#5B8CFF', shadow: 'rgba(0,0,0,0)',
+    blobs: [], wm: 0, clean: true, art: 'neon', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
+    hues: ['#5B8CFF', '#A77BFF', '#FF6B9A', '#3ED6C5'], st: { confirmed: '#5B8CFF', planning: '#FF6B9A', done: '#6F7690' } },
   clean: { label: 'Clean', bg: '#FFFFFF', ink: '#0B1220', sub: '#5A6375', mute: '#9AA2B1', card: '#FFFFFF', edge: '#E3E8EF', line: '#ECEFF4', chip: '#F4F6F9', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
     blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1'], st: { confirmed: '#0026E1', planning: '#8C97AD', done: '#C9CFD9' } },
   cleanDark: { label: 'Clean Dark', bg: '#0E121A', ink: '#F4F6FA', sub: '#A8B0C0', mute: '#69728A', card: '#141925', edge: '#252C3B', line: '#20273A', chip: '#1A2030', accent: '#3979FF', shadow: 'rgba(0,0,0,0)',
@@ -70,6 +76,12 @@ function expKit(cv, W, H, th) {
       push(); return out.length ? out : [''];
     },
     card: (x, y, w, h, r = 22) => {
+      if (th.art === 'bauhaus') { g.fillStyle = th.card; k.rr(x, y, w, h, 4); g.fill(); g.strokeStyle = th.ink; g.lineWidth = 1.5; k.rr(x + .75, y + .75, w - 1.5, h - 1.5, 4); g.stroke(); return; }
+      if (th.art === 'neon') {
+        g.fillStyle = th.card; k.rr(x, y, w, h, 18); g.fill();
+        const sg = g.createLinearGradient(x, y, x + w, y + h); sg.addColorStop(0, 'rgba(91,140,255,.55)'); sg.addColorStop(.5, 'rgba(255,255,255,.08)'); sg.addColorStop(1, 'rgba(255,107,154,.45)');
+        g.strokeStyle = sg; g.lineWidth = 1.2; k.rr(x + .6, y + .6, w - 1.2, h - 1.2, 18); g.stroke(); return;
+      }
       if (th.clean) { g.fillStyle = th.card; k.rr(x, y, w, h, 14); g.fill(); g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, 14); g.stroke(); return; }
       g.save(); g.shadowColor = th.shadow; g.shadowBlur = 26; g.shadowOffsetY = 8; g.fillStyle = th.card; k.rr(x, y, w, h, r); g.fill(); g.restore();
       g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, r); g.stroke();
@@ -81,6 +93,7 @@ function expKit(cv, W, H, th) {
 function expBackdrop(k, mark, hue) {
   const { g, W, H, th } = k;
   g.fillStyle = th.bg; g.fillRect(0, 0, W, H);
+  if (th.art) return artBackdrop(k, mark, hue);
   if (th.clean) {   // editorial minimal: hairline arcs, one accent dot, a small dot grid — lots of white space
     g.save(); g.strokeStyle = th.line; g.lineWidth = 1.2;
     [150, 230, 310, 390].forEach(r => { g.beginPath(); g.arc(W, H, r, Math.PI, Math.PI * 1.5); g.stroke(); });
@@ -120,6 +133,48 @@ function expBackdrop(k, mark, hue) {
   g.save(); g.fillStyle = hexA(th.ink, .09);
   for (let r = 0; r < 7; r++) for (let c = 0; c < 10; c++) { g.beginPath(); g.arc(28 + c * 16, H - 150 + r * 16, 1.6, 0, Math.PI * 2); g.fill(); }
   g.restore();
+}
+/* film grain — a tiny noise tile, repeated */
+let EXP_GRAIN = null;
+function grain(k, a) {
+  const { g, W, H } = k;
+  if (!EXP_GRAIN) { const c = document.createElement('canvas'); c.width = c.height = 140; const x = c.getContext('2d'), d = x.createImageData(140, 140); for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; } x.putImageData(d, 0, 0); EXP_GRAIN = c; }
+  g.save(); g.globalAlpha = a; g.globalCompositeOperation = 'overlay'; g.fillStyle = g.createPattern(EXP_GRAIN, 'repeat'); g.fillRect(0, 0, W, H); g.restore();
+}
+function artBackdrop(k, mark, hue) {
+  const { g, W, H, th } = k, portrait = H > W, R = W, sc = portrait ? .78 : 1;
+  if (th.art === 'bauhaus') {
+    g.save();
+    // composition
+    const cx = R - 200 * sc;
+    g.fillStyle = '#0026E1'; g.beginPath(); g.arc(cx, 40 * sc, 132 * sc, 0, Math.PI * 2); g.fill();                       // royal sun
+    g.fillStyle = '#FF5A36'; g.beginPath(); g.arc(R - 470 * sc, 236 * sc, 92 * sc, Math.PI, 0); g.fill();                 // coral half moon on the rule
+    g.fillStyle = '#F2B705'; g.beginPath(); g.arc(R - 330 * sc, 96 * sc, 26 * sc, 0, Math.PI * 2); g.fill();              // small mustard dot
+    g.save(); g.beginPath(); g.rect(R - 640 * sc, 40 * sc, 96 * sc, 150 * sc); g.clip(); g.strokeStyle = th.ink; g.lineWidth = 3 * sc;  // diagonal stripes
+    for (let i = -10; i < 20; i++) { g.beginPath(); g.moveTo(R - 640 * sc + i * 16 * sc, 40 * sc); g.lineTo(R - 640 * sc + i * 16 * sc + 150 * sc, 190 * sc); g.stroke(); } g.restore();
+    g.fillStyle = th.ink; for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) { g.beginPath(); g.arc(R - 760 * sc + c * 16 * sc, 60 * sc + r * 16 * sc, 2.4, 0, Math.PI * 2); g.fill(); }
+    g.fillStyle = '#B5D2FF'; g.save(); g.translate(R - 690 * sc, 214 * sc); g.rotate(Math.PI / 4); g.fillRect(-14 * sc, -14 * sc, 28 * sc, 28 * sc); g.restore();   // ice diamond
+    // big outlined numerals, drawn over the shapes so they always read
+    k.font(800, 250 * sc); g.textAlign = 'right'; g.lineWidth = 2; g.strokeStyle = th.ink; g.strokeText(mark, R - 36, 236 * sc + (portrait ? 18 : 0)); g.textAlign = 'left';
+    // corner details at the bottom
+    g.fillStyle = '#0026E1'; g.beginPath(); g.moveTo(0, H); g.arc(0, H, 70, -Math.PI / 2, 0); g.closePath(); g.fill();
+    g.restore();
+    grain(k, .07);
+    return;
+  }
+  // neon: colour mesh, rings, outlined numerals with a gradient stroke, grain
+  [[W * .12, -H * .05, W * .55, '#3B5BFF', .55], [W * .92, H * .02, W * .45, '#9B3BFF', .5], [W * .85, H * 1.05, W * .55, '#FF4F8B', .35], [W * .02, H * 1.02, W * .4, '#00C2B8', .22]]
+    .forEach(([x, y, r, c, a]) => { const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, hexA(c, a)); rg.addColorStop(1, hexA(c, 0)); g.fillStyle = rg; g.fillRect(0, 0, W, H); });
+  // fine perspective grid at the bottom
+  g.save(); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
+  for (let i = 0; i < 9; i++) { const y = H - 8 - i * i * 4; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  for (let i = -12; i <= 12; i++) { g.beginPath(); g.moveTo(W / 2 + i * 40, H - 330); g.lineTo(W / 2 + i * 160, H); g.stroke(); }
+  g.restore();
+  const og = g.createLinearGradient(R - 700 * sc, 0, R, 260); og.addColorStop(0, 'rgba(91,140,255,.9)'); og.addColorStop(.5, 'rgba(167,123,255,.9)'); og.addColorStop(1, 'rgba(255,107,154,.9)');
+  g.save(); k.font(800, 250 * sc); g.textAlign = 'right'; g.lineWidth = 1.6; g.strokeStyle = og; g.shadowColor = 'rgba(167,123,255,.6)'; g.shadowBlur = 18; g.strokeText(mark, R - 36, 236 * sc + (portrait ? 18 : 0)); g.restore();
+  g.save(); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; [70, 110, 150].forEach(r => { g.beginPath(); g.arc(R - 520 * sc, 70 * sc, r * sc, 0, Math.PI * 2); g.stroke(); });
+  g.fillStyle = '#FF6B9A'; g.shadowColor = '#FF6B9A'; g.shadowBlur = 14; g.beginPath(); g.arc(R - 520 * sc + 110 * sc, 70 * sc, 5, 0, Math.PI * 2); g.fill(); g.restore();
+  grain(k, .09);
 }
 function hexA(hex, a) {
   const h = hex.replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -161,11 +216,25 @@ function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
   k.font(600, 15); g.fillStyle = th.sub; if ('letterSpacing' in g) g.letterSpacing = '3px'; g.fillText(kicker, X + 40, y0); if ('letterSpacing' in g) g.letterSpacing = '0px';
   const m = title.match(/^(.*?)(\d{4})$/), ty = compact ? 150 : 162;
   k.font(800, compact ? 62 : 68);
-  if (m) { g.fillStyle = th.ink; g.fillText(m[1], X - 2, ty); const w1 = g.measureText(m[1]).width; g.fillStyle = th.accent; g.fillText(m[2], X - 2 + w1, ty); }
+  if (m) {
+    g.fillStyle = th.ink; g.fillText(m[1], X - 2, ty); const w1 = g.measureText(m[1]).width, w2 = g.measureText(m[2]).width;
+    if (th.art === 'neon') { const yg = g.createLinearGradient(X + w1, 0, X + w1 + w2, 0); yg.addColorStop(0, '#5B8CFF'); yg.addColorStop(.5, '#A77BFF'); yg.addColorStop(1, '#FF6B9A'); g.fillStyle = yg; } else g.fillStyle = th.accent;
+    g.fillText(m[2], X - 2 + w1, ty);
+  }
   else { g.fillStyle = th.ink; g.fillText(title, X - 2, ty); }
   const tw = g.measureText(title).width;
   if (small) { k.font(500, 22); g.fillStyle = th.mute; g.fillText(small, X + tw + 18, ty - 4); }
   k.font(500, 20); g.fillStyle = th.sub; g.fillText(sub, X, ty + 44);
+  if (th.art) {   // the right side belongs to the artwork: counters + version go inline under the title
+    let ix = X, iy = ty + 84; k.font(600, 15);
+    ['confirmed', 'planning', 'done'].forEach(st => {
+      const n = evs.filter(e => e.status === st).length, t = `${n} ${EXP_ST[st][1]}`;
+      g.fillStyle = stc(th, st); g.beginPath(); g.arc(ix + 5, iy - 5, 5, 0, Math.PI * 2); g.fill();
+      g.fillStyle = th.ink; g.fillText(t, ix + 16, iy); ix += g.measureText(t).width + 40;
+    });
+    g.fillStyle = th.mute; g.fillText(`VERSION ${expVersion()}`, ix + 10, iy);
+    return compact ? 268 : 276;
+  }
   // version, top right
   k.font(600, 15); g.fillStyle = th.mute; g.textAlign = 'right'; g.fillText(`VERSION ${expVersion()}`, R, y0);
   // flat counters separated by hairlines
@@ -219,7 +288,16 @@ function drawYear(cv, { year, theme, portrait }) {
     k.card(cx, cy, cw, ch);
     // month badge + names
     if (!th.clean) { g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill(); }
-    g.fillStyle = list.length ? hue : th.mute; k.font(800, th.clean ? 24 : 20); g.textAlign = 'center'; g.fillText(pad2(m + 1), cx + padX + 23, cy + 50); g.textAlign = 'left';
+    if (th.art === 'bauhaus') {   // a geometric badge per month
+      const bx = cx + padX, by2 = cy + 20, col = list.length ? hue : '#D8D1C2', light = ['#F2B705', '#B5D2FF', '#D8D1C2'].includes(col);
+      g.fillStyle = col; g.beginPath();
+      [() => g.arc(bx + 23, by2 + 23, 23, 0, Math.PI * 2), () => g.rect(bx, by2, 46, 46), () => { g.moveTo(bx, by2 + 46); g.lineTo(bx, by2 + 23); g.arc(bx + 23, by2 + 23, 23, Math.PI, 0); g.lineTo(bx + 46, by2 + 46); g.closePath(); },
+        () => { g.moveTo(bx + 23, by2); g.lineTo(bx + 48, by2 + 46); g.lineTo(bx - 2, by2 + 46); g.closePath(); }][m % 4]();
+      g.fill(); g.fillStyle = light ? th.ink : '#fff'; k.font(800, 19); g.textAlign = 'center'; g.fillText(pad2(m + 1), bx + 23, by2 + (m % 4 === 3 ? 40 : 31)); g.textAlign = 'left';
+    } else {
+      g.save(); if (th.art === 'neon' && list.length) { g.shadowColor = hue; g.shadowBlur = 14; }
+      g.fillStyle = list.length ? hue : th.mute; k.font(800, th.clean ? 24 : 20); g.textAlign = 'center'; g.fillText(pad2(m + 1), cx + padX + 23, cy + 50); g.textAlign = 'left'; g.restore();
+    }
     g.fillStyle = list.length ? th.ink : th.mute; k.font(700, 25); g.fillText(TH_MON_FULL[m], cx + padX + 60, cy + 44);
     g.fillStyle = th.mute; k.font(600, 13); g.fillText(EXP_MON_EN[m].toUpperCase(), cx + padX + 61, cy + 63);
     if (list.length) {
@@ -294,7 +372,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
       if (lane >= lanesMax) { for (let d = a; d <= b; d++) hidden[d] = (hidden[d] || 0) + 1; return; }
       const c1 = a - wFirst, c2 = b - wFirst, col = stc(th, e.status);
       const x = gx + c1 * cw + 4, y = gy + dowH + w * chh + 38 + lane * (barH + 4), bw = (c2 - c1 + 1) * cw - 8;
-      const solid = !th.clean || e.status === 'confirmed';
+      const solid = !th.clean || th.solidBars || e.status === 'confirmed';
       g.fillStyle = solid ? hexA(col, .92) : hexA(col, .22); k.rr(x, y, bw, barH, th.clean ? 5 : 7); g.fill();
       k.font(600, 12.5); g.fillStyle = solid ? '#fff' : th.ink; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
     });
@@ -352,7 +430,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 async function openCalExport() {
   const now = new Date();
   EXP_CATS = [...(ST.cal.cats || [])];
-  const st = { layout: 'year-l', theme: 'clean', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  const st = { layout: 'year-l', theme: 'bauhaus', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
   const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
   const posters = new Map();
