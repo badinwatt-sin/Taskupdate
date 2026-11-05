@@ -10,7 +10,14 @@ const EXP_FONT = '"IBM Plex Sans Thai", -apple-system, BlinkMacSystemFont, "Sego
 const EXP_MON_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const EXP_HUES = ['#ff6b6b', '#f06595', '#cc5de8', '#845ef7', '#5c7cfa', '#339af0', '#22b8cf', '#20c997', '#40c057', '#94d82d', '#fab005', '#ff922b'];
 const EXP_ST = { confirmed: ['#0a84ff', 'ยืนยันแล้ว'], planning: ['#ff9f0a', 'วางแผน'], done: ['#30d158', 'จัดแล้ว'] };
+const BRAND_HEAD = '"Brand Serif", "Source Serif 4", "IBM Plex Sans Thai", Georgia, serif';   // Publico when installed on this computer
+const BRAND_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
+const BRAND_W = { 400: 600, 500: 600, 600: 600, 700: 600, 800: 900, 900: 900 };   // Source Sans Semibold / Black · Publico Roman / Black
 const EXP_THEMES = {
+  royal: { label: 'Royal Blue', bg: '#F7FAFF', ink: '#00228E', sub: '#3d4c80', mute: '#8b98c0', card: '#ffffff', edge: 'rgba(0,38,225,.10)', line: '#DFE6EF', chip: '#EDF3FF', accent: '#0026E1', shadow: 'rgba(0,34,142,.10)',
+    blobs: [['#3979FF', .22], ['#B5D2FF', .55], ['#0026E1', .10]], wm: .05, metal: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1', '#3979FF', '#0929A6'], st: { confirmed: '#0026E1' } },
+  royalNavy: { label: 'Royal Navy', bg: '#00228E', ink: '#F7FAFF', sub: '#B5D2FF', mute: '#7d94d6', card: 'rgba(247,250,255,.07)', edge: 'rgba(181,210,255,.20)', line: 'rgba(181,210,255,.18)', chip: 'rgba(181,210,255,.14)', accent: '#B5D2FF', shadow: 'rgba(0,0,40,.35)',
+    blobs: [['#0026E1', .9], ['#3979FF', .45], ['#0929A6', .7]], wm: .07, metal: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#B5D2FF', '#DFE6EF', '#8FB6FF'], st: { confirmed: '#B5D2FF' } },   // light tints only — readable on Deep Royal Blue
   aurora: { label: 'Aurora', bg: '#f3f4fa', ink: '#15151a', sub: '#5b5b66', mute: '#a3a3ae', card: 'rgba(255,255,255,.93)', edge: 'rgba(20,20,60,.06)', line: '#e8e8f0', chip: '#f0f0f6', accent: '#0a84ff', shadow: 'rgba(30,30,80,.09)', blobs: [['#0a84ff', .22], ['#bf5af2', .17], ['#30d158', .13]], wm: .045 },
   midnight: { label: 'Midnight', bg: '#090d1c', ink: '#f5f5f7', sub: '#b6bacb', mute: '#666d85', card: 'rgba(255,255,255,.065)', edge: 'rgba(255,255,255,.09)', line: 'rgba(255,255,255,.1)', chip: 'rgba(255,255,255,.08)', accent: '#64d2ff', shadow: 'rgba(0,0,0,.35)', blobs: [['#0a84ff', .42], ['#bf5af2', .34], ['#ff375f', .2]], wm: .06 },
   paper: { label: 'Minimal', bg: '#fbf9f5', ink: '#141414', sub: '#57534c', mute: '#aaa59b', card: '#ffffff', edge: 'rgba(60,40,20,.08)', line: '#ece7de', chip: '#f4f0e9', accent: '#d4572a', shadow: 'rgba(60,40,20,.06)', blobs: [['#f4a261', .14], ['#e76f51', .08]], wm: .05 },
@@ -21,6 +28,8 @@ const EXP_LAYOUTS = {
   'month-l': { label: 'รายเดือน · แนวนอน 16:9', W: 1920, H: 1080, page: 'A4 landscape' },
   'month-p': { label: 'รายเดือน · แนวตั้ง A4', W: 1240, H: 1754, page: 'A4 portrait' },
 };
+const stc = (th, st) => (th.st && th.st[st]) || (EXP_ST[st] || ['#8e8e93'])[0];
+const hueOf = (th, m) => th.hues ? th.hues[m % th.hues.length] : EXP_HUES[m];
 const expVersion = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear() + 543}`; };
 const pad2 = n => String(n).padStart(2, '0');
 
@@ -43,7 +52,7 @@ function expKit(cv, W, H, th) {
   const g = cv.getContext('2d'); g.setTransform(S2, 0, 0, S2, 0, 0); g.textBaseline = 'alphabetic';
   const k = {
     g, W, H, th,
-    font: (w, px) => { g.font = `${w} ${Math.round(px * 10) / 10}px ${EXP_FONT}`; },
+    font: (w, px) => { const fam = w >= 800 ? (th.fh || EXP_FONT) : (th.fb || EXP_FONT); g.font = `${th.wmap ? th.wmap[w] || w : w} ${Math.round(px * 10) / 10}px ${fam}`; },
     rr: (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); },
     fit: (t, max) => { if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; },
     wrap: (t, max) => {   // full word-aware wrap — never drops text
@@ -75,6 +84,11 @@ function expBackdrop(k, mark, hue) {
     const rg = g.createRadialGradient(x, y, 0, x, y, r);
     rg.addColorStop(0, hexA(c, a)); rg.addColorStop(1, hexA(c, 0)); g.fillStyle = rg; g.fillRect(0, 0, W, H);
   });
+  if (th.metal) {   // brand "metallic blue" finish
+    const mg = g.createLinearGradient(0, 0, W, 0);
+    [[0, '#0026E1'], [.3, '#B5D2FF'], [.5, '#F7FAFF'], [.7, '#B5D2FF'], [1, '#0026E1']].forEach(([o, c]) => mg.addColorStop(o, c));
+    g.fillStyle = mg; g.fillRect(0, 0, W, 10);
+  }
   // watermark
   g.save(); g.globalAlpha = th.wm; g.fillStyle = th.ink; k.font(800, Math.min(W, H) * .42); g.textAlign = 'right';
   g.fillText(mark, W - 30, H * .98); g.restore();
@@ -104,7 +118,8 @@ function hexA(hex, a) {
 function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   const { g, W, th } = k, X = compact ? 60 : 72, R = W - X;
   g.textAlign = 'left';
-  g.fillStyle = hue || th.accent; k.rr(X, compact ? 66 : 70, 34, 6, 3); g.fill();
+  if (th.metal) { const mg = g.createLinearGradient(X, 0, X + 34, 0); mg.addColorStop(0, th.accent); mg.addColorStop(1, '#B5D2FF'); g.fillStyle = mg; } else g.fillStyle = hue || th.accent;
+  k.rr(X, compact ? 66 : 70, 34, 6, 3); g.fill();
   k.font(700, 19); g.fillStyle = hue || th.accent; g.fillText(kicker, X + 46, compact ? 75 : 79);
   k.font(800, compact ? 64 : 70); g.fillStyle = th.ink; g.fillText(title, X - 3, compact ? 148 : 160);
   const tw = g.measureText(title).width;
@@ -117,7 +132,7 @@ function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   // counters
   let sx = R, sy = compact ? 102 : 110;
   [['done'], ['planning'], ['confirmed']].forEach(([st]) => {
-    const [c, l] = EXP_ST[st], n = evs.filter(e => e.status === st).length;
+    const c = stc(k.th, st), l = EXP_ST[st][1], n = evs.filter(e => e.status === st).length;
     k.font(800, 38); const nw = g.measureText(String(n)).width; k.font(500, 16); const lw = g.measureText(l).width;
     const bw = Math.max(nw, lw) + 40, bx = sx - bw;
     k.card(bx, sy, bw, 84, 18);
@@ -131,7 +146,7 @@ function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
 function expFooter(k, X) {
   const { g, W, H, th } = k, fy = H - 34;
   let lx = X; k.font(500, 16);
-  Object.values(EXP_ST).forEach(([c, l]) => { g.fillStyle = c; k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
+  Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = stc(th, st); k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
   g.textAlign = 'right'; g.fillStyle = th.mute; g.fillText(`TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, W - X, fy); g.textAlign = 'left';
 }
 
@@ -159,7 +174,7 @@ function drawYear(cv, { year, theme, portrait }) {
   const fitOf = list => { for (let s = 1.15; s >= .55; s -= .05) for (const v of [true, false]) if (measure(list, s, v) <= inner) return [Math.min(s, 1.15), v]; return [.55, false]; };
   const now = new Date();
   by.forEach((list, m) => {
-    const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = EXP_HUES[m], isNow = year === now.getFullYear() && m === now.getMonth();
+    const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = hueOf(th, m), isNow = year === now.getFullYear() && m === now.getMonth();
     k.card(cx, cy, cw, ch);
     // month badge + names
     g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill();
@@ -177,7 +192,7 @@ function drawYear(cv, { year, theme, portrait }) {
     const [S, V] = fitOf(list);
     let ly = cy + headH + 12;
     for (const e of list) {
-      const [c] = EXP_ST[e.status] || ['#8e8e93'];
+      const c = stc(th, e.status);
       k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S);
       k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && e.venue;
       const h = Math.max(26 * S, lines.length * 21 * S + (hasV ? 17 * S : 0));
@@ -195,7 +210,7 @@ function drawYear(cv, { year, theme, portrait }) {
 
 /* ---------- month: calendar grid (bars) + full details list ---------- */
 function drawMonth(cv, { year, month, theme, portrait, posters }) {
-  const L = EXP_LAYOUTS[portrait ? 'month-p' : 'month-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k, hue = EXP_HUES[month];
+  const L = EXP_LAYOUTS[portrait ? 'month-p' : 'month-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k, hue = hueOf(th, month);
   expBackdrop(k, pad2(month + 1), hue);
   const days = new Date(year, month + 1, 0).getDate(), mFrom = `${year}-${pad2(month + 1)}-01`, mTo = `${year}-${pad2(month + 1)}-${pad2(days)}`;
   const evs = expEvents(mFrom, mTo), X = portrait ? 60 : 72;
@@ -230,7 +245,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
       let lane = lanes.findIndex(l => l.every(([x1, x2]) => b < x1 || a > x2)); if (lane < 0) { lanes.push([]); lane = lanes.length - 1; }
       lanes[lane].push([a, b]);
       if (lane >= lanesMax) { for (let d = a; d <= b; d++) hidden[d] = (hidden[d] || 0) + 1; return; }
-      const c1 = a - wFirst, c2 = b - wFirst, [col] = EXP_ST[e.status] || ['#8e8e93'];
+      const c1 = a - wFirst, c2 = b - wFirst, col = stc(th, e.status);
       const x = gx + c1 * cw + 4, y = gy + dowH + w * chh + 38 + lane * (barH + 4), bw = (c2 - c1 + 1) * cw - 8;
       g.fillStyle = hexA(col, .9); k.rr(x, y, bw, barH, 7); g.fill();
       k.font(600, 12.5); g.fillStyle = '#fff'; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
@@ -250,7 +265,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
     k.font(500, 14 * s); const mlines = meta ? k.wrap(meta, tw) : [];
     const h = Math.max(66 * s, 8 * s + lines.length * 23 * s + mlines.length * 19 * s + 30 * s);
     if (draw) {
-      const [c, stl] = EXP_ST[e.status] || ['#8e8e93', ''], sd = parse(e.start);
+      const c = stc(th, e.status), stl = (EXP_ST[e.status] || ['', ''])[1], sd = parse(e.start);
       g.fillStyle = hexA(c, .14); k.rr(x, y, dateW, 66 * s, 14 * s); g.fill();
       g.fillStyle = c; g.textAlign = 'center'; k.font(800, 26 * s); g.fillText(String(sd.getDate()), x + dateW / 2, y + 33 * s);
       k.font(600, 12 * s); g.fillText(e.start === e.end ? TH_MON[sd.getMonth()] : `ถึง ${parse(e.end).getDate()} ${TH_MON[parse(e.end).getMonth()]}`, x + dateW / 2, y + 53 * s); g.textAlign = 'left';
@@ -285,8 +300,8 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 /* ---------- export dialog ---------- */
 async function openCalExport() {
   const now = new Date();
-  const st = { layout: 'year-l', theme: 'aurora', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
-  try { await Promise.all(['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`))); } catch (e) { }
+  const st = { layout: 'year-l', theme: 'royal', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
   const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
   const posters = new Map();
   const loadPosters = async () => {
