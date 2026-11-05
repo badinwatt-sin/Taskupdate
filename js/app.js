@@ -14,7 +14,7 @@ function render() {
   const r = route();
   if (!V[r.name] || (r.name === 'meetings' && !FEATURES.meetings) || (ADMIN_ONLY.includes(r.name) && !isAdmin())) { location.hash = '#/dashboard'; return; }
   const B = todoBuckets(me().id), badge = B.overdue.length + B.today.length;
-  $('#nav').innerHTML = visibleNav().map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
+  $('#nav').innerHTML = visibleNav().map(([k, l, th, i]) => `<a href="#/${k}" class="${r.name === k ? 'on' : ''}" ${r.name === k ? 'aria-current="page"' : ''} title="${l} · ${th}">${ico(i, 19)}<span class="nl"><b>${l}</b><small>${th}</small></span>${k === 'todo' && badge ? `<em class="${B.overdue.length ? 'warn' : ''}">${badge}</em>` : ''}</a>`).join('');
   const m = me();
   $('#userBtn').innerHTML = `${avatar(m, 36)}<div><b>${esc(m.name)}</b><small>${m.role === 'admin' ? 'Admin' : isPM() ? 'Project Manager' : 'สมาชิก'} · ${ACTION.account[0]}</small></div>`;
   const key = r.name + '/' + (r.id || '');
