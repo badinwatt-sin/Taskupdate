@@ -17,9 +17,9 @@ const EXP_THEMES = {
   bauhaus: { label: 'Bauhaus', bg: '#F3EFE6', ink: '#111318', sub: '#4E5260', mute: '#9A9585', card: '#FFFFFF', edge: '#111318', line: '#E6DFD0', chip: '#EFE9DD', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
     blobs: [], wm: 0, clean: true, art: 'bauhaus', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
     hues: ['#0026E1', '#FF5A36', '#111318', '#3979FF', '#F2B705', '#0929A6'], st: { confirmed: '#0026E1', planning: '#FF5A36', done: '#111318' } },
-  neon: { label: 'Neon Night', bg: '#07080D', ink: '#F5F6FA', sub: '#AEB4C6', mute: '#646B82', card: 'rgba(255,255,255,.055)', edge: 'rgba(255,255,255,.14)', line: 'rgba(255,255,255,.09)', chip: 'rgba(255,255,255,.08)', accent: '#5B8CFF', shadow: 'rgba(0,0,0,0)',
+  neon: { label: 'Deep Blue', bg: '#040A1C', ink: '#F5F6FA', sub: '#AEB4C6', mute: '#646B82', card: 'rgba(255,255,255,.055)', edge: 'rgba(255,255,255,.14)', line: 'rgba(255,255,255,.09)', chip: 'rgba(255,255,255,.08)', accent: '#5B8CFF', shadow: 'rgba(0,0,0,0)',
     blobs: [], wm: 0, clean: true, art: 'neon', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
-    hues: ['#5B8CFF', '#A77BFF', '#FF6B9A', '#3ED6C5'], st: { confirmed: '#5B8CFF', planning: '#FF6B9A', done: '#6F7690' } },
+    hues: ['#3979FF', '#6FA8FF', '#7FD8FF', '#B5D2FF'], st: { confirmed: '#3979FF', planning: '#7FD8FF', done: '#5D6B8A' } },   // blue shades only
   clean: { label: 'Clean', bg: '#FFFFFF', ink: '#0B1220', sub: '#5A6375', mute: '#9AA2B1', card: '#FFFFFF', edge: '#E3E8EF', line: '#ECEFF4', chip: '#F4F6F9', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
     blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1'], st: { confirmed: '#0026E1', planning: '#8C97AD', done: '#C9CFD9' } },
   cleanDark: { label: 'Clean Dark', bg: '#0E121A', ink: '#F4F6FA', sub: '#A8B0C0', mute: '#69728A', card: '#141925', edge: '#252C3B', line: '#20273A', chip: '#1A2030', accent: '#3979FF', shadow: 'rgba(0,0,0,0)',
@@ -79,7 +79,7 @@ function expKit(cv, W, H, th) {
       if (th.art === 'bauhaus') { g.fillStyle = th.card; k.rr(x, y, w, h, 4); g.fill(); g.strokeStyle = th.ink; g.lineWidth = 1.5; k.rr(x + .75, y + .75, w - 1.5, h - 1.5, 4); g.stroke(); return; }
       if (th.art === 'neon') {
         g.fillStyle = th.card; k.rr(x, y, w, h, 18); g.fill();
-        const sg = g.createLinearGradient(x, y, x + w, y + h); sg.addColorStop(0, 'rgba(91,140,255,.55)'); sg.addColorStop(.5, 'rgba(255,255,255,.08)'); sg.addColorStop(1, 'rgba(255,107,154,.45)');
+        const sg = g.createLinearGradient(x, y, x + w, y + h); sg.addColorStop(0, 'rgba(57,121,255,.6)'); sg.addColorStop(.5, 'rgba(255,255,255,.07)'); sg.addColorStop(1, 'rgba(181,210,255,.45)');
         g.strokeStyle = sg; g.lineWidth = 1.2; k.rr(x + .6, y + .6, w - 1.2, h - 1.2, 18); g.stroke(); return;
       }
       if (th.clean) { g.fillStyle = th.card; k.rr(x, y, w, h, 14); g.fill(); g.strokeStyle = th.edge; g.lineWidth = 1; k.rr(x + .5, y + .5, w - 1, h - 1, 14); g.stroke(); return; }
@@ -163,19 +163,20 @@ function artBackdrop(k, mark, hue) {
     return;
   }
   // neon: colour mesh, rings, outlined numerals with a gradient stroke, grain
-  [[W * .12, -H * .05, W * .55, '#3B5BFF', .55], [W * .92, H * .02, W * .45, '#9B3BFF', .5], [W * .85, H * 1.05, W * .55, '#FF4F8B', .35], [W * .02, H * 1.02, W * .4, '#00C2B8', .22]]
+  [[W * .12, -H * .05, W * .6, '#0026E1', .75], [W * .92, H * .02, W * .5, '#3979FF', .5], [W * .55, H * .35, W * .45, '#0929A6', .35], [W * .85, H * 1.05, W * .55, '#1E6BFF', .4], [W * .02, H * 1.02, W * .4, '#00A3FF', .22]]
     .forEach(([x, y, r, c, a]) => { const rg = g.createRadialGradient(x, y, 0, x, y, r); rg.addColorStop(0, hexA(c, a)); rg.addColorStop(1, hexA(c, 0)); g.fillStyle = rg; g.fillRect(0, 0, W, H); });
   // fine perspective grid at the bottom
   g.save(); g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1;
   for (let i = 0; i < 9; i++) { const y = H - 8 - i * i * 4; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
   for (let i = -12; i <= 12; i++) { g.beginPath(); g.moveTo(W / 2 + i * 40, H - 330); g.lineTo(W / 2 + i * 160, H); g.stroke(); }
   g.restore();
-  const og = g.createLinearGradient(R - 700 * sc, 0, R, 260); og.addColorStop(0, 'rgba(91,140,255,.9)'); og.addColorStop(.5, 'rgba(167,123,255,.9)'); og.addColorStop(1, 'rgba(255,107,154,.9)');
-  g.save(); k.font(800, 250 * sc); g.textAlign = 'right'; g.lineWidth = 1.6; g.strokeStyle = og; g.shadowColor = 'rgba(167,123,255,.6)'; g.shadowBlur = 18; g.strokeText(mark, R - 36, 236 * sc + (portrait ? 18 : 0)); g.restore();
+  const og = g.createLinearGradient(R - 700 * sc, 0, R, 260); og.addColorStop(0, 'rgba(57,121,255,.95)'); og.addColorStop(.5, 'rgba(111,168,255,.95)'); og.addColorStop(1, 'rgba(181,210,255,.95)');
+  g.save(); k.font(800, 250 * sc); g.textAlign = 'right'; g.lineWidth = 1.6; g.strokeStyle = og; g.shadowColor = 'rgba(57,121,255,.7)'; g.shadowBlur = 18; g.strokeText(mark, R - 36, 236 * sc + (portrait ? 18 : 0)); g.restore();
   g.save(); g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; [70, 110, 150].forEach(r => { g.beginPath(); g.arc(R - 520 * sc, 70 * sc, r * sc, 0, Math.PI * 2); g.stroke(); });
-  g.fillStyle = '#FF6B9A'; g.shadowColor = '#FF6B9A'; g.shadowBlur = 14; g.beginPath(); g.arc(R - 520 * sc + 110 * sc, 70 * sc, 5, 0, Math.PI * 2); g.fill(); g.restore();
+  g.fillStyle = '#B5D2FF'; g.shadowColor = '#6FA8FF'; g.shadowBlur = 14; g.beginPath(); g.arc(R - 520 * sc + 110 * sc, 70 * sc, 5, 0, Math.PI * 2); g.fill(); g.restore();
   grain(k, .09);
 }
+const isLight = hex => { const n = parseInt(hex.replace('#', ''), 16); return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 165; };   // pick dark text on light fills
 function hexA(hex, a) {
   const h = hex.replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
@@ -218,7 +219,7 @@ function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
   k.font(800, compact ? 62 : 68);
   if (m) {
     g.fillStyle = th.ink; g.fillText(m[1], X - 2, ty); const w1 = g.measureText(m[1]).width, w2 = g.measureText(m[2]).width;
-    if (th.art === 'neon') { const yg = g.createLinearGradient(X + w1, 0, X + w1 + w2, 0); yg.addColorStop(0, '#5B8CFF'); yg.addColorStop(.5, '#A77BFF'); yg.addColorStop(1, '#FF6B9A'); g.fillStyle = yg; } else g.fillStyle = th.accent;
+    if (th.art === 'neon') { const yg = g.createLinearGradient(X + w1, 0, X + w1 + w2, 0); yg.addColorStop(0, '#3979FF'); yg.addColorStop(.5, '#6FA8FF'); yg.addColorStop(1, '#B5D2FF'); g.fillStyle = yg; } else g.fillStyle = th.accent;
     g.fillText(m[2], X - 2 + w1, ty);
   }
   else { g.fillStyle = th.ink; g.fillText(title, X - 2, ty); }
@@ -374,7 +375,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
       const x = gx + c1 * cw + 4, y = gy + dowH + w * chh + 38 + lane * (barH + 4), bw = (c2 - c1 + 1) * cw - 8;
       const solid = !th.clean || th.solidBars || e.status === 'confirmed';
       g.fillStyle = solid ? hexA(col, .92) : hexA(col, .22); k.rr(x, y, bw, barH, th.clean ? 5 : 7); g.fill();
-      k.font(600, 12.5); g.fillStyle = solid ? '#fff' : th.ink; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
+      k.font(600, 12.5); g.fillStyle = solid ? (isLight(col) ? '#06112E' : '#fff') : th.ink; g.fillText(k.fit(e.name, bw - 12), x + 7, y + 15.5);
     });
     Object.entries(hidden).forEach(([d, n]) => { const c = +d - wFirst; k.font(700, 12); g.fillStyle = th.sub; g.fillText(`+${n}`, gx + c * cw + cw - 30, gy + dowH + w * chh + 24); });
   }
