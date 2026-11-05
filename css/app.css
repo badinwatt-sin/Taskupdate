@@ -426,3 +426,9 @@ input,select,textarea,button{font-family:inherit}
 .imp-mode{margin:10px 0}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---------- calendar export (16:9) ---------- */
+.exp-bar{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}.exp-bar .field{margin:0;min-width:180px}.exp-bar p{margin:0 0 8px;flex:1 1 240px}
+.exp-pv{border-radius:16px;overflow:hidden;box-shadow:0 0 0 1px var(--line),0 10px 30px rgba(0,0,0,.08);background:#f5f6fb}
+.exp-pv canvas{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.exp-modal{max-width:min(1180px,96vw)!important}
