@@ -86,6 +86,21 @@ const STATUS = {
 };
 const PRIO = { high: { th: 'สูง' }, med: { th: 'กลาง' }, low: { th: 'ต่ำ' } };
 const KINDS = { project: 'งาน Project', ram: 'งานสนับสนุน RAM', personal: 'งานส่วนตัว', meeting: 'จากการประชุม', assigned: 'งานที่มอบหมาย' };
+/* Event categories (business line) */
+const EV_CATS = [['agency', 'Agency', '#007aff'], ['banca', 'Banca', '#ff9500'], ['cs', 'CS', '#34c759'], ['academy', 'Academy', '#af52de'], ['company', 'Company', '#5a6375']];
+const catOf = k => EV_CATS.find(c => c[0] === k);
+const catLabel = k => catOf(k)?.[1] || '';
+const catTag = k => { const c = catOf(k); return c ? `<span class="cat-tag" style="--cc:${c[2]}">${c[1]}</span>` : ''; };
+/* keyword → category, used by the Excel import */
+function catFromText(t) {
+  t = String(t || '').toLowerCase(); if (!t) return '';
+  if (/agency|เอเจนซี่|เอเจนซี|ตัวแทน/.test(t)) return 'agency';
+  if (/banca|แบงก์|แบงค์|ธนาคาร|bank/.test(t)) return 'banca';
+  if (/\bcs\b|customer service|บริการลูกค้า|ลูกค้าสัมพันธ์/.test(t)) return 'cs';
+  if (/academy|อะคาเดมี|อบรม|training/.test(t)) return 'academy';
+  if (/company|บริษัท|องค์กร|corporate/.test(t)) return 'company';
+  return '';
+}
 const EV_STATUS = {
   planning: { th: 'วางแผน', cls: 'ev-planning' },
   confirmed: { th: 'ยืนยันแล้ว', cls: 'ev-confirmed' },

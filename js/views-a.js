@@ -252,10 +252,12 @@ ACT.newOffsite = () => openOffsite(null);
 
 /* ======================= MAJOR EVENT CALENDAR ======================= */
 const canManageEvents = () => isAdmin() || S().settings.eventEditors.includes(me().id);
+/* events shown in the calendar: all, or only the chosen categories */
+const calEvents = () => { const cs = ST.cal.cats || []; return cs.length ? S().events.filter(e => cs.includes(e.cat)) : S().events; };
 function itemsOnDay(d) {
   const c = ST.cal, items = [];
-  S().events.forEach(e => {
-    if (e.start <= d && d <= e.end) items.push({ k: 'event', id: e.id, label: e.name, cls: EV_STATUS[e.status].cls, first: e.start === d });
+  calEvents().forEach(e => {
+    if (e.start <= d && d <= e.end) items.push({ k: 'event', id: e.id, label: e.name, cls: EV_STATUS[e.status].cls, first: e.start === d, cat: e.cat });
     e.milestones.forEach(ms => { if (ms.date === d) items.push({ k: 'ms', id: e.id, label: 'เตรียมงาน: ' + ms.title, cls: ms.done ? 'ms-done' : 'ms', ms }); });
   });
   if (c.ram) S().offsite.forEach(o => { if (o.start <= d && d <= o.end) items.push({ k: 'ram', id: o.id, label: `${o.area} · ${o.title}`, cls: 'ram' }); });
@@ -265,16 +267,17 @@ function calHeader(title) {
   const c = ST.cal;
   return `<div class="cal-bar"><div class="seg-ctl"><button class="${c.mode === 'agenda' ? 'on' : ''}" data-act="calMode" data-id="agenda">รายการ</button><button class="${c.mode === 'month' ? 'on' : ''}" data-act="calMode" data-id="month">รายเดือน</button><button class="${c.mode === 'year' ? 'on' : ''}" data-act="calMode" data-id="year">ภาพรวมทั้งปี</button></div>
     <div class="cal-nav"><button class="icon-btn" data-act="calPrev" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="calNext" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="calToday">วันนี้</button></div>
-    <div class="cal-opts"><label class="check"><input type="checkbox" data-f="cal.ram" ${c.ram ? 'checked' : ''}> Event Support (RAM/Other)</label></div></div>`;
+    <div class="cal-opts"><label class="check"><input type="checkbox" data-f="cal.ram" ${c.ram ? 'checked' : ''}> Event Support (RAM/Other)</label></div></div>
+    <div class="cat-filter" role="group" aria-label="หมวด"><span class="muted small">หมวด</span><button type="button" class="${!(c.cats || []).length ? 'on' : ''}" data-act="calCat" data-id="">ทั้งหมด</button>${EV_CATS.map(([k, l, col]) => `<button type="button" class="${(c.cats || []).includes(k) ? 'on' : ''}" style="--cc:${col}" data-act="calCat" data-id="${k}"><i></i>${l}</button>`).join('')}</div>`;
 }
 V.calendar = root => {
   const c = ST.cal;
   const actions = `${canManageEvents() ? `<button class="btn btn-ghost" data-act="importEvents">${ico('upload', 16)} Import Excel</button>` : ''}<button class="btn btn-ghost" data-act="calExport">${ico('download', 16)} Export</button>`;
   const year = c.mode === 'year' ? c.y : c.y;
-  const evYear = sortBy(S().events.filter(e => e.start.startsWith(year) || e.end.startsWith(year) || (e.start.slice(0, 4) <= String(year) && e.end.slice(0, 4) >= String(year))), e => e.start);
+  const evYear = sortBy(calEvents().filter(e => e.start.startsWith(year) || e.end.startsWith(year) || (e.start.slice(0, 4) <= String(year) && e.end.slice(0, 4) >= String(year))), e => e.start);
   const legend = `<div class="legend cal-legend">${Object.values(EV_STATUS).map(s => `<span><i class="${s.cls}"></i>${s.th}</span>`).join('')}<span><i class="ram"></i>Event Support (RAM/Other)</span><span><i class="hol"></i>วันหยุด</span></div>`;
-  const list = (evs) => evs.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>งาน</th><th>วันจัด</th><th>สถานที่</th><th>เจ้าของงาน</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th><th>วันเตรียมงาน</th></tr></thead><tbody>
-    ${evs.map(e => `<tr class="clickable" data-act="openEvent" data-id="${e.id}"><td><b>${esc(e.name)}</b></td><td>${fmtRange(e.start, e.end)}</td><td>${esc(e.venue)}</td><td>${personChip(member(e.ownerId))}</td><td>${esc(e.audience)}</td><td><span class="badge ${EV_STATUS[e.status].cls}">${EV_STATUS[e.status].th}</span></td>
+  const list = (evs) => evs.length ? `<div class="table-wrap"><table class="tbl"><thead><tr><th>งาน</th><th>หมวด</th><th>วันจัด</th><th>สถานที่</th><th>เจ้าของงาน</th><th>กลุ่มเป้าหมาย</th><th>สถานะ</th><th>วันเตรียมงาน</th></tr></thead><tbody>
+    ${evs.map(e => `<tr class="clickable" data-act="openEvent" data-id="${e.id}"><td><b>${esc(e.name)}</b></td><td>${catTag(e.cat) || '<span class="muted small">–</span>'}</td><td>${fmtRange(e.start, e.end)}</td><td>${esc(e.venue)}</td><td>${personChip(member(e.ownerId))}</td><td>${esc(e.audience)}</td><td><span class="badge ${EV_STATUS[e.status].cls}">${EV_STATUS[e.status].th}</span></td>
     <td class="small">${e.milestones.length ? `${e.milestones.filter(m => m.done).length}/${e.milestones.length} เสร็จ` : '–'}</td></tr>`).join('')}</tbody></table></div>` : empty('calendar', 'ยังไม่มี Event', 'เพิ่มงานสำคัญเพื่อดูภาพรวมทั้งปี');
 
   if (c.mode === 'agenda') {
@@ -283,7 +286,7 @@ V.calendar = root => {
     for (let i = 0; i < 92; i++) { const d = addDays(from, i), items = itemsOnDay(d), hol = holidayOf(d); if (items.length || hol) days.push({ d, items, hol }); }
     root.innerHTML = pageHead(pageName('calendar'), 'กิจกรรม วันเตรียมงาน Offsite และวันหยุด เรียงตามวัน (3 เดือน)', actions) + calHeader(`ตั้งแต่ ${fmtDY(from)}`) +
       (days.length ? `<div class="agenda">${days.map(({ d, items, hol }) => { const dt = parse(d); return `<div class="ag-day ${d === t0 ? 'today' : ''}"><button type="button" class="ag-date" data-act="openDay" data-id="${d}"><b>${dt.getDate()}</b><span>${TH_DOW[dt.getDay()]}</span><small>${TH_MON[dt.getMonth()]}</small></button>
-        <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : 'Event'}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
+        <div class="ag-items">${hol ? `<div class="ag-hol">${esc(hol.name)}</div>` : ''}${items.map(it => `<button type="button" class="ag-it" style="--c:${COL[it.cls] || '#007aff'}" data-act="${it.k === 'ram' ? 'openOffsite' : 'openEvent'}" data-id="${it.id}"><i></i><span>${esc(it.label)}</span><small>${it.k === 'ms' ? 'เตรียมงาน' : it.k === 'ram' ? 'Event Support' : (catLabel(it.cat) || 'Event')}</small></button>`).join('')}</div></div>`; }).join('')}</div>`
         : empty('calendar', 'ไม่มีกิจกรรมใน 3 เดือนนี้', 'ลองเลื่อนไปเดือนถัดไป หรือเพิ่ม Event'));
   } else if (c.mode === 'month') {
     const first = new Date(c.y, c.m, 1), startOff = first.getDay(), dim = new Date(c.y, c.m + 1, 0).getDate();
@@ -294,10 +297,10 @@ V.calendar = root => {
       const show = items.slice(0, 3);
       cells.push(`<div class="day ${inM ? '' : 'out'} ${d === t0 ? 'today' : ''} ${isOff(d) ? 'off' : ''}" data-act="openDay" data-id="${d}" tabindex="0">
         <span class="dn">${dt.getDate()}</span>${hol ? `<small class="hol ${hol.kind}" title="${esc(hol.name)}">${esc(hol.name)}</small>` : ''}
-        ${show.map(it => `<div class="cev ${it.cls}" title="${esc(it.label)}">${esc(it.label)}</div>`).join('')}
+        ${show.map(it => `<div class="cev ${it.cls} ${it.cat ? 'has-cat' : ''}" ${it.cat ? `style="--cc:${catOf(it.cat)[2]}"` : ''} title="${esc((it.cat ? catLabel(it.cat) + ' · ' : '') + it.label)}">${esc(it.label)}</div>`).join('')}
         ${items.length > 3 ? `<small class="more">+${items.length - 3} เพิ่มเติม</small>` : ''}</div>`);
     }
-    const monthEv = sortBy(S().events.filter(e => e.start <= iso(new Date(c.y, c.m + 1, 0)) && e.end >= iso(first)), e => e.start);
+    const monthEv = sortBy(calEvents().filter(e => e.start <= iso(new Date(c.y, c.m + 1, 0)) && e.end >= iso(first)), e => e.start);
     root.innerHTML = pageHead(pageName('calendar'), 'ปฏิทินงานสำคัญประจำปี พร้อมวันเตรียมงานและวันหยุดราชการ', actions) + calHeader(`${TH_MON_FULL[c.m]} ${c.y + 543}`) + legend +
       `<div class="cal"><div class="cal-dow">${TH_DOW.map(d => `<span>${d}</span>`).join('')}</div><div class="cal-grid">${cells.join('')}</div></div>
       <section class="card flush mt"><div class="card-h pad"><h3>งานในเดือน${TH_MON_FULL[c.m]}</h3></div>${list(monthEv)}</section>`;
@@ -308,15 +311,20 @@ V.calendar = root => {
       let cells = TH_DOW.map(d => `<b>${d}</b>`).join('') + '<span></span>'.repeat(first.getDay());
       for (let d = 1; d <= dim; d++) {
         const ds = `${c.y}-${pad(mo + 1)}-${pad(d)}`;
-        const evs = S().events.filter(e => e.start <= ds && ds <= e.end);
+        const evs = calEvents().filter(e => e.start <= ds && ds <= e.end);
         cells += ` <span class="${evs.length ? 'has ' + EV_STATUS[evs[0].status].cls : ''} ${ds === today() ? 'is-today' : ''} ${holidayOf(ds) || isOff(ds) ? 'hday' : ''}" ${evs.length ? `title="${esc(evs.map(e => e.name).join(', '))}"` : ''}>${d}</span>`;
       }
-      const n = S().events.filter(e => e.start.startsWith(`${c.y}-${pad(mo + 1)}`)).length;
+      const n = calEvents().filter(e => e.start.startsWith(`${c.y}-${pad(mo + 1)}`)).length;
       mini.push(`<div class="mini" data-act="calGoMonth" data-id="${mo}" tabindex="0"><h4>${TH_MON_FULL[mo]}${n ? `<em>${n}</em>` : ''}</h4><div class="mini-grid">${cells}</div></div>`);
     }
     root.innerHTML = pageHead(pageName('calendar'), 'ภาพรวมงานสำคัญทั้งปี — คลิกเดือนเพื่อดูรายละเอียด', actions) + calHeader(`พ.ศ. ${c.y + 543}`) + legend +
       `<div class="year-grid">${mini.join('')}</div><section class="card flush mt"><div class="card-h pad"><h3>รายการทั้งหมดในปี ${c.y + 543} (${evYear.length} งาน)</h3></div>${list(evYear)}</section>`;
   }
+};
+ACT.calCat = el => {
+  const k = el.dataset.id, c = ST.cal; c.cats = c.cats || [];
+  if (!k) c.cats = []; else c.cats = c.cats.includes(k) ? c.cats.filter(x => x !== k) : [...c.cats, k];
+  render();
 };
 ACT.calMode = el => { ST.cal.mode = el.dataset.id; render(); };
 ACT.calPrev = () => { const c = ST.cal; if (c.mode === 'year') c.y--; else { c.m--; if (c.m < 0) { c.m = 11; c.y--; } } render(); };
@@ -324,9 +332,9 @@ ACT.calNext = () => { const c = ST.cal; if (c.mode === 'year') c.y++; else { c.m
 ACT.calToday = () => { const n = new Date(); ST.cal.y = n.getFullYear(); ST.cal.m = n.getMonth(); render(); };
 ACT.calGoMonth = el => { ST.cal.m = +el.dataset.id; ST.cal.mode = 'month'; render(); };
 ACT.exportCal = () => {
-  const rows = [['ชื่องาน', 'วันเริ่ม', 'วันสิ้นสุด', 'สถานที่', 'เจ้าของงาน', 'กลุ่มเป้าหมาย', 'สถานะ', 'วันเตรียมงาน']];
-  S().events.filter(e => e.start.startsWith(ST.cal.y) || e.end.startsWith(ST.cal.y)).sort((a, b) => a.start.localeCompare(b.start))
-    .forEach(e => rows.push([e.name, e.start, e.end, e.venue, member(e.ownerId)?.name, e.audience, EV_STATUS[e.status].th, e.milestones.map(m => `${m.date} ${m.title}${m.done ? ' ✓' : ''}`).join(' | ')]));
+  const rows = [['ชื่องาน', 'หมวด', 'วันเริ่ม', 'วันสิ้นสุด', 'สถานที่', 'เจ้าของงาน', 'กลุ่มเป้าหมาย', 'สถานะ', 'วันเตรียมงาน']];
+  calEvents().filter(e => e.start.startsWith(ST.cal.y) || e.end.startsWith(ST.cal.y)).sort((a, b) => a.start.localeCompare(b.start))
+    .forEach(e => rows.push([e.name, catLabel(e.cat), e.start, e.end, e.venue, member(e.ownerId)?.name, e.audience, EV_STATUS[e.status].th, e.milestones.map(m => `${m.date} ${m.title}${m.done ? ' ✓' : ''}`).join(' | ')]));
   downloadCSV(`major-events-${ST.cal.y}.csv`, rows); toast('ดาวน์โหลดไฟล์ CSV แล้ว (เปิดด้วย Excel ได้)');
 };
 ACT.openDay = el => {
@@ -340,7 +348,7 @@ ACT.openDay = el => {
 /* ---------- Event editor ---------- */
 function openEvent(id, date) {
   const orig = id ? S().events.find(e => e.id === id) : null;
-  const e = orig ? JSON.parse(JSON.stringify(orig)) : { id: uid('e_'), name: '', start: date || today(), end: date || today(), venue: '', ownerId: me().id, audience: '', status: 'planning', projectId: '', milestones: [] };
+  const e = orig ? JSON.parse(JSON.stringify(orig)) : { id: uid('e_'), cat: (ST.cal.cats || []).length === 1 ? ST.cal.cats[0] : '', name: '', start: date || today(), end: date || today(), venue: '', ownerId: me().id, audience: '', status: 'planning', projectId: '', milestones: [] };
   const canEdit = !orig ? canManageEvents() : (isAdmin() || e.ownerId === me().id || S().settings.eventEditors.includes(me().id));
   const d = canEdit ? '' : 'disabled';
   const msRow = ms => `<div class="ms-row"><input type="date" value="${ms.date}" ${d}><input type="text" value="${esc(ms.title)}" placeholder="เช่น ส่งแบบสื่อ / เริ่มเตรียมงาน" ${d}><label class="check"><input type="checkbox" ${ms.done ? 'checked' : ''} ${d}> เสร็จ</label>${canEdit ? '<button type="button" class="icon-btn" data-rm aria-label="ลบ">' + ico('x', 15) + '</button>' : ''}</div>`;
@@ -348,6 +356,7 @@ function openEvent(id, date) {
     title: orig ? (canEdit ? 'แก้ไข Event' : 'รายละเอียด Event') : ACTION.newEvent[0], wide: true,
     body: `<form id="evForm" class="form-grid" autocomplete="off">
       <label class="field full"><span>ชื่องาน *</span><input name="name" required value="${esc(e.name)}" ${d}></label>
+      <div class="field full"><span>หมวด *</span><div class="seg-pills cat-pills" role="radiogroup" aria-label="หมวด">${EV_CATS.map(([k, l, col]) => `<label class="sp" style="--cc:${col}"><input type="radio" name="cat" value="${k}" ${e.cat === k ? 'checked' : ''} required ${d}><span><i></i>${l}</span></label>`).join('')}</div></div>
       <label class="field"><span>วันเริ่ม *</span><input type="date" name="start" required value="${e.start}" ${d}></label>
       <label class="field"><span>วันสิ้นสุด *</span><input type="date" name="end" required value="${e.end}" ${d}></label>
       <label class="field"><span>สถานที่</span><input name="venue" value="${esc(e.venue)}" ${d}></label>
@@ -362,7 +371,8 @@ function openEvent(id, date) {
         label: 'บันทึก', cls: 'btn-primary', onClick: () => {
           const f = $('#evForm'); if (!f.reportValidity()) return false;
           if (f.elements.end.value < f.elements.start.value) { toast('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม', 'error'); return false; }
-          Object.assign(e, { name: f.elements.name.value.trim(), start: f.elements.start.value, end: f.elements.end.value, venue: f.elements.venue.value, ownerId: f.elements.ownerId.value, audience: f.elements.audience.value, status: f.elements.status.value, projectId: f.elements.projectId.value || null });
+          if (!f.elements.cat.value) { toast('เลือกหมวดของ Event (Agency / Banca / CS / Academy / Company)', 'error'); return false; }
+          Object.assign(e, { cat: f.elements.cat.value, name: f.elements.name.value.trim(), start: f.elements.start.value, end: f.elements.end.value, venue: f.elements.venue.value, ownerId: f.elements.ownerId.value, audience: f.elements.audience.value, status: f.elements.status.value, projectId: f.elements.projectId.value || null });
           e.milestones = $$('#msList .ms-row').map(r => { const [dt, ti, ck] = $$('input', r); return { id: uid('ms_'), date: dt.value, title: ti.value.trim(), done: ck.checked }; }).filter(m => m.date && m.title);
           if (orig) Object.assign(orig, e); else S().events.push(e);
           commit(); toast('บันทึกแล้ว');

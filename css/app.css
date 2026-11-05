@@ -466,3 +466,15 @@ input,select,textarea,button{font-family:inherit}
 /* Publico is licensed per user — only used when installed on this computer; otherwise Source Serif 4 */
 @font-face{font-family:"Brand Serif";src:local("Publico Black"),local("Publico-Black"),local("Publico Headline Black"),local("PublicoHeadline-Black");font-weight:900}
 @font-face{font-family:"Brand Serif";src:local("Publico Roman"),local("Publico-Roman"),local("Publico Text Roman"),local("PublicoText-Roman");font-weight:400}
+
+/* ---------- event categories ---------- */
+.cat-tag{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;border-radius:999px;padding:2px 9px;background:color-mix(in srgb,var(--cc) 13%,transparent);color:color-mix(in srgb,var(--cc) 85%,var(--text));white-space:nowrap}
+.cat-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--cc)}
+.cat-filter{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}
+.cat-filter button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:transparent;border-radius:999px;padding:5px 12px;font:inherit;font-size:13px;color:var(--text);cursor:pointer}
+.cat-filter button i{width:8px;height:8px;border-radius:50%;background:var(--cc)}
+.cat-filter button.on{background:var(--text);border-color:var(--text);color:var(--bg,#fff)}
+.cat-filter button.on i{box-shadow:0 0 0 2px var(--bg,#fff)}
+.cev.has-cat{box-shadow:inset 3px 0 0 var(--cc)}
+.cat-pills .sp span i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cc);margin-right:6px}
+.imp-catall{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px 0}

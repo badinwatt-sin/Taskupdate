@@ -145,7 +145,7 @@ const safeUrl = u => { u = (u || '').trim(); if (!u) return ''; if (/^(https?:|m
 const ST = {
   dash: { group: '' },
   tracker: { q: '', area: '', who: '', status: '', month: '', view: 'list', cur: today() },
-  cal: { mode: 'month', y: new Date().getFullYear(), m: new Date().getMonth(), ram: true, ms: true },
+  cal: { mode: 'month', y: new Date().getFullYear(), m: new Date().getMonth(), ram: true, ms: true, cats: [] },
   proj: { tab: 'tasks', group: '', who: '', zoom: 'day' },
   board: { tab: 'kanban', project: '', group: '', who: '', zoom: 'day', hideDone: false },
   todo: { week: 0, user: null, view: 'board' },

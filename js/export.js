@@ -30,12 +30,14 @@ const EXP_LAYOUTS = {
 };
 const stc = (th, st) => (th.st && th.st[st]) || (EXP_ST[st] || ['#8e8e93'])[0];
 const hueOf = (th, m) => th.hues ? th.hues[m % th.hues.length] : EXP_HUES[m];
+const expCatText = () => EXP_CATS.length ? EXP_CATS.map(catLabel).join(' · ') : '';
 const expVersion = () => { const d = new Date(); return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear() + 543}`; };
 const pad2 = n => String(n).padStart(2, '0');
 
 /* ---------- data ---------- */
-function expEvents(from, to) {   // ISO range, inclusive; not cancelled
-  return S().events.filter(e => e.status !== 'cancelled' && e.start <= to && e.end >= from)
+let EXP_CATS = [];   // categories chosen in the export dialog ([] = all)
+function expEvents(from, to) {   // ISO range, inclusive; not cancelled; chosen categories only
+  return S().events.filter(e => e.status !== 'cancelled' && e.start <= to && e.end >= from && (!EXP_CATS.length || EXP_CATS.includes(e.cat)))
     .sort((a, b) => a.start.localeCompare(b.start) || a.name.localeCompare(b.name));
 }
 const dayLabel = e => {
@@ -196,7 +198,7 @@ function drawYear(cv, { year, theme, portrait }) {
   const evs = expEvents(`${year}-01-01`, `${year}-12-31`), by = Array.from({ length: 12 }, () => []);
   evs.forEach(e => { const s = e.start < `${year}-01-01` ? `${year}-01-01` : e.start; by[+s.slice(5, 7) - 1].push(e); });
   const X = portrait ? 60 : 72;
-  const top = expHeader(k, { kicker: 'AGENCY EXPERIENCE TEAM', title: `Event Calendar ${year}`, small: `พ.ศ. ${year + 543}`, sub: `ปฏิทินงานสำคัญประจำปี · ${evs.length} งาน`, evs, compact: portrait });
+  const top = expHeader(k, { kicker: EXP_CATS.length ? `${expCatText().toUpperCase()}  —  AGENCY EXPERIENCE TEAM` : 'AGENCY EXPERIENCE TEAM', title: `Event Calendar ${year}`, small: `พ.ศ. ${year + 543}`, sub: `ปฏิทินงานสำคัญประจำปี${EXP_CATS.length ? ' · ' + expCatText() : ''} · ${evs.length} งาน`, evs, compact: portrait });
   const cols = portrait ? 3 : 6, rows = portrait ? 4 : 2, gap = 16, cw = (W - 2 * X - gap * (cols - 1)) / cols, ch = (H - top - 80 - gap * (rows - 1)) / rows;
   const headH = 84, padX = 18, inner = ch - headH - 16;
   // measure one month's list at scale s
@@ -233,7 +235,8 @@ function drawYear(cv, { year, theme, portrait }) {
     for (const e of list) {
       const c = stc(th, e.status);
       k.font(700, 14 * S); const dl = dayShort(e), dw = Math.max(40 * S, g.measureText(dl).width + 14 * S) + (th.clean ? 4 * S : 0);
-      k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && e.venue;
+      k.font(600, 17 * S); const lines = k.wrap(e.name, cw - padX * 2 - dw - 10), hasV = V && (e.venue || (EXP_CATS.length !== 1 && e.cat));
+      const showCat = EXP_CATS.length !== 1 && e.cat, vtext = [showCat ? catLabel(e.cat) : '', V ? e.venue : ''].filter(Boolean).join(' · ');
       const h = Math.max(26 * S, lines.length * 21 * S + (hasV ? 17 * S : 0));
       if (ly + h > cy + ch - 10) { g.fillStyle = th.accent; k.font(600, 14); g.fillText('+ งานเพิ่มเติม (ดูไฟล์ Excel)', cx + padX, cy + ch - 14); break; }
       if (th.clean) {   // dot + date in plain text
@@ -244,7 +247,7 @@ function drawYear(cv, { year, theme, portrait }) {
         g.fillStyle = c; k.font(700, 14 * S); g.textAlign = 'center'; g.fillText(dl, cx + padX + dw / 2, ly + 18 * S); g.textAlign = 'left';
       }
       g.fillStyle = th.ink; k.font(600, 17 * S); lines.forEach((t, i) => g.fillText(t, cx + padX + dw + 10, ly + 18 * S + i * 21 * S));
-      if (hasV) { g.fillStyle = th.sub; k.font(500, 13 * S); g.fillText(k.fit(e.venue, cw - padX * 2 - dw - 10), cx + padX + dw + 10, ly + 16 * S + lines.length * 21 * S); }
+      if (hasV && vtext) { g.fillStyle = th.sub; k.font(500, 13 * S); g.fillText(k.fit(vtext, cw - padX * 2 - dw - 10), cx + padX + dw + 10, ly + 16 * S + lines.length * 21 * S); }
       ly += h + 10 * S;
     }
   });
@@ -258,7 +261,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
   expBackdrop(k, pad2(month + 1), hue);
   const days = new Date(year, month + 1, 0).getDate(), mFrom = `${year}-${pad2(month + 1)}-01`, mTo = `${year}-${pad2(month + 1)}-${pad2(days)}`;
   const evs = expEvents(mFrom, mTo), X = portrait ? 60 : 72;
-  const top = expHeader(k, { kicker: `EVENT CALENDAR · ${EXP_MON_EN[month].toUpperCase()} ${year}`, title: `${TH_MON_FULL[month]} ${year + 543}`, small: '', sub: `${EXP_MON_EN[month]} ${year} · ${evs.length ? evs.length + ' งาน' : 'ไม่มีงานในเดือนนี้'}`, evs, hue, compact: portrait });
+  const top = expHeader(k, { kicker: `EVENT CALENDAR · ${EXP_MON_EN[month].toUpperCase()} ${year}${EXP_CATS.length ? ' · ' + expCatText().toUpperCase() : ''}`, title: `${TH_MON_FULL[month]} ${year + 543}`, small: '', sub: `${EXP_MON_EN[month]} ${year} · ${evs.length ? evs.length + ' งาน' : 'ไม่มีงานในเดือนนี้'}`, evs, hue, compact: portrait });
   // geometry
   const gx = X, gy = top, gw = portrait ? W - 2 * X : 1080, gh = portrait ? 700 : H - top - 80;
   const lx = portrait ? X : gx + gw + 28, ly0 = portrait ? gy + gh + 24 : top, lw = portrait ? W - 2 * X : W - X - lx, lh = portrait ? H - ly0 - 80 : gh;
@@ -306,7 +309,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
     const thumb = posters && e.projectId && posters.get(e.projectId), tW = thumb ? 62 * s : 0;
     const dateW = 70 * s, textX = dateW + 14 * s + (thumb ? tW + 12 * s : 0), tw = w - textX;
     k.font(700, 18 * s); const lines = k.wrap(e.name, tw);
-    const meta = [e.venue, member(e.ownerId)?.name].filter(Boolean).join(' · ');
+    const meta = [EXP_CATS.length !== 1 ? catLabel(e.cat) : '', e.venue, member(e.ownerId)?.name].filter(Boolean).join(' · ');
     k.font(500, 14 * s); const mlines = meta ? k.wrap(meta, tw) : [];
     const h = Math.max(66 * s, 8 * s + lines.length * 23 * s + mlines.length * 19 * s + 30 * s);
     if (draw) {
@@ -348,6 +351,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 /* ---------- export dialog ---------- */
 async function openCalExport() {
   const now = new Date();
+  EXP_CATS = [...(ST.cal.cats || [])];
   const st = { layout: 'year-l', theme: 'clean', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
   const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
@@ -361,6 +365,7 @@ async function openCalExport() {
     body: `<div class="exp-opts">
         <div class="exp-row"><span class="exp-l">รูปแบบ</span><div class="seg-chips" id="expLayout">${Object.entries(EXP_LAYOUTS).map(([k2, l]) => `<button type="button" data-l="${k2}" class="${k2 === st.layout ? 'on' : ''}">${l.label}</button>`).join('')}</div></div>
         <div class="exp-row"><span class="exp-l">ธีม</span><div class="seg-chips" id="expTheme">${Object.entries(EXP_THEMES).map(([k2, t]) => `<button type="button" data-t="${k2}" class="${k2 === st.theme ? 'on' : ''}"><i style="background:${t.bg};box-shadow:inset 0 0 0 1px ${t.edge},0 0 0 3px ${hexA(t.accent, .35)}"></i>${t.label}</button>`).join('')}</div></div>
+        <div class="exp-row"><span class="exp-l">หมวด</span><div class="seg-chips" id="expCats"><button type="button" data-c="" class="${!EXP_CATS.length ? 'on' : ''}">ทั้งหมด</button>${EV_CATS.map(([k2, l]) => `<button type="button" data-c="${k2}" class="${EXP_CATS.includes(k2) ? 'on' : ''}">${l}</button>`).join('')}</div></div>
         <div class="exp-row"><span class="exp-l">ช่วงเวลา</span><select id="expYear">${years.map(y => opt(y, `${y} (พ.ศ. ${y + 543})`, st.year)).join('')}</select><select id="expMonth">${TH_MON_FULL.map((m, i) => opt(i, m, st.month)).join('')}</select></div>
       </div>
       <div class="exp-pv" id="expPv"><canvas id="expCv" aria-label="ตัวอย่างไฟล์ Export"></canvas></div>
@@ -381,11 +386,16 @@ async function openCalExport() {
       $('#expLayout', md.el).onclick = e => { const b = e.target.closest('[data-l]'); if (!b) return; st.layout = b.dataset.l; $$('#expLayout button', md.el).forEach(x => x.classList.toggle('on', x === b)); paint(); };
       $('#expTheme', md.el).onclick = e => { const b = e.target.closest('[data-t]'); if (!b) return; st.theme = b.dataset.t; $$('#expTheme button', md.el).forEach(x => x.classList.toggle('on', x === b)); paint(); };
       $('#expYear', md.el).onchange = e => { st.year = +e.target.value; paint(); };
+      $('#expCats', md.el).onclick = e => {
+        const b = e.target.closest('[data-c]'); if (!b) return; const c = b.dataset.c;
+        EXP_CATS = !c ? [] : EXP_CATS.includes(c) ? EXP_CATS.filter(x => x !== c) : [...EXP_CATS, c];
+        $$('#expCats button', md.el).forEach(x => x.classList.toggle('on', x.dataset.c ? EXP_CATS.includes(x.dataset.c) : !EXP_CATS.length)); paint();
+      };
       monthSel.onchange = e => { st.month = +e.target.value; paint(); };
     },
   });
 }
-const expFileName = st => `Event-Calendar-${st.year}${st.layout.startsWith('month') ? '-' + pad2(st.month + 1) : ''}_${st.layout.endsWith('p') ? 'A4' : '16x9'}_v${expVersion().replace(/\//g, '-')}`;
+const expFileName = st => `Event-Calendar${EXP_CATS.length ? '-' + EXP_CATS.map(catLabel).join('-') : ''}-${st.year}${st.layout.startsWith('month') ? '-' + pad2(st.month + 1) : ''}_${st.layout.endsWith('p') ? 'A4' : '16x9'}_v${expVersion().replace(/\//g, '-')}`;
 function downloadCanvas(cv, st) {
   cv.toBlob(b => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = expFileName(st) + '.png';
