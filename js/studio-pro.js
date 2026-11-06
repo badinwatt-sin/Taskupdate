@@ -38,7 +38,7 @@ function proHero(c, g, o = {}) {   // the person: knees at the bottom edge, head
   const key = proPeople(c, o.key), K = SD_KIT[key], ar = K[2] / K[3], W = c.W, H = c.H;
   const hy = o.hy != null ? o.hy : g.hy, maxW = (o.maxW || g.maxW) * W;
   let h = (H - hy * H) / .74, w = h * ar; if (w > maxW) { w = maxW; h = w / ar; }
-  const cx = (o.hx != null ? o.hx : g.hx) * W, minX = (o.minX != null ? o.minX : g.col * W + 10 * c.u) - w * .12;
+  const cx = (o.hx != null ? o.hx : g.hx) * W, minX = (o.minX != null ? o.minX : g.col * W + 16 * c.u) - w * .04;   // the figure never reaches into the text column
   const x = Math.max(minX, Math.min(cx - w / 2, W - w * .9)), y = H - h * .74;
   c.add({ t: 'art', role: 'hero', key, x, y, w, h });
   return { x, y, w, h, };
@@ -60,15 +60,16 @@ function proInfo(c, x, y, w, g) {   // white card: date / time / place with smal
   const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .92 * c.u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x, y, w, r: .12, shadow: true }));
   return y + L.h + g.gap * c.u;
 }
+const proItems = pts => { const numbered = pts.length > 1 && pts.every(p => /^\s*\d+[.)]\s*/.test(p.title)); return pts.map(p => numbered ? { title: p.title.replace(/^\s*(\d+)[.)]\s*/, ''), body: p.body, num: p.title.match(/^\s*(\d+)/)[1] } : { title: p.title, body: p.body }); };
 function proChecklist(c, x, y, w, g, o = {}) {   // periwinkle speech bubble with ✓ points
   if (!c.b.points.length) return y;
   if (c.land && c.b.points.length >= 2 && !o.stack) {   // wide canvas: one card per point in a row — uses the width, keeps the type big
     const k = proInk(c), n = c.b.points.length, gap = 18 * c.u, cw = (w - gap * (n - 1)) / n; let h = 0;
-    const cards = c.b.points.map((p, i) => c.add(sdM({ t: 'list', role: 'p' + i, items: [{ title: p.title, body: p.body }], size: g.body * c.u * c.s, fill: o.fill || k.list, titleInk: k.listTitle, ink: k.listInk, check: k.check, checkInk: k.checkInk, x: x + i * (cw + gap), y, w: cw, r: .12, shadow: true })));
+    const its = proItems(c.b.points), cards = c.b.points.map((p, i) => c.add(sdM({ t: 'list', role: 'p' + i, items: [its[i]], size: g.body * c.u * c.s, fill: o.fill || k.list, titleInk: k.listTitle, ink: k.listInk, check: k.check, checkInk: k.checkInk, x: x + i * (cw + gap), y, w: cw, r: .12, shadow: true })));
     h = Math.max(...cards.map(L => L.h)); cards.forEach(L => { L.h = h; L.minH = h; });
     return y + h + (g.gap + 8) * c.u;
   }
-  const k = proInk(c), L = c.add(sdM({ t: 'list', role: 'pts', items: c.b.points.map(p => ({ title: p.title, body: p.body })), size: g.body * c.u * c.s, fill: o.fill || k.list, titleInk: k.listTitle, ink: k.listInk, check: k.check, checkInk: k.checkInk, x, y, w, r: .1, tail: o.tail === false ? null : 'br', shadow: true }));
+  const k = proInk(c), L = c.add(sdM({ t: 'list', role: 'pts', items: proItems(c.b.points), size: g.body * c.u * c.s, fill: o.fill || k.list, titleInk: k.listTitle, ink: k.listInk, check: k.check, checkInk: k.checkInk, x, y, w, r: .1, tail: o.tail === false ? null : 'br', shadow: true }));
   return y + L.h + (g.gap + 14) * c.u;
 }
 function proBody(c, x, y, w, g, o = {}) {   // statement → info → checklist; on wide canvases info and checklist sit side by side
@@ -167,9 +168,9 @@ Object.assign(SD_GEN, {
       const bs = Math.min(colW * .36, (c.land ? 210 : c.square ? 180 : 210) * u * Math.min(1.5, c.s));
       c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.red, ink: C.primary, x: M, y: y + 10 * u, w: bs, h: bs * 1.08 });
       const items = [['time', 'clock'], ['venue', 'pin']].filter(([k]) => b[k]).map(([k, icon]) => ({ title: sdFactBody(b[k]), icon }));
-      const side = colW - bs - 22 * u >= 320 * u;   // details beside the calendar when there is room, otherwise under it
+      const side = colW - bs - 22 * u >= 230 * u;   // details beside the calendar when there is room, otherwise under it
       let ry = side ? y + 10 * u : y + 10 * u + bs * 1.08 + g.gap * u;
-      if (items.length) { const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .86 * u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x: side ? M + bs + 22 * u : M, y: ry, w: side ? colW - bs - 22 * u : colW, r: .12, shadow: true })); ry += L.h; }
+      if (items.length) { const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .86 * u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x: side ? M + bs + 22 * u : M, y: ry, w: side ? colW - bs - 22 * u : colW, r: .12, shadow: true })); if (side && L.h < bs * 1.08) L.y = y + 10 * u + (bs * 1.08 - L.h) / 2; ry = L.y + L.h; }
       y = Math.max(y + 10 * u + bs * 1.08, ry) + (g.gap + 8) * u;
     } else y = proInfo(c, M, y, colW, g);
     if (c.land && b.sub && b.points.length) { const w1 = colW * .44, y1 = proStatement(c, M, y, w1, g), y2 = proChecklist(c, M + w1 + 20 * u, y, colW - w1 - 20 * u, g); y = Math.max(y1, y2); }   // wide canvas: statement beside the checklist
@@ -186,7 +187,7 @@ sdRank = function (b, aiOrder) {
   const n = b.points.length, out = [];
   const push = k => { if (SD_ACTIVE.includes(k) && !out.includes(k)) out.push(k); };
   if (b.date && ['event', 'reminder', 'recruit'].includes(b.kind)) push('date');
-  if (n >= 2 && n <= 3 && (b.sub || '').length < 70 && ['knowledge', 'campaign', 'reminder', 'change'].includes(b.kind)) push('circles');
+  if (n >= 2 && n <= 3 && b.points.every(p => (p.title + p.body).length <= 60) && (b.sub || '').length < 70 && ['knowledge', 'campaign', 'reminder', 'change'].includes(b.kind)) push('circles');
   if (['change', 'announce'].includes(b.kind)) push('band');
   (aiOrder || []).forEach(push);
   push('feature'); SD_ACTIVE.forEach(push);

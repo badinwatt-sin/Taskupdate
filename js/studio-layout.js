@@ -155,7 +155,7 @@ function sdDrawText(k, L, draw) {
   m.lines.forEach(o => {
     const lw = o.w + 2 * m.padX, x0 = L.pill ? L.x + m.pill - m.padX : L.align === 'center' ? L.x + (L.w - lw) / 2 : L.align === 'right' ? L.x + L.w - lw : L.x;
     if (o.bar) { g.fillStyle = L.barFill; k.rr(x0, y + m.lh * .02, lw, m.lh * .98, L.size * .16); g.fill(); }
-    k.font(L.weight || 700, L.size, sdFam(L)); g.fillStyle = o.bar ? (L.barInk || '#FFFFFF') : (L.color || '#00008F'); g.fillText(o.s, x0 + m.padX, y + m.lh * .54);
+    k.font(L.weight || 700, L.size, sdFam(L)); g.fillStyle = o.bar ? (L.barInk || '#FFFFFF') : (L.color || '#00008F'); g.fillText(o.s, x0 + (o.bar || L.pill || L.align !== 'left' ? m.padX : 0), y + m.lh * .54);
     y += m.lh + m.gap;
   });
   g.textBaseline = 'alphabetic';
@@ -189,7 +189,7 @@ function sdDrawCard(k, L, draw) {
 }
 function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
   const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
-  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon }; });
+  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon, num: it.num }; });
   return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3, L.minH || 0) };
 }
 function sdDrawList(k, L, draw) {
@@ -201,7 +201,8 @@ function sdDrawList(k, L, draw) {
   let y = L.y + m.pad; const x0 = L.x + m.pad, tx = x0 + m.ic + m.s * .5; g.textBaseline = 'middle';
   m.rows.forEach(row => {
     const cy = y + m.s * .6;
-    if (row.icon) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.iconBg || '#E8EBFF'); saProp(g, row.icon, x0 + m.ic * .18, cy - m.ic * .32, m.ic * .64, m.ic * .64); }
+    if (row.num) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#FFFFFF'); k.font(700, m.s * .78, sdStack('body')); g.fillStyle = L.checkInk || '#00008F'; g.textAlign = 'center'; g.fillText(row.num, x0 + m.ic / 2, cy + m.s * .03); g.textAlign = 'left'; }
+    else if (row.icon) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.iconBg || '#E8EBFF'); saProp(g, row.icon, x0 + m.ic * .18, cy - m.ic * .32, m.ic * .64, m.ic * .64); }
     else { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = L.checkInk || '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke(); }
     k.font(700, m.s, sdStack('body')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
     if (row.bb.length) { y += m.s * .12; k.font(400, m.s * .8, sdStack('body')); g.fillStyle = L.ink || 'rgba(255,255,255,.92)'; row.bb.forEach(t => { g.fillText(t, tx, y + m.s * .8 * .62); y += m.s * .8 * 1.34; }); }
@@ -210,7 +211,7 @@ function sdDrawList(k, L, draw) {
   g.textBaseline = 'alphabetic';
 }
 function sdDrawCirc(k, L, draw) {   // round info badge: title + short body centred in a circle
-  L.h = L.w; if (!draw) return; const g = k.g, r = L.w / 2, cx = L.x + r, cy = L.y + r, s = L.size, tw = L.w * .7;
+  L.h = L.w; if (!draw) return; const g = k.g, r = L.w / 2, cx = L.x + r, cy = L.y + r, s = L.size, tw = L.w * .76;
   g.save(); k.shadow(true, s * .8, s * .25, .14); g.fillStyle = L.fill || '#F25C5C'; g.beginPath(); g.arc(cx, cy, r, 0, 6.3); g.fill(); g.restore();
   k.font(700, s, sdStack('body')); const tl = L.title ? k.wrap(L.title, tw) : []; k.font(400, s * .78, sdStack('body')); const bl = String(L.body || '').split('\n').filter(Boolean).flatMap(t => k.wrap(t, tw * .96));
   const th = tl.length * s * 1.15, bh = bl.length * s * .78 * 1.32, tot = th + (bh ? s * .35 + bh : 0); let y = cy - tot / 2;
@@ -349,10 +350,12 @@ function sdFoot(c, x, w, o = {}) {   // note (fine print) at the bottom, CTA abo
   if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.min(1.05, Math.max(c.s, .8)), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#0C0E45', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
   if (c.b.qr && !o.noQr) {   // QR code with the call to action beside it
     const qs = Math.min(170 * c.u * Math.max(c.s, .8), w * .34), qy = y - qs; c.add({ t: 'qr', role: 'qr', url: c.b.qr, x: o.align === 'center' ? x + (w - qs) / 2 : x, y: qy, w: qs, h: qs, shadow: true });
-    if (o.align !== 'center') { const tx = x + qs + 22 * c.u, tw = w - qs - 22 * c.u, t = sdT({ role: 'cta', text: c.b.cta || 'สแกนเพื่อดูรายละเอียด', size: 32 * c.u * c.s, weight: 700, font: 'head', color: o.qrInk || c.C.primary, lh: 1.25, x: tx, y: 0, w: tw }); for (let n = 0; n < 8 && t.h > qs * 1.02; n++) { t.size *= .9; sdM(t); } t.y = qy + (qs - t.h) / 2; c.add(t); }
+    if (o.align !== 'center') { const tx = x + qs + 22 * c.u, tw = w - qs - 22 * c.u, t = sdT({ role: 'cta', text: c.b.cta || 'สแกนเพื่อดูรายละเอียด', size: Math.min(32 * c.s, 38) * c.u, weight: 700, font: 'head', color: o.qrInk || c.C.primary, lh: 1.25, x: tx, y: 0, w: tw }); for (let n = 0; n < 8 && t.h > qs * 1.02; n++) { t.size *= .9; sdM(t); } t.y = qy + (qs - t.h) / 2; c.add(t); }
     return qy - 28 * c.u;
   }
-  if (c.b.cta) { const L = sdM({ t: 'chip', role: 'cta', text: c.b.cta, icon: o.ctaIcon || '', size: 32 * c.u * c.s, weight: 700, fill: o.ctaFill || c.C.primary, ink: o.ctaInk || '#FFFFFF', x, y: 0 }); if (L.w > w) L.size *= w / L.w, sdM(L); L.y = y - L.h; L.x = o.align === 'center' ? x + (w - L.w) / 2 : x; y = L.y - 26 * c.u; c.add(L); }
+  if (c.b.cta) { let L = sdM({ t: 'chip', role: 'cta', text: c.b.cta, icon: o.ctaIcon || '', size: 32 * c.u * c.s, weight: 700, fill: o.ctaFill || c.C.primary, ink: o.ctaInk || '#FFFFFF', x, y: 0 });
+    if (L.w > w * 1.15) L = sdT({ role: 'cta', text: c.b.cta, size: Math.min(32 * c.s, 36) * c.u, weight: 700, font: 'body', ff: 'body', color: o.qrInk || c.C.primary, lh: 1.3, x, y: 0, w });   // too long for a pill: two bold lines read better than tiny type
+    else if (L.w > w) L.size *= w / L.w, sdM(L); L.y = y - L.h; L.x = o.align === 'center' ? x + (w - L.w) / 2 : x; y = L.y - 26 * c.u; c.add(L); }
   return y;
 }
 function sdList(c, x, y, w, o = {}) {   // points as compact white rows with a number or check

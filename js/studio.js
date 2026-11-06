@@ -56,7 +56,7 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
     else if (SD_ROLE_FIELD[L.role]) { if (L.t === 'card') L.body = b[SD_ROLE_FIELD[L.role]]; else L.text = b[SD_ROLE_FIELD[L.role]]; }
     else if (/^p\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { if (L.t === 'list') L.items = [{ title: p.title, body: p.body }]; else { L.title = p.title; L.body = p.body; } } }
     else if (/^v\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.key = p.visual; L.t = sdIsKit(L.key) ? 'art' : 'char'; } }
-    else if (L.role === 'pts') { L.items = b.points.map(p => ({ title: p.title, body: p.body })); }
+    else if (L.role === 'pts') { L.items = typeof proItems === 'function' ? proItems(b.points) : b.points.map(p => ({ title: p.title, body: p.body })); }
     else if (L.role === 'sub' && L.t === 'card') { L.body = b.sub; }
     else if (L.role === 'qr') { L.url = b.qr || L.url; }
     else if (L.role === 'hero') { L.key = b.hero; L.t = sdIsKit(L.key) ? 'art' : 'char'; }
