@@ -98,7 +98,6 @@ ACT.sdRead = async () => {
   brief.theme = SDOC.prefTheme || 'grad';
   sdApply(SDOC.prefDesign && SD_ACTIVE.includes(SDOC.prefDesign) ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
   toast('สร้างโปสเตอร์แล้ว — เลือกแบบอื่นหรือแตะชิ้นใดก็ได้เพื่อปรับ');
-  if (brief.by === 'ai' && brief.hero_fit === 'weak' && brief.hero_draw) sdAutoDraw(brief);
   if (matchMedia('(max-width: 900px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 ACT.sdPrefTheme = el => { SDOC.prefTheme = el.dataset.id; $$('[data-act=sdPrefTheme]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief) { if (SDOC.edited && !confirm('เปลี่ยนโทนพื้นหลังจะจัดตำแหน่งใหม่ (ข้อความที่แก้ไว้ยังอยู่) ต่อไหม?')) return; sdPush(); SDOC.brief.theme = SDOC.prefTheme; sdApply(SDOC.design || SDOC.brief.designs[0]); sdChanged(true); sdFull(); } else sdTplThumbs(true); };
@@ -421,7 +420,8 @@ function sdThumbs(root) {
     const c2 = document.createElement('canvas'); c2.width = cv.width; c2.height = cv.height; c2.getContext('2d').drawImage(cv, 0, 0); SD_THUMB.set(key, c2);
   });
 }
-const sdDrawBox = title => (SD_AI && SD_AI.gemini && SD_AI.gemini.on) ? `<div class="sd-draw"><b>${ico('sparkles', 14)} ${title}</b><input placeholder="เช่น ใบเสร็จค่ารักษาแยก 2 หมวด กับแว่นขยาย" maxlength="300"><button type="button" class="btn btn-sm btn-primary" data-act="sdDrawArt">วาดภาพ</button><small class="muted">ภาพเวกเตอร์ใหม่ในสี CI · ใช้โควตา AI 1 ครั้ง</small></div>` : '';
+const sdDrawBox = () => '';   // AI drawing switched off (saves AI quota) — pictures come from the kit
+const _sdDrawBoxOff = title => (SD_AI && SD_AI.gemini && SD_AI.gemini.on) ? `<div class="sd-draw"><b>${ico('sparkles', 14)} ${title}</b><input placeholder="เช่น ใบเสร็จค่ารักษาแยก 2 หมวด กับแว่นขยาย" maxlength="300"><button type="button" class="btn btn-sm btn-primary" data-act="sdDrawArt">วาดภาพ</button><small class="muted">ภาพเวกเตอร์ใหม่ในสี CI · ใช้โควตา AI 1 ครั้ง</small></div>` : '';
 function sdAddPanel() {
   const el = $('#sdAdd'); if (!el) return;
   const tabs = [['kit', 'ภาพชุด Kit'], ['shape', 'รูปทรง'], ['text', 'ข้อความ'], ['more', 'อื่น ๆ']];
