@@ -105,34 +105,45 @@ function sdTplThumbs(force) {   // real mini previews of every template, built f
 /* ---------- AI connection (Admin, inside CI Control — users never see it) ---------- */
 async function sdAiBox(md) {
   const box = $('#sdAiBox', md.el); if (!box) return; await sdAiState(true);
-  const st = SD_AI || {};
-  box.innerHTML = `<p class="small">${st.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> — Poster ใช้ AI เรียบเรียงข้อความและตีความบริบทให้อัตโนมัติ` : `<b>● ยังไม่ได้เชื่อมต่อ</b> — Poster ยังใช้ได้ปกติ (ระบบจัดให้เอง) เชื่อม AI เพื่อให้หัวข้อสั้นคมและเข้าใจบริบทได้ดีขึ้น`}</p><button type="button" class="btn btn-sm btn-ghost" data-act="sdAiKey">${st.on ? 'ตั้งค่า AI' : 'เชื่อมต่อ AI'}</button>`;
+  const st = SD_AI || {}, g = st.gemini || {}, c = st.claude || {};
+  box.innerHTML = `<p class="small">${st.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> — ใช้ ${st.provider === 'gemini' ? '<b>Google Gemini (ฟรี)</b>' : '<b>Claude</b>'} เรียบเรียงข้อความและตีความบริบทให้อัตโนมัติ` : `<b>● ยังไม่ได้เชื่อมต่อ</b> — Poster ใช้ได้ปกติ (ระบบจัดให้เอง) เชื่อม Gemini ฟรีเพื่อให้หัวข้อสั้นคมและเข้าใจบริบทได้ดีขึ้น`}</p><button type="button" class="btn btn-sm ${st.on ? 'btn-ghost' : 'btn-primary'}" data-act="sdAiKey">${st.on ? 'ตั้งค่า AI' : 'เชื่อมต่อ Gemini (ฟรี)'}</button>`;
 }
 let SD_AI = null;
 async function sdAiState(refresh) {
   if (Store.mode !== 'server') { SD_AI = { on: false }; return; }
   if (!SD_AI || refresh) { try { const r = await fetch('api/ai-status', { headers: Store.headers() }); SD_AI = r.ok ? await r.json() : { on: false }; } catch (e) { SD_AI = { on: false }; } }
-  const x = $('#sdAiState'); if (!x) return;
-  x.innerHTML = SD_AI.on ? `<button type="button" class="sd-ai-on" data-act="sdAiKey" title="ตั้งค่าการเชื่อมต่อ AI">● AI พร้อมใช้งาน</button>` : `<button type="button" class="sd-ai-off" data-act="sdAiKey">${ico('alert', 13)} ยังไม่ได้เชื่อม AI — เชื่อมต่อ</button>`;
 }
-ACT.sdAiKey = () => {
-  if (!isAdmin()) return toast('ให้ Admin เป็นผู้เชื่อมต่อ AI', 'error');
-  const st = SD_AI || {};
-  modal({ title: 'เชื่อมต่อ AI (Anthropic API Key)', body: `
-    <p class="small">${st.on ? `สถานะ: <b class="sd-ok">เชื่อมต่อแล้ว</b> ${st.source === 'vercel' ? '(ตั้งไว้ใน Vercel Environment Variables)' : `(บันทึกในแอป · คีย์ลงท้าย …${esc(st.tail || '')})`}` : 'สถานะ: <b>ยังไม่ได้เชื่อมต่อ</b> — ตอนนี้ Poster ใช้การจัดอัตโนมัติแบบไม่ใช้ AI'}</p>
-    <ol class="small sd-steps"><li>เข้า <b>console.anthropic.com</b> (บัญชีบริษัท) → API Keys → Create Key</li><li>คัดลอกคีย์ (ขึ้นต้นด้วย <code>sk-ant-</code>) มาวางด้านล่าง แล้วกด “ทดสอบและบันทึก”</li></ol>
-    <label class="field mt"><span>API Key</span><input id="sdKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..."></label>
-    <p class="small muted">คีย์ถูกเก็บฝั่งเซิร์ฟเวอร์ของทีม <b>ไม่ถูกส่งกลับมาที่เบราว์เซอร์</b> และใช้เฉพาะงาน AI ของแอปนี้ (Poster, นำเข้าปฏิทิน) — ค่าใช้จ่ายคิดตามการใช้งานจริงในบัญชี Anthropic ของบริษัท${st.source === 'vercel' ? ' · ตอนนี้ระบบใช้คีย์ใน Vercel เป็นหลัก คีย์ที่บันทึกในแอปจะใช้เมื่อไม่มีคีย์ใน Vercel' : ''}</p>`,
-    actions: [
-      ...(st.source === 'app' ? [{ label: 'ยกเลิกการเชื่อมต่อ', cls: 'btn-danger-ghost', left: true, onClick: async () => { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key: '' }) }); if (r.ok) { toast('ลบ API Key แล้ว'); await sdAiState(true); const b2 = $('#sdAiBox'); if (b2) sdAiBox({ el: b2.closest('.modal-back') }); } } }] : []),
-      { label: 'ปิด' },
-      { label: 'ทดสอบและบันทึก', cls: 'btn-primary', onClick: async md => {
-        const key = ($('#sdKeyIn', md.el).value || '').trim(); if (!key) { toast('วาง API Key ก่อน', 'error'); return false; }
-        const btn = md.el.querySelector('footer .btn-primary'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังทดสอบ…';
-        try { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'เชื่อมต่อไม่สำเร็จ'); toast('เชื่อมต่อ AI สำเร็จ'); await sdAiState(true); const b2 = $('#sdAiBox'); if (b2) sdAiBox({ el: b2.closest('.modal-back') }); }
-        catch (e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'ทดสอบและบันทึก'; return false; }
-      } },
-    ] });
+const sdAiRefreshBox = async () => { await sdAiState(true); const b2 = $('#sdAiBox'); if (b2) sdAiBox({ el: b2.closest('.modal-back') }); };
+async function sdAiSave(provider, key, btn) {
+  btn.disabled = true; const t = btn.textContent; btn.innerHTML = '<span class="spin"></span> กำลังทดสอบ…';
+  try { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ provider, key }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'เชื่อมต่อไม่สำเร็จ'); toast(key ? 'เชื่อมต่อสำเร็จ — Poster จะใช้ AI ให้อัตโนมัติ' : 'ยกเลิกการเชื่อมต่อแล้ว'); await sdAiRefreshBox(); return true; }
+  catch (e) { toast(e.message, 'error'); return false; }
+  finally { btn.disabled = false; btn.textContent = t; }
+}
+ACT.sdAiKey = async () => {
+  if (!isAdmin()) return toast('ให้ Admin เป็นผู้ตั้งค่า AI', 'error');
+  await sdAiState(true); const st = SD_AI || {}, g = st.gemini || {}, c = st.claude || {};
+  const srcTxt = x => x.source === 'vercel' ? 'ตั้งไว้ใน Vercel' : `บันทึกในแอป · คีย์ลงท้าย …${esc(x.tail || '')}`;
+  modal({ title: 'เชื่อมต่อ AI สำหรับ Poster', body: `
+    <section class="sd-aiopt"><h4>Google Gemini <span class="badge sd-free">ฟรี · แนะนำ</span></h4>
+      <p class="small">${g.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> (${srcTxt(g)})` : 'ยังไม่ได้เชื่อมต่อ'}</p>
+      <ol class="small sd-steps"><li>เปิด <b>aistudio.google.com</b> แล้วเข้าสู่ระบบด้วยบัญชี Google</li><li>กด <b>Get API key</b> → <b>Create API key</b> (ไม่ต้องผูกบัตร)</li><li>คัดลอกคีย์ (มักขึ้นต้นด้วย <code>AIza</code>) มาวางด้านล่าง แล้วกด “ทดสอบและบันทึก”</li></ol>
+      <div class="sd-keyrow"><input id="sdGemKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..."><button type="button" class="btn btn-primary" id="sdGemSave">ทดสอบและบันทึก</button>${g.source === 'app' ? '<button type="button" class="btn btn-danger-ghost" id="sdGemDel">ยกเลิก</button>' : ''}</div>
+      <p class="small muted">โควตาฟรีมีจำกัดต่อนาทีและต่อวัน ถ้าเกิน ระบบจะจัดโปสเตอร์ให้เองโดยอัตโนมัติ (ผู้ใช้ไม่เห็นแจ้งเตือน) · <b>ข้อควรรู้:</b> ในแบบฟรี Google อาจนำข้อความที่ส่งไปใช้ปรับปรุงบริการ — ใช้กับข้อความประกาศ/ประชาสัมพันธ์ ไม่ควรใส่ข้อมูลลูกค้าหรือตัวเลขภายในที่ยังไม่เปิดเผย</p>
+    </section>
+    <details class="sd-aiopt sd-more"><summary>ใช้ Claude แทน (มีค่าใช้จ่าย)</summary>
+      <p class="small">${c.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> (${srcTxt(c)})` : 'ยังไม่ได้เชื่อมต่อ'} — ถ้าเชื่อมทั้งคู่ ระบบใช้ Gemini ก่อน และใช้ Claude เมื่อ Gemini ใช้ไม่ได้</p>
+      <div class="sd-keyrow"><input id="sdClKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..."><button type="button" class="btn btn-ghost" id="sdClSave">ทดสอบและบันทึก</button>${c.source === 'app' ? '<button type="button" class="btn btn-danger-ghost" id="sdClDel">ยกเลิก</button>' : ''}</div>
+    </details>
+    <p class="small muted mt">คีย์เก็บฝั่งเซิร์ฟเวอร์ของทีม ไม่ถูกส่งกลับมาที่เบราว์เซอร์ และผู้ใช้คนอื่นไม่เห็นหน้านี้</p>`,
+    actions: [{ label: 'ปิด', cls: 'btn-primary' }],
+    onOpen(md) {
+      const go = async (provider, inId, btnId) => { const key = ($('#' + inId, md.el).value || '').trim(); if (!key) { toast('วาง API Key ก่อน', 'error'); return; } if (await sdAiSave(provider, key, $('#' + btnId, md.el))) md.close(); };
+      $('#sdGemSave', md.el).onclick = () => go('gemini', 'sdGemKey', 'sdGemSave');
+      $('#sdClSave', md.el).onclick = () => go('claude', 'sdClKey', 'sdClSave');
+      const del = (id, provider) => { const b = $('#' + id, md.el); if (b) b.onclick = async () => { if (await sdAiSave(provider, '', b)) md.close(); }; };
+      del('sdGemDel', 'gemini'); del('sdClDel', 'claude');
+    } });
 };
 ACT.sdSample = () => { SDOC.text = SD_SAMPLE; const t = $('#sdText'); if (t) t.value = SD_SAMPLE; };
 ACT.sdDesign = el => { if (!SDOC.brief) return; const d = el.dataset.id; if (SDOC.edited && !confirm('เปลี่ยนดีไซน์จะจัดตำแหน่งใหม่ทั้งหมด (ข้อความที่แก้ไว้ยังอยู่ · ชิ้นที่เพิ่มเองยังอยู่) ต่อไหม?')) return; sdPush(); sdApply(d); sdChanged(true); sdFull(); };

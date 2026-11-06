@@ -137,3 +137,6 @@
 .sd-more{margin-top:10px}.sd-more summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--accent);min-height:32px;display:flex;align-items:center}
 .sd-go{font-size:16px;padding:12px 22px;min-height:48px}
 .sd-aibox{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line2);border-radius:12px;padding:10px 12px}
+.sd-aiopt{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin-bottom:10px}.sd-aiopt h4{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sd-free{background:var(--green-l);color:var(--green)}
+.sd-keyrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.sd-keyrow input{flex:1;min-width:200px}
