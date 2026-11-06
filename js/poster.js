@@ -151,7 +151,7 @@ function pbDateText(f) {
 function pbImg(src) {   // decoded image (cached); triggers a repaint once it is ready
   if (!src) return null;
   if (PB_IMG.has(src)) { const im = PB_IMG.get(src); return im.complete && im.naturalWidth ? im : null; }
-  const im = new Image(); PB_IMG.set(src, im); im.onload = () => { pbPaint(); if (typeof sdPaint === 'function' && $('#sdRoot')) { sdPaint(); sdGallery(); } }; im.src = src; return null;
+  const im = new Image(); PB_IMG.set(src, im); im.onload = () => { pbPaint(); if (typeof sdPaint === 'function' && $('#sdRoot')) { sdPaint(); sdGallery(); clearTimeout(window._sdTplT); window._sdTplT = setTimeout(() => sdTplThumbs(true), 300); } }; im.src = src; return null;
 }
 function pbQr(text) {   // → { n, dark(r,c) } or null
   if (!text || typeof qrcode !== 'function') return null;

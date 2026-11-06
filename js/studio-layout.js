@@ -30,7 +30,10 @@ const SD_TH_MON = 'ม.ค.|ก.พ.|มี.ค.|เม.ย.|พ.ค.|มิ.ย
 const SD_RE_DATE = new RegExp(`(?:(?:วัน\\S*\\s*)?(?:ที่\\s*)?\\d{1,2}(?:\\s*[-–]\\s*\\d{1,2})?\\s*(?:${SD_TH_MON})\\s*(?:\\d{2,4})?)|\\d{1,2}\\/\\d{1,2}\\/\\d{2,4}`, 'i');
 const SD_RE_TIME = /\d{1,2}[.:]\d{2}\s*(?:[-–]|ถึง)\s*\d{1,2}[.:]\d{2}\s*(?:น\.)?|\d{1,2}[.:]\d{2}\s*น\./;
 function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pasted message
-  const src = pbThaiDigits(String(text || '')), lines = src.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  const src0 = pbThaiDigits(String(text || '')).replace(/^\s*(?:ช่วย)?(?:ทำ|สร้าง|ออกแบบ|ขอ)\s*(?:โปสเตอร์|ภาพ|ป้าย|poster|อาร์ตเวิร์ก)\s*(?:ให้|สำหรับ|เพื่อ)?\s*|^\s*อยาก(?:ประกาศ|แจ้ง|ประชาสัมพันธ์|บอก)(?:ให้ทราบ)?(?:ว่า)?\s*/i, '');
+  let lines = src0.split(/\n+/).map(s => s.trim()).filter(Boolean);
+  if (lines.length <= 2) lines = lines.flatMap(l => l.split(/\s+(?=(?:ใน)?วันที่\s|วัน(?:จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์)|เวลา\s|ณ\s|ห้อง|สถานที่|ผ่าน\s*(?:zoom|teams)|ลงทะเบียน|สมัคร(?:ได้)?ที่|สอบถาม|\*)/i)).map(s => s.trim()).filter(Boolean);   // one-sentence prompt → one fact per line
+  const src = lines.join('\n');
   const b = sdEmptyBrief(); b.by = 'auto';
   const take = re => { for (const l of lines) { const m = l.match(re); if (m) return m[0].trim(); } return ''; };
   b.date = take(SD_RE_DATE); b.time = take(SD_RE_TIME);
@@ -39,7 +42,7 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   const noteL = lines.filter(l => /^(?:\*|หมายเหตุ|เงื่อนไข|ติดต่อ|สอบถาม)/.test(l)); noteL.forEach(l => used.add(l)); b.note = noteL.join(' ');
   const ctaL = lines.find(l => !used.has(l) && /ลงทะเบียน|สมัคร|สแกน|คลิก|ติดต่อ|ส่ง.*ภายใน|ตอบรับ|register|scan/i.test(l) && l.length < 60); if (ctaL) { used.add(ctaL); b.cta = ctaL; }
   const rest = lines.filter(l => !used.has(l) && !(b.date && l.includes(b.date) && l.length < b.date.length + 30) && !(b.time && l.includes(b.time) && l.length < b.time.length + 30));
-  const head = (rest.shift() || '').replace(/[.。]$/, '');
+  const head = (rest.shift() || '').replace(/[.。,]$/, '').replace(/\s*(?:เข้า|ร่วม)?(?:ใน)?$/, '');
   b.headline = sdSplitHead(head); b.emph = b.headline.length > 1 ? 1 : 0;
   if (rest.length && rest[0].length < 90 && !/^[-•·*\d]/.test(rest[0])) b.sub = rest.shift();
   b.points = rest.map(l => l.replace(/^\s*(?:[-–•·*]|\d+[.)])\s*/, '')).filter(Boolean).slice(0, 4).map(l => { const m = l.match(/^(.{2,40}?)\s*[:：]\s*(.+)$/); return m ? { title: m[1], body: m[2], visual: '' } : { title: l, body: '', visual: '' }; });
