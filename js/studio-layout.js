@@ -43,12 +43,12 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   const ctaL = lines.find(l => !used.has(l) && /ลงทะเบียน|สมัคร|สแกน|คลิก|ติดต่อ|ส่ง.*ภายใน|ตอบรับ|register|scan/i.test(l) && l.length < 60); if (ctaL) { used.add(ctaL); b.cta = ctaL; }
   const rest = lines.filter(l => !used.has(l) && !(b.date && l.includes(b.date) && l.length < b.date.length + 30) && !(b.time && l.includes(b.time) && l.length < b.time.length + 30));
   const head = (rest.shift() || '').replace(/[.。,]$/, '').replace(/\s*(?:เข้า|ร่วม)?(?:ใน)?$/, '');
-  b.headline = sdSplitHead(head); b.emph = b.headline.length > 1 ? 1 : 0;
+  const hs = sdShapeHead(head); b.headline = hs.lines; b.emph = hs.emph; const kick0 = hs.kicker; if (hs.sub) rest.unshift(hs.sub);
   if (rest.length && rest[0].length < 90 && !/^[-•·*\d]/.test(rest[0])) b.sub = rest.shift();
   b.points = rest.map(l => l.replace(/^\s*(?:[-–•·*]|\d+[.)])\s*/, '')).filter(Boolean).slice(0, 4).map(l => { const m = l.match(/^(.{2,40}?)\s*[:：]\s*(.+)$/); return m ? { title: m[1], body: m[2], visual: '' } : { title: l, body: '', visual: '' }; });
   b.kind = sdGuessKind(head + ' ' + (rest[0] || ''), lines.join(' '));
   const all = lines.join(' ');
-  b.kicker = SD_KINDS[b.kind][1]; b.kindText = SD_KINDS[b.kind][0];
+  b.kicker = kick0 || (/^(?:ขอ)?เชิญ/.test(b.headline[0] || '') && b.kind === 'event' ? '' : SD_KINDS[b.kind][1]); b.kindText = SD_KINDS[b.kind][0];
   b.hero = sdKitPick(head, 'people') || sdKitPick(all, 'people') || SD_KIND_HERO[b.kind];   // the headline decides first
   const usedK = [];
   b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || sdKitFallback(i, usedK); usedK.push(p.visual); });
@@ -76,9 +76,22 @@ function sdGuessKind(head, all) {   // kind from free text (headline first, then
   }
   return 'announce';
 }
-function sdSplitHead(t) {   // long single line → 2 balanced lines
+function sdShapeHead(head) {   // one long first line → kicker + 1–2 headline lines (+ product name on the highlight bar) + sub
+  let t = String(head || '').trim(), kicker = '', sub = '', prod = '';
+  const dots = t.match(/^(.{4,30}?)\s*(?:\.{2,}|…|:|：)\s*(.{8,})$/); if (dots) { kicker = dots[1].trim(); t = dots[2].trim(); }
+  const pm = t.match(/^(.{8,}?)\s*(?:ด้วย|กับ|จาก|โดย|ที่)\s*((?:[A-Za-z][\w+&'.-]*)(?:\s+[A-Za-z0-9][\w+&'.-]*){0,3})\s*[!.]?$/); if (pm) { t = pm[1].trim(); prod = pm[2].trim(); }
+  if (t.length > 52) {   // too long for a headline: keep the first phrases, move the rest under it
+    const parts = t.split(/\s+/); let h = ''; while (parts.length && (h + ' ' + parts[0]).trim().length <= 44) h = (h + ' ' + parts.shift()).trim();
+    if (h && parts.length) { sub = parts.join(' '); t = h; }
+  }
+  const lines = sdSplitHead(t); if (prod) lines.push(prod);
+  return { kicker, sub, lines: lines.slice(0, 3), emph: prod ? Math.min(lines.length, 3) - 1 : lines.length > 1 ? 1 : 0 };
+}
+function sdSplitHead(t) {   // long single line → 2 balanced lines (prefer the space nearest the middle)
   t = String(t || '').trim(); if (!t) return [];
   if (t.length <= 22) return [t];
+  const sp = [...t.matchAll(/\s+/g)].map(m => m.index).filter(i => i >= 6 && t.length - i >= 6);
+  if (sp.length) { const mid = t.length / 2, i = sp.reduce((a, x) => Math.abs(x - mid) < Math.abs(a - mid) ? x : a); if (Math.abs(i - mid) < t.length * .22) return [t.slice(0, i).trim(), t.slice(i).trim()]; }
   const segs = pbKit(SD_MK.g).segs(t); let best = null, acc = '';
   for (let i = 0; i < segs.length - 1; i++) { acc += segs[i]; const d = Math.abs(acc.length - (t.length - acc.length)); if (!best || d < best[0]) best = [d, acc.trim(), t.slice(acc.length).trim()]; }
   return best ? [best[1], best[2]] : [t];
@@ -259,12 +272,22 @@ function sdCtx(b, fk, s) {
 }
 const sdT = o => sdM({ t: 'text', weight: 700, font: 'head', lh: 1.22, align: 'left', color: '#00008F', ...o });
 const SD_DOT = '#1A1A3A';
+const sdFactBody = t => String(t || '').replace(/^(?:วันที่|เวลา|สถานที่|ณ)\s*[:：]?\s*/, '');
 function sdLogo(c, dark) {
   const h = (c.land ? 78 : c.story ? 92 : 84) * c.u, est = h * 2.1, left = c.B.logoPos === 'left';
   return c.add(sdM({ t: 'logo', role: 'logo', dark: !!dark, variant: dark ? 'bordered' : 'color', x: left ? c.M : c.W - c.M - est, y: c.top, w: est, h, right: left ? null : c.W - c.M }));
 }
 const sdHeadText = b => b.headline.length ? b.headline.join('\n') : 'พิมพ์หัวข้อหลักที่นี่';
-function sdHead(c, o) { return c.add(sdT({ role: 'headline', text: sdHeadText(c.b), emph: c.b.emph, barFill: c.C.primary, barInk: '#FFFFFF', lh: 1.2, ...o })); }
+function sdHead(c, o) {   // headline: a short line never breaks, a long line takes at most 2 lines (shrinks until it does)
+  const L = sdT({ role: 'headline', text: sdHeadText(c.b), emph: c.b.emph, barFill: c.C.primary, barInk: '#FFFFFF', lh: 1.2, ...o });
+  const k = SD_MK, pad = L.emph != null && L.emph >= 0 ? L.size * .6 : 0;
+  for (let n = 0; n < 12; n++) {
+    k.font(L.weight || 700, L.size, sdFam(L)); const maxW = L.w - pad;
+    const bad = String(L.text).split('\n').some(par => { const lines = k.wrap(par, maxW).length; return lines > (par.trim().length <= 22 ? 1 : 2); });
+    if (!bad) break; L.size *= .92;
+  }
+  return c.add(sdM(L));
+}
 function sdKicker(c, o) { const t = c.b.kicker; if (!t) return null; return c.add(sdT({ role: 'kicker', text: t, auto: true, size: 30 * c.u * c.s, weight: 600, font: 'body', color: '#FFFFFF', pill: c.C.primary, ...o })); }
 function sdSub(c, o) { if (!c.b.sub) return null; return c.add(sdT({ role: 'sub', text: c.b.sub, size: 36 * c.u * c.s, weight: 500, font: 'body', lh: 1.38, color: '#2A2A4A', ...o })); }
 function sdFacts(c, x, y, w, o = {}) {   // date / time / venue chips, flowing in rows; returns bottom
@@ -366,12 +389,15 @@ const SD_GEN = {
     }
     sdLogo(c, true); let y = c.top; const lgH = (c.story ? 92 : 84) * u; y += lgH + 40 * u;
     const kk = sdKicker(c, { x: M, y, pill: white, color: C.primary }); if (kk) y += kk.h + 24 * u;
-    const tw = bw * (c.square ? .62 : .58), hd = sdHead(c, { x: M, y, w: tw, size: (c.story ? 86 : c.square ? 66 : 76) * u * c.s, color: white, barFill: white, barInk: C.primary }); y += hd.h + 20 * u;
+    const wide = !(c.square && sdHeadText(b).length <= 24 && !c.b.points.length);   // text across the band; picture beside the list below   // long headline: text uses the full band, picture moves beside the list
+    const tw = bw * (wide ? .94 : c.square ? .62 : .58), hd = sdHead(c, { x: M, y, w: tw, size: (c.story ? 86 : c.square ? 62 : 72) * u * c.s, color: white, barFill: white, barInk: C.primary }); y += hd.h + 20 * u;
     const sb = sdSub(c, { x: M, y, w: tw, color: 'rgba(255,255,255,.9)' }); if (sb) y += sb.h + 20 * u;
-    band.h = Math.max(y + 46 * u, H * (c.square ? .48 : .42));
-    const chH = Math.min(band.h - c.top - lgH - 30 * u, bw * .4); sdHero(c, null, W - M - chH * 1.0, band.h - chH, chH * 1.0, chH, { flip: true });
-    let ry = band.h + 44 * u; ry = sdFacts(c, M, ry, bw, { fill: C.paper }); if (ry > band.h + 44 * u) ry += 26 * u;
-    const ft = sdFoot(c, M, bw); ry = sdList(c, M, ry, bw, { num: true, size: c.square ? 27 : 30, fill: C.paper, shadow: false }); if (ry > ft) c.over = true;
+    band.h = Math.max(y + 46 * u, H * (wide ? .34 : c.square ? .5 : .42));
+    if (!wide) { const chH = Math.min(band.h - c.top - lgH - 30 * u, bw * .4); sdHero(c, null, W - M - chH, band.h - chH, chH, chH, { flip: true }); }
+    let ry = band.h + 44 * u; ry = sdFacts(c, M, ry, wide ? bw * .6 : bw, { fill: C.paper, ...(c.b.points.length ? {} : { stack: true, size: 40 }) }); if (ry > band.h + 44 * u) ry += 26 * u;
+    const ft = sdFoot(c, M, bw), lw = wide ? bw * .6 : bw, top = band.h + 30 * u;
+    ry = sdList(c, M, ry, lw, { num: true, size: c.square ? 27 : 30, fill: C.paper, shadow: false }); if (ry > ft) c.over = true;
+    if (wide) { const ah = ft - top - 10 * u, aw = bw - lw - 24 * u; if (ah < 200 * u) c.over = true; else { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.soft, x: M + lw + 24 * u, y: ft - aw * 1.05, w: aw, h: aw }); sdHero(c, null, M + lw + 24 * u, top, aw, ah); } }
     return { bg: { c1: '#FFFFFF' }, layers: c.L, over: c.over };
   },
   cards(c) {
@@ -379,7 +405,7 @@ const SD_GEN = {
     let y = c.top; const kk = sdKicker(c, { x: M, y: y + (lg.h - 44 * u * c.s) / 2 }); y += lg.h + 30 * u;
     const hd = sdHead(c, { x: M, y, w: bw, size: (c.land ? 62 : c.story ? 82 : c.square ? 62 : 70) * u * c.s }); y += hd.h + 18 * u;
     const sb = sdSub(c, { x: M, y, w: bw }); if (sb) y += sb.h + 24 * u;
-    let pts = b.points.length ? b.points : [['date', 'calendar', 'วันที่'], ['time', 'calendar', 'เวลา'], ['venue', 'event', 'สถานที่']].filter(([k]) => b[k]).map(([k, v, t]) => ({ title: t, body: b[k], visual: v, role: k }));
+    let pts = b.points.length ? b.points : [['date', 'H19', 'วันที่'], ['time', 'F11', 'เวลา'], ['venue', 'H36', 'สถานที่']].filter(([k]) => b[k]).map(([k, v, t]) => ({ title: t, body: sdFactBody(b[k]), visual: v, role: k }));
     if (!pts.length) pts = [{ title: b.sub || 'รายละเอียด', body: '', visual: b.hero }];
     const ft = sdFoot(c, M, bw), n = pts.length, cols = c.land ? n : c.square ? (n <= 2 ? n : 2) : 1, gap = 22 * u, cw = (bw - gap * (cols - 1)) / cols, avail = ft - y;
     const size = (cols === 1 ? 33 : c.land ? 28 : 28) * u * c.s, rows = Math.ceil(n / cols);
@@ -408,23 +434,28 @@ const SD_GEN = {
     let y = c.top + lg.h + 26 * u; const kk = sdKicker(c, { x: 0, y }); if (kk) { kk.x = (W - kk.w) / 2; y += kk.h + 22 * u; }
     const hd = sdHead(c, { x: M, y, w: bw, align: 'center', size: (c.land ? 62 : c.story ? 84 : c.square ? 62 : 72) * u * c.s }); y += hd.h + 16 * u;
     const sb = sdSub(c, { x: M + bw * .06, y, w: bw * .88, align: 'center' }); if (sb) y += sb.h + 20 * u;
-    const fy = sdFacts(c, M, y, bw, { align: 'center' }); if (fy > y) y = fy + 30 * u; else y += 14 * u;
-    const pts = b.points.length ? b.points : [{ title: b.sub || 'รายละเอียด', body: '', visual: '' }];
+    const factNotes = [['date', 'วันที่'], ['time', 'เวลา'], ['venue', 'สถานที่']].filter(([k]) => b[k]).map(([k, t]) => ({ title: t, body: sdFactBody(b[k]), role: k }));
+    if (b.points.length) { const fy = sdFacts(c, M, y, bw, { align: 'center' }); if (fy > y) y = fy + 30 * u; else y += 14 * u; } else y += 14 * u;
+    const pts = b.points.length ? b.points : factNotes.length ? factNotes : [{ title: b.sub || sdHeadText(b), body: '', visual: '' }];
     const ft = sdFoot(c, M, bw * .62), n = pts.length, cols = c.land ? Math.min(4, n) : c.story ? 1 : n === 1 ? 1 : 2, gap = 30 * u, cw = (bw - gap * (cols - 1)) / cols, colY = Array(cols).fill(y);
     const papers = ['#FCE9A4', '#CFE5F8', '#CDEFE0', '#F8D6DA'];
     pts.forEach((p, i) => {
       const col = colY.indexOf(Math.min(...colY)), x = M + col * (cw + gap);
-      const L = c.add(sdM({ t: 'card', role: 'p' + i, title: p.title, body: p.body, size: (cols === 1 ? 34 : 30) * u * c.s, num: String(i + 1), numFill: C.primary, fill: papers[i % 4], x, y: colY[col], w: cw, r: .03, deco: i % 2 ? 'pin' : 'tape', rot: (i % 2 ? 1.2 : -1.1), shadow: true, insetT: 10 * u }));
+      const L = c.add(sdM({ t: 'card', role: p.role || 'p' + i, title: p.title, body: p.body, size: (cols === 1 ? 34 : 30) * u * c.s, num: p.role ? '' : String(i + 1), icon: p.role ? { date: 'cal', time: 'clock', venue: 'pin' }[p.role] : '', numFill: C.primary, fill: papers[i % 4], x, y: colY[col], w: cw, r: .03, deco: i % 2 ? 'pin' : 'tape', rot: (i % 2 ? 1.2 : -1.1), shadow: true, insetT: 10 * u }));
       colY[col] += L.h + gap;
     });
     const by = Math.max(...colY) - gap; if (by > ft) c.over = true;
-    const hs = Math.min(ft - by - 10 * u, bw * .34, 330 * u); if (hs > 150 * u) sdHero(c, null, W - M - hs * 1.05, c.bot - hs, hs * 1.05, hs);
+    const hs = Math.min(ft - by - 10 * u, bw * .4, 420 * u);
+    if (hs > 150 * u) sdHero(c, null, W - M - hs * .9, ft - hs, hs * .9, hs);
+    else { const spare = ft - by - 20 * u; if (spare > 30 * u) c.L.filter(L => /^p\d$/.test(L.role || '')).forEach(L => { L.y += spare * .45; }); }   // no room for a picture: centre the notes
     return { bg: { c1: paper, c2: pbMix(paper, '#FFFFFF', .5) }, layers: c.L, over: c.over };
   },
   split(c) {
     const { W, H, u, M, C, b } = c;
     let x0, y0, tw;
-    const scene = (x, y, w, h) => { c.add({ t: 'shape', role: 'deco', kind: 'rect', r: 0, fill: c.soft, x, y, w, h }); const ch = h * (h > w ? .62 : .8), cw = Math.min(w, ch * 1.3); sdHero(c, null, x + (w - cw) / 2, y + h - ch, cw, ch, { panel: true, r: 0 }); };
+    const scene = (x, y, w, h) => { c.add({ t: 'shape', role: 'deco', kind: 'rect', r: 0, fill: c.soft, x, y, w, h });
+      if (sdIsKit(b.hero)) { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.acc, alpha: .45, x: x + w / 2 - h * .42, y: y + h * .12, w: h * .84, h: h * .84 }); const ah = h * (h > w ? .7 : .9); sdHero(c, null, x + w * .1, y + h - ah, w * .8, ah); sdDecor(c, x + w * .14, y + h * .16, w * .72, h * .66); return; }
+      const ch = h * (h > w ? .62 : .8), cw = Math.min(w, ch * 1.3); sdHero(c, null, x + (w - cw) / 2, y + h - ch, cw, ch, { panel: true, r: 0 }); };
     if (c.land || c.square) { const pw = W * (c.land ? .46 : .44); scene(0, 0, pw, H); x0 = pw + M; y0 = c.top; tw = W - x0 - M; sdLogo(c, false); y0 += (c.land ? 78 : 84) * u + 34 * u; }
     else { const ph = H * (c.story ? .38 : b.points.length > 2 ? .34 : .4); scene(0, 0, W, ph); sdLogo(c, false); x0 = M; y0 = ph + 46 * u; tw = W - 2 * M; }
     let y = y0; const kk = sdKicker(c, { x: x0, y }); if (kk) y += kk.h + 22 * u;
@@ -478,7 +509,7 @@ const SD_GEN = {
 };
 function sdBuild(b, design, fk) {
   let r = null;
-  for (const s of [1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over) break; }
+  for (const s of [1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits: fills the poster instead of leaving empty space
   r.layers.forEach(L => { L.id = L.id || sdId(); });
   const top = L => (L.role === 'cta' || L.role === 'note' ? 1 : 0); r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
   return r;

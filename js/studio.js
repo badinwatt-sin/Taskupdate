@@ -53,7 +53,7 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
   const b = SDOC.brief;
   SDOC.layers.forEach(L => {
     if (L.role === 'headline') { L.text = sdHeadText(b); L.emph = L.emph === -1 ? -1 : b.emph; }
-    else if (SD_ROLE_FIELD[L.role]) { L.text = b[SD_ROLE_FIELD[L.role]]; }
+    else if (SD_ROLE_FIELD[L.role]) { if (L.t === 'card') L.body = b[SD_ROLE_FIELD[L.role]]; else L.text = b[SD_ROLE_FIELD[L.role]]; }
     else if (/^p\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.title = p.title; L.body = p.body; } }
     else if (/^v\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.key = p.visual; L.t = sdIsKit(L.key) ? 'art' : 'char'; } }
     else if (L.role === 'hero') { L.key = b.hero; L.t = sdIsKit(L.key) ? 'art' : 'char'; }
@@ -63,7 +63,7 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
 function sdLayerToBrief(L) {   // text edited on a layer → keep the brief in step (so other designs show the same words)
   const b = SDOC.brief; if (!b || !L.role) return;
   if (L.role === 'headline') { b.headline = String(L.text || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3); }
-  else if (SD_ROLE_FIELD[L.role]) b[SD_ROLE_FIELD[L.role]] = L.text || '';
+  else if (SD_ROLE_FIELD[L.role]) b[SD_ROLE_FIELD[L.role]] = (L.t === 'card' ? L.body : L.text) || '';
   else if (/^p\d$/.test(L.role)) { const p = b.points[+L.role.slice(1)]; if (p) { p.title = L.title || ''; p.body = L.body || ''; } }
 }
 let sdBriefT = 0;
@@ -76,28 +76,23 @@ function sdBriefChanged(structural) {
 }
 
 /* ---------- AI reading ---------- */
-ACT.sdRead = async el => {
-  const text = SDOC.text.trim(); if (!text) { toast('วางข้อความที่ต้องการสื่อสารก่อน', 'error'); $('#sdText')?.focus(); return; }
-  const local = el && el.dataset.id === 'local', btn = $('#sdReadBtn');
-  if (btn && !local) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> AI กำลังตีความและออกแบบ… (ราว 10–30 วินาที)'; }
-  let brief = null, msg = '';
-  try {
-    if (local) throw Object.assign(new Error(''), { local: true });
-    if (Store.mode !== 'server') throw Object.assign(new Error('โหมดสาธิต (ไม่มีเซิร์ฟเวอร์) — ใช้การจัดอัตโนมัติแทน'), { local: true });
-    const r = await fetch('api/ai-brief', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ text, format: SDOC.format, guide: SDOC.guide || '', design: SDOC.prefDesign, accent: SDOC.prefAccent, today: today() }) });
-    const j = await r.json().catch(() => ({}));
-    if (r.status === 501) throw Object.assign(new Error('ยังไม่ได้เชื่อม AI จึงจัดให้อัตโนมัติแทน — Admin กด “เชื่อมต่อ AI” ด้านบนเพื่อใส่ API Key'), { local: true });
-    if (!r.ok) throw new Error(j.error || 'AI ขัดข้อง');
-    brief = sdNormBrief(j.result); brief.by = 'ai';
-  } catch (e) {
-    if (!e.local) { if (btn) { btn.disabled = false; btn.innerHTML = `${ico('sparkles', 15)} สร้างโปสเตอร์ด้วย AI`; } toast(e.message, 'error'); return; }
-    brief = sdNormBrief(sdLocalBrief(text)); brief.by = 'auto'; msg = e.message;
+ACT.sdRead = async () => {
+  const text = SDOC.text.trim(); if (!text) { toast('พิมพ์หรือวางข้อความที่ต้องการสื่อสารก่อน', 'error'); $('#sdText')?.focus(); return; }
+  const btn = $('#sdReadBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังออกแบบโปสเตอร์…'; }
+  let brief = null;
+  if (Store.mode === 'server') {
+    try {   // the team's AI when an Admin connected it; any problem falls back quietly to the built-in layout engine
+      const r = await fetch('api/ai-brief', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ text, format: SDOC.format, guide: SDOC.guide || '', design: SDOC.prefDesign, accent: SDOC.prefAccent, today: today() }) });
+      if (r.ok) { const j = await r.json(); brief = sdNormBrief(j.result); brief.by = 'ai'; }
+      else if (r.status !== 501) console.warn('ai-brief', r.status, (await r.json().catch(() => ({}))).error);
+    } catch (e) { console.warn('ai-brief', e); }
   }
+  if (!brief) { brief = sdNormBrief(sdLocalBrief(text)); brief.by = 'auto'; }
   sdPush(); SDOC.brief = brief; SDOC.warn = sdFactWarn(text, brief); SD_SEL = null;
   if (SDOC.prefAccent && SDOC.prefAccent !== 'auto') brief.accent = SDOC.prefAccent;
   sdApply(SDOC.prefDesign && SDOC.prefDesign !== 'auto' ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
-  toast(msg || (brief.by === 'ai' ? 'AI ตีความแล้ว — เลือกดีไซน์และปรับได้ตามต้องการ' : 'จัดให้อัตโนมัติแล้ว'), msg ? 'error' : 'ok');
-  if (matchMedia('(max-width: 1100px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  toast('สร้างโปสเตอร์แล้ว — เลือกแบบอื่นหรือแตะชิ้นใดก็ได้เพื่อปรับ');
+  if (matchMedia('(max-width: 900px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 ACT.sdPrefAccent = el => { SDOC.prefAccent = el.dataset.id; $$('[data-act=sdPrefAccent]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief && el.dataset.id !== 'auto') { sdPush(); SDOC.brief.accent = el.dataset.id; sdBriefChanged(true); sdLeft(); } sdTplThumbs(true); };
 ACT.sdPrefDesign = el => { SDOC.prefDesign = el.dataset.id; $$('[data-act=sdPrefDesign]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief && el.dataset.id !== 'auto') ACT.sdDesign(el); };
@@ -107,11 +102,15 @@ function sdTplThumbs(force) {   // real mini previews of every template, built f
   const b = { ...SD_TPL_BRIEF, accent: SDOC.prefAccent && SDOC.prefAccent !== 'auto' ? SDOC.prefAccent : 'blue' };
   $$('canvas[data-tpl]').forEach(cv => { if (cv._done === SDOC.format + b.accent && !force) return; const r = sdBuild(b, cv.dataset.tpl, SDOC.format); sdRender(cv, { format: SDOC.format, bg: r.bg, layers: r.layers }, { scale: 150 / fm[2] }); cv._done = SDOC.format + b.accent; });
 }
-/* ---------- AI connection (Admin) ---------- */
+/* ---------- AI connection (Admin, inside CI Control — users never see it) ---------- */
+async function sdAiBox(md) {
+  const box = $('#sdAiBox', md.el); if (!box) return; await sdAiState(true);
+  const st = SD_AI || {};
+  box.innerHTML = `<p class="small">${st.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> — Poster ใช้ AI เรียบเรียงข้อความและตีความบริบทให้อัตโนมัติ` : `<b>● ยังไม่ได้เชื่อมต่อ</b> — Poster ยังใช้ได้ปกติ (ระบบจัดให้เอง) เชื่อม AI เพื่อให้หัวข้อสั้นคมและเข้าใจบริบทได้ดีขึ้น`}</p><button type="button" class="btn btn-sm btn-ghost" data-act="sdAiKey">${st.on ? 'ตั้งค่า AI' : 'เชื่อมต่อ AI'}</button>`;
+}
 let SD_AI = null;
 async function sdAiState(refresh) {
-  const el = $('#sdAiState'); if (!el) return;
-  if (Store.mode !== 'server') { el.innerHTML = '<span class="badge">โหมดสาธิต · ไม่มี AI</span>'; return; }
+  if (Store.mode !== 'server') { SD_AI = { on: false }; return; }
   if (!SD_AI || refresh) { try { const r = await fetch('api/ai-status', { headers: Store.headers() }); SD_AI = r.ok ? await r.json() : { on: false }; } catch (e) { SD_AI = { on: false }; } }
   const x = $('#sdAiState'); if (!x) return;
   x.innerHTML = SD_AI.on ? `<button type="button" class="sd-ai-on" data-act="sdAiKey" title="ตั้งค่าการเชื่อมต่อ AI">● AI พร้อมใช้งาน</button>` : `<button type="button" class="sd-ai-off" data-act="sdAiKey">${ico('alert', 13)} ยังไม่ได้เชื่อม AI — เชื่อมต่อ</button>`;
@@ -125,12 +124,12 @@ ACT.sdAiKey = () => {
     <label class="field mt"><span>API Key</span><input id="sdKeyIn" type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-..."></label>
     <p class="small muted">คีย์ถูกเก็บฝั่งเซิร์ฟเวอร์ของทีม <b>ไม่ถูกส่งกลับมาที่เบราว์เซอร์</b> และใช้เฉพาะงาน AI ของแอปนี้ (Poster, นำเข้าปฏิทิน) — ค่าใช้จ่ายคิดตามการใช้งานจริงในบัญชี Anthropic ของบริษัท${st.source === 'vercel' ? ' · ตอนนี้ระบบใช้คีย์ใน Vercel เป็นหลัก คีย์ที่บันทึกในแอปจะใช้เมื่อไม่มีคีย์ใน Vercel' : ''}</p>`,
     actions: [
-      ...(st.source === 'app' ? [{ label: 'ยกเลิกการเชื่อมต่อ', cls: 'btn-danger-ghost', left: true, onClick: async () => { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key: '' }) }); if (r.ok) { toast('ลบ API Key แล้ว'); sdAiState(true); } } }] : []),
+      ...(st.source === 'app' ? [{ label: 'ยกเลิกการเชื่อมต่อ', cls: 'btn-danger-ghost', left: true, onClick: async () => { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key: '' }) }); if (r.ok) { toast('ลบ API Key แล้ว'); await sdAiState(true); const b2 = $('#sdAiBox'); if (b2) sdAiBox({ el: b2.closest('.modal-back') }); } } }] : []),
       { label: 'ปิด' },
       { label: 'ทดสอบและบันทึก', cls: 'btn-primary', onClick: async md => {
         const key = ($('#sdKeyIn', md.el).value || '').trim(); if (!key) { toast('วาง API Key ก่อน', 'error'); return false; }
         const btn = md.el.querySelector('footer .btn-primary'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังทดสอบ…';
-        try { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'เชื่อมต่อไม่สำเร็จ'); toast('เชื่อมต่อ AI สำเร็จ — กด “สร้างโปสเตอร์ด้วย AI” ได้เลย'); sdAiState(true); }
+        try { const r = await fetch('api/ai-key', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ key }) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'เชื่อมต่อไม่สำเร็จ'); toast('เชื่อมต่อ AI สำเร็จ'); await sdAiState(true); const b2 = $('#sdAiBox'); if (b2) sdAiBox({ el: b2.closest('.modal-back') }); }
         catch (e) { toast(e.message, 'error'); btn.disabled = false; btn.textContent = 'ทดสอบและบันทึก'; return false; }
       } },
     ] });
@@ -337,19 +336,20 @@ function sdAddPanel() {
 function sdWarnBox() {
   const el = $('#sdWarn'); if (!el) return; const b = SDOC.brief; if (!b) { el.innerHTML = ''; return; }
   const w = SDOC.warn || [];
-  el.innerHTML = `${w.length ? `<p class="pb-warn">${ico('alert', 15)} ตัวเลขที่ไม่มีในข้อความต้นฉบับ: <b>${w.map(esc).join(', ')}</b> — ตรวจและแก้ก่อนใช้งาน</p>` : `<p class="small muted">${ico('check', 14)} ตัวเลข วันที่ และเวลาตรงกับข้อความต้นฉบับ</p>`}${b.warn ? `<p class="small sd-note">${ico('info', 14)} ${esc(b.warn)}</p>` : ''}`;
+  el.innerHTML = `${w.length ? `<p class="pb-warn">${ico('alert', 15)} มีตัวเลขที่ไม่อยู่ในข้อความที่พิมพ์: <b>${w.map(esc).join(', ')}</b> — โปรดตรวจ</p>` : `<p class="small muted">${ico('check', 14)} ตัวเลข วันที่ และเวลาตรงกับที่พิมพ์ไว้</p>`}${b.warn ? `<p class="small sd-note">${ico('info', 14)} ${esc(b.warn)}</p>` : ''}`;
 }
 const sdVisOpts = cur => `${SD_KIT[cur] ? '' : `<option value="${esc(cur)}" selected>— เลือกภาพ —</option>`}${Object.entries(SD_KIT_GROUPS).map(([gk, gl]) => `<optgroup label="${gl}">${Object.entries(SD_KIT).filter(([, v]) => v[1] === gk).map(([k, v]) => `<option value="${k}" ${cur === k ? 'selected' : ''}>${k} · ${esc(v[0])}</option>`).join('')}</optgroup>`).join('')}`;
 function sdLeft() {
   const el = $('#sdBrief'); if (!el) return; const b = SDOC.brief;
   if (!b) { el.innerHTML = ''; return; }
   const inp = (k, label, ph = '') => `<label class="field"><span>${label}</span><input data-bf="${k}" value="${esc(b[k])}" placeholder="${esc(ph)}"></label>`;
-  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>AI เข้าใจว่า… <small class="muted">${b.by === 'ai' ? '· ตีความโดย AI' : '· จัดอัตโนมัติ'}</small></h3>
-    ${b.summary ? `<p class="sd-summary">${esc(b.summary)}</p>` : ''}
-    <label class="field mt"><span>ประเภทการสื่อสาร <small>(พิมพ์เอง เช่น ประกาศรับสมัคร, เชิญอบรม, แจ้งเปลี่ยนระบบ — ใช้เรียงดีไซน์ที่เหมาะ)</small></span><input data-bf="kindText" value="${esc(b.kindText || '')}" placeholder="เช่น ประกาศเชิญร่วมงานประจำปี"></label>
-    ${b.audience ? `<p class="small muted mt">กลุ่มเป้าหมาย: <b>${esc(b.audience)}</b></p>` : ''}
+  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>เลือกแบบที่ชอบ <small class="muted">— แตะเพื่อเปลี่ยนได้ทันที</small></h3><div class="sd-gallery" id="sdGallery"></div></section>
+  <section class="card sd-step"><h3><span class="pb-n">3</span>ตรวจข้อความ</h3>
+    ${b.by === 'ai' && b.summary ? `<p class="sd-summary">${esc(b.summary)}</p>` : ''}
     <div id="sdWarn"></div>
-    <details class="sd-edit" open><summary>ข้อความบนโปสเตอร์ <small class="muted">— แก้ตรงนี้ ภาพเปลี่ยนตาม</small></summary>
+    <details class="sd-edit"><summary>แก้ข้อความบนโปสเตอร์ <small class="muted">— แก้ตรงนี้ ภาพเปลี่ยนตาม</small></summary>
+      <label class="field mt"><span>ประเภทการสื่อสาร <small>(ใช้เรียงแบบที่เหมาะ)</small></span><input data-bf="kindText" value="${esc(b.kindText || '')}" placeholder="เช่น ประกาศเชิญร่วมงานประจำปี"></label>
+
       <div class="form-grid">
         ${inp('kicker', 'ป้ายหัว', 'เช่น ประกาศ')}
         <label class="field"><span>เน้นบรรทัดที่</span><select data-bf="emph">${[[-1, 'ไม่เน้น'], ...b.headline.map((_, i) => [i, 'บรรทัด ' + (i + 1)])].map(([v, l]) => `<option value="${v}" ${b.emph === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
@@ -370,8 +370,7 @@ function sdLeft() {
         <div class="field"><span>สีพาสเทลประกอบ</span><span class="sd-sw">${SD_ACCENTS.map(k => `<button type="button" class="${b.accent === k ? 'on' : ''}" style="background:${sdPastel(k)}" data-act="sdAccent" data-id="${k}" title="${PA_COLS[k][0]}" aria-label="${PA_COLS[k][0]}"></button>`).join('')}</span></div>
       </div>
     </details>
-  </section>
-  <section class="card sd-step"><h3><span class="pb-n">3</span>เลือกดีไซน์ <small class="muted">— เรียงตามความเหมาะกับเนื้อหา</small></h3><div class="sd-gallery" id="sdGallery"></div></section>`;
+  </section>`;
   sdWarnBox(); sdGallery();
 }
 let sdGalT = 0;
@@ -390,23 +389,23 @@ V.poster = (root, force) => {
   if (!force && $('#sdRoot', root)) { sdPaint(); return; }
   const fm = sdFmt(), b = SDOC.brief;
   root.innerHTML = `<div id="sdRoot">
-  ${pageHead('Poster Studio', 'วางข้อความ → AI ตีความ → เลือกดีไซน์ → ลาก ย่อ ขยาย ลบ ได้อิสระ — ตาม CI Krungthai-AXA',
+  ${pageHead('Poster Studio', 'พิมพ์สิ่งที่อยากสื่อสาร → ได้โปสเตอร์ตาม CI Krungthai-AXA พร้อมใช้ — แตะชิ้นใดก็ได้เพื่อย้าย ย่อ ขยาย หรือลบ',
     `<button class="btn btn-ghost" data-act="sdDrafts">${ico('folder', 15)} งานของฉัน</button><button class="btn btn-ghost" data-act="pbBrand">${ico('lock', 15)} CI Control</button><button class="btn btn-ghost" data-act="sdNew">${ico('plus', 15)} เริ่มใหม่</button>`)}
   <div class="sd">
     <div class="sd-left">
-      <section class="card sd-step" id="sdStep1"><h3><span class="pb-n">1</span>บอก AI ว่าจะสื่อสารอะไร <span class="sd-ai" id="sdAiState"></span></h3>
-        <p class="muted small">วางข้อความที่มีอยู่ (อีเมล / LINE / บันทึก) หรือ<b>พิมพ์อธิบายเป็นคำสั่ง</b>ก็ได้ เช่น “ทำโปสเตอร์เชิญตัวแทนใหม่อบรม 20 ม.ค. 2570 ห้อง 12A ลงทะเบียนผ่าน QR” — AI จะตีความบริบทก่อนแล้วเขียนข้อความบนโปสเตอร์ให้ <b>ตัวเลข วันที่ สถานที่ คงตามที่พิมพ์</b></p>
+      <section class="card sd-step" id="sdStep1"><h3><span class="pb-n">1</span>อยากสื่อสารอะไร</h3>
+        <p class="muted small">วางข้อความที่มีอยู่ (อีเมล / LINE / บันทึก) หรือพิมพ์บอกสั้น ๆ ก็ได้ เช่น “เชิญตัวแทนใหม่อบรม Fast Start 20 ม.ค. 2570 เวลา 09.00 น. ห้อง 12A ลงทะเบียนผ่าน QR” — ระบบเรียบเรียงและจัดหน้าให้ ตัวเลข วันที่ สถานที่ คงตามที่พิมพ์</p>
         <textarea id="sdText" rows="7" maxlength="8000" placeholder="ข้อความประกาศ หรือคำอธิบายโปสเตอร์ที่ต้องการ…">${esc(SDOC.text)}</textarea>
-        <label class="field mt"><span>คำแนะนำเพิ่มเติมถึง AI <small>(ไม่แสดงบนโปสเตอร์ · ไม่บังคับ)</small></span><textarea id="sdGuide" rows="2" maxlength="1500" placeholder="เช่น กลุ่มเป้าหมายคือตัวแทนใหม่ · โทนสนุก เป็นกันเอง · เน้นว่าที่นั่งจำกัด · ไม่ต้องใส่รายละเอียดอาหาร">${esc(SDOC.guide || '')}</textarea></label>
+        <details class="sd-more" ${SDOC.guide ? 'open' : ''}><summary>เพิ่มคำแนะนำ (ไม่บังคับ)</summary><label class="field"><span>บอกโทน กลุ่มเป้าหมาย หรือสิ่งที่อยากเน้น <small>(ไม่แสดงบนโปสเตอร์)</small></span><textarea id="sdGuide" rows="2" maxlength="1500" placeholder="เช่น กลุ่มเป้าหมายคือตัวแทนใหม่ · โทนสนุก เป็นกันเอง · เน้นว่าที่นั่งจำกัด · ไม่ต้องใส่รายละเอียดอาหาร">${esc(SDOC.guide || '')}</textarea></label></details>
         <div class="sd-pre">
           <div class="sd-sub">ขนาดภาพ</div>
           <div class="seg-chips sd-fmts">${Object.entries(PB_FORMATS).map(([k, f]) => `<button type="button" class="${k === SDOC.format ? 'on' : ''}" data-act="sdFmt" data-id="${k}" title="${f[2]}×${f[3]} · ${f[4]}"><i style="aspect-ratio:${f[2]}/${f[3]}"></i>${f[0]} ${f[1]}</button>`).join('')}</div>
           <div class="sd-sub">โทนสีประกอบ</div>
-          <div class="sd-sw sd-pref-col"><button type="button" class="sd-auto ${SDOC.prefAccent === 'auto' ? 'on' : ''}" data-act="sdPrefAccent" data-id="auto" title="ให้ AI เลือกตามเนื้อหา">อัตโนมัติ</button>${SD_ACCENTS.map(k => `<button type="button" class="${SDOC.prefAccent === k ? 'on' : ''}" style="background:${sdPastel(k)}" data-act="sdPrefAccent" data-id="${k}" title="${PA_COLS[k][0]}" aria-label="${PA_COLS[k][0]}"></button>`).join('')}</div>
-          <div class="sd-sub">Template <small class="muted">— เลือกก่อน หรือให้ AI เลือกตามเนื้อหา (เปลี่ยนได้ภายหลัง)</small></div>
-          <div class="sd-tpls"><button type="button" class="sd-tpl ${SDOC.prefDesign === 'auto' ? 'on' : ''}" data-act="sdPrefDesign" data-id="auto"><span class="sd-tpl-auto">${ico('sparkles', 22)}</span><b>ให้ AI เลือก</b></button>${SD_ORDER.map(d => `<button type="button" class="sd-tpl ${SDOC.prefDesign === d ? 'on' : ''}" data-act="sdPrefDesign" data-id="${d}" title="${esc(SD_DESIGNS[d][1])}"><canvas data-tpl="${d}" style="aspect-ratio:${fm[2]}/${fm[3]}"></canvas><b>${SD_DESIGNS[d][0]}</b></button>`).join('')}</div>
+          <div class="sd-sw sd-pref-col"><button type="button" class="sd-auto ${SDOC.prefAccent === 'auto' ? 'on' : ''}" data-act="sdPrefAccent" data-id="auto" title="เลือกตามเนื้อหา">อัตโนมัติ</button>${SD_ACCENTS.map(k => `<button type="button" class="${SDOC.prefAccent === k ? 'on' : ''}" style="background:${sdPastel(k)}" data-act="sdPrefAccent" data-id="${k}" title="${PA_COLS[k][0]}" aria-label="${PA_COLS[k][0]}"></button>`).join('')}</div>
+          <div class="sd-sub">แบบโปสเตอร์ <small class="muted">— เลือกเอง หรือให้ระบบเลือกตามเนื้อหา (เปลี่ยนได้ภายหลัง)</small></div>
+          <div class="sd-tpls"><button type="button" class="sd-tpl ${SDOC.prefDesign === 'auto' ? 'on' : ''}" data-act="sdPrefDesign" data-id="auto"><span class="sd-tpl-auto">${ico('sparkles', 22)}</span><b>เลือกให้อัตโนมัติ</b></button>${SD_ORDER.map(d => `<button type="button" class="sd-tpl ${SDOC.prefDesign === d ? 'on' : ''}" data-act="sdPrefDesign" data-id="${d}" title="${esc(SD_DESIGNS[d][1])}"><canvas data-tpl="${d}" style="aspect-ratio:${fm[2]}/${fm[3]}"></canvas><b>${SD_DESIGNS[d][0]}</b></button>`).join('')}</div>
         </div>
-        <div class="btn-row mt"><button type="button" class="btn btn-primary" id="sdReadBtn" data-act="sdRead">${ico('sparkles', 15)} ${b ? 'สร้างใหม่ด้วย AI' : 'สร้างโปสเตอร์ด้วย AI'}</button><button type="button" class="btn btn-ghost" data-act="sdRead" data-id="local">จัดให้อัตโนมัติ (ไม่ใช้ AI)</button>${SDOC.text ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="sdSample">ลองข้อความตัวอย่าง</button>`}</div>
+        <div class="btn-row mt"><button type="button" class="btn btn-primary sd-go" id="sdReadBtn" data-act="sdRead">${ico('sparkles', 16)} ${b ? 'สร้างใหม่จากข้อความนี้' : 'สร้างโปสเตอร์'}</button>${SDOC.text ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="sdSample">ลองข้อความตัวอย่าง</button>`}</div>
       </section>
       <div id="sdBrief"></div>
     </div>
@@ -418,7 +417,7 @@ V.poster = (root, force) => {
           <span class="sd-tb-grow"></span>${b ? `<button type="button" class="btn btn-sm btn-ghost" data-act="sdRelayout" title="จัดทุกชิ้นกลับเข้าที่ตามดีไซน์">${ico('refresh', 14)} จัดวางใหม่</button>` : ''}
         </div>
         <div class="sd-canvasbox"><div class="sd-wrap" id="sdWrap" data-fmt="${SDOC.format}" style="aspect-ratio:${fm[2]}/${fm[3]}"><canvas id="sdCv" role="img" aria-label="ตัวอย่างโปสเตอร์"></canvas><div class="sd-ov" id="sdOv"></div>
-          <div class="sd-empty" id="sdEmpty" ${SDOC.layers.length ? 'hidden' : ''}>${ico('sparkles', 28)}<b>วางข้อความด้านซ้าย แล้วกด “ให้ AI อ่านและออกแบบ”</b><span>ระบบจะสร้างหลายดีไซน์ให้เลือก แล้วปรับแต่งได้ทุกชิ้น</span></div></div></div>
+          <div class="sd-empty" id="sdEmpty" ${SDOC.layers.length ? 'hidden' : ''}>${ico('sparkles', 28)}<b>พิมพ์สิ่งที่อยากสื่อสาร แล้วกด “สร้างโปสเตอร์”</b><span>ได้หลายแบบให้เลือก และปรับได้ทุกชิ้น</span></div></div></div>
         <p class="pb-fit" id="sdFit" hidden>${ico('alert', 14)} ข้อความแน่นสำหรับขนาดนี้ — ตัวอักษรถูกย่อลง ลองตัดข้อความ ลบบางชิ้น หรือเลือกขนาด Portrait / Story</p>
         <div class="sd-export">
           <label class="pb-check"><input type="checkbox" id="sdReviewed" ${SDOC.reviewed ? 'checked' : ''}> ตรวจข้อความ ตัวเลข วันเวลา และสะกดแล้ว</label>
@@ -434,7 +433,7 @@ V.poster = (root, force) => {
   $('#sdRoot', root).addEventListener('focusin', e => { if (e.target.matches('[data-bf],[data-bp],[data-lp]')) { e.target._snap = sdSnap(); } });
   $('#sdRoot', root).addEventListener('input', sdInput);
   $('#sdRoot', root).addEventListener('change', e => { if (e.target.matches('select[data-bf],select[data-bp],select[data-lp]')) sdInput(e); });
-  sdLeft(); sdProps(); sdAddPanel(); sdStageEvents(); sdExportState(); sdPaint(); sdTplThumbs(); sdAiState();
+  sdLeft(); sdProps(); sdAddPanel(); sdStageEvents(); sdExportState(); sdPaint(); sdTplThumbs();
   sdFonts();
 };
 function sdInput(e) {
