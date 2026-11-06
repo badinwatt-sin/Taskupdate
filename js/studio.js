@@ -8,7 +8,7 @@
       add characters, objects, shapes, text, QR, photo
    4) export PNG / JPG (review checkbox every time)
    ============================================================ */
-const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', qr: '', useAI: true, prefDesign: 'auto', prefAccent: 'auto', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
+const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', qr: '', useAI: true, prefDesign: 'auto', prefAccent: 'auto', prefTheme: 'grad', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
 let SDOC = sdBlankDoc(), SD_SEL = null, SD_UNDO = [], SD_REDO = [], SD_ADD = 'kit', SD_KITG = 'people';
 ACT.sdToKit = el => { const L = sdSel(); if (!L) return; sdPush(); const k = el.dataset.id, K = SD_KIT[k]; L.t = 'art'; L.key = k; delete L.panel; delete L.tint; if (K[1] === 'people') { const h = L.h; L.w = h * K[2] / K[3]; } SDOC.edited = true; sdChanged(); sdProps(); };
 ACT.sdKitG = el => { SD_KITG = el.dataset.id; sdAddPanel(); };
@@ -95,18 +95,19 @@ ACT.sdRead = async () => {
   if (!brief) { brief = sdNormBrief(sdLocalBrief(text)); brief.by = 'auto'; }
   brief.qr = (SDOC.qr || '').trim();
   sdPush(); SDOC.brief = brief; SDOC.warn = sdFactWarn(text, brief); SD_SEL = null;
-  if (SDOC.prefAccent && SDOC.prefAccent !== 'auto') brief.accent = SDOC.prefAccent;
+  brief.theme = SDOC.prefTheme || 'grad';
   sdApply(SDOC.prefDesign && SD_ACTIVE.includes(SDOC.prefDesign) ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
   toast('สร้างโปสเตอร์แล้ว — เลือกแบบอื่นหรือแตะชิ้นใดก็ได้เพื่อปรับ');
   if (matchMedia('(max-width: 900px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
+ACT.sdPrefTheme = el => { SDOC.prefTheme = el.dataset.id; $$('[data-act=sdPrefTheme]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief) { if (SDOC.edited && !confirm('เปลี่ยนโทนพื้นหลังจะจัดตำแหน่งใหม่ (ข้อความที่แก้ไว้ยังอยู่) ต่อไหม?')) return; sdPush(); SDOC.brief.theme = SDOC.prefTheme; sdApply(SDOC.design || SDOC.brief.designs[0]); sdChanged(true); sdFull(); } else sdTplThumbs(true); };
 ACT.sdPrefAccent = el => { SDOC.prefAccent = el.dataset.id; $$('[data-act=sdPrefAccent]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief && el.dataset.id !== 'auto') { sdPush(); SDOC.brief.accent = el.dataset.id; sdBriefChanged(true); sdLeft(); } sdTplThumbs(true); };
 ACT.sdPrefDesign = el => { SDOC.prefDesign = el.dataset.id; $$('[data-act=sdPrefDesign]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief && el.dataset.id !== 'auto') ACT.sdDesign(el); };
 let SD_TPL_BRIEF = null;
 function sdTplThumbs(force) {   // real mini previews of every template, built from a sample message
   const fm = sdFmt(); if (!SD_TPL_BRIEF) SD_TPL_BRIEF = sdNormBrief(sdLocalBrief(SD_SAMPLE));
-  const b = { ...SD_TPL_BRIEF, accent: SDOC.prefAccent && SDOC.prefAccent !== 'auto' ? SDOC.prefAccent : 'blue' };
-  $$('canvas[data-tpl]').forEach(cv => { if (cv._done === SDOC.format + b.accent && !force) return; const r = sdBuild(b, cv.dataset.tpl, SDOC.format); sdRender(cv, { format: SDOC.format, bg: r.bg, layers: r.layers }, { scale: 150 / fm[2] }); cv._done = SDOC.format + b.accent; });
+  const b = { ...SD_TPL_BRIEF, theme: SDOC.prefTheme || 'grad' };
+  $$('canvas[data-tpl]').forEach(cv => { if (cv._done === SDOC.format + b.theme && !force) return; const r = sdBuild(b, cv.dataset.tpl, SDOC.format); sdRender(cv, { format: SDOC.format, bg: r.bg, layers: r.layers }, { scale: 150 / fm[2] }); cv._done = SDOC.format + b.theme; });
 }
 /* ---------- AI connection (Admin, inside CI Control — users never see it) ---------- */
 async function sdAiBox(md) {
@@ -172,6 +173,15 @@ function sdAiPick(refresh) {   // shown only when the team connected an AI
   paint(); if (refresh !== false) sdAiState(true).then(paint);
 }
 ACT.sdUseAI = el => { SDOC.useAI = el.dataset.id === '1'; sdAiPick(false); };
+let sdCiT = 0;
+function sdCiBox() {   // runs the CI rules on the current poster (cheap; debounced while dragging)
+  clearTimeout(sdCiT); sdCiT = setTimeout(() => {
+    const el = $('#sdCi'); if (!el) return; if (!SDOC.layers.length) { el.innerHTML = ''; return; }
+    const r = sdCiCheck(SDOC), err = r.filter(x => x.level === 'error');
+    el.className = 'sd-ci ' + (err.length ? 'bad' : r.length ? 'warn' : 'ok');
+    el.innerHTML = r.length ? `<b>${ico('alert', 14)} ตรวจ CI: ${err.length ? `ไม่ผ่าน ${err.length} ข้อ` : 'ควรปรับ'}</b><ul>${r.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul>` : `<b>${ico('check', 14)} ผ่านการตรวจ CI</b> <small>สี พื้นหลัง และฟอนต์ตรงตามแนวทาง Krungthai-AXA</small>`;
+  }, 250);
+}
 ACT.sdSample = () => { SDOC.text = SD_SAMPLE; const t = $('#sdText'); if (t) t.value = SD_SAMPLE; };
 ACT.sdDesign = el => { if (!SDOC.brief) return; const d = el.dataset.id; if (SDOC.edited && !confirm('เปลี่ยนดีไซน์จะจัดตำแหน่งใหม่ทั้งหมด (ข้อความที่แก้ไว้ยังอยู่ · ชิ้นที่เพิ่มเองยังอยู่) ต่อไหม?')) return; sdPush(); sdApply(d); sdChanged(true); sdFull(); };
 ACT.sdRelayout = () => { if (!SDOC.brief) return; sdPush(); sdApply(SDOC.design); sdChanged(true); sdFull(); toast('จัดวางใหม่ให้พอดีแล้ว'); };
@@ -230,6 +240,7 @@ function sdPaintNow() {
   sdRender(cv, SDOC); sdOverlay();
   const w = $('#sdFit'); if (w) { w.hidden = !SDOC.over || SDOC.edited; }
   const e = $('#sdEmpty'); if (e) e.hidden = !!SDOC.layers.length;
+  sdCiBox();
 }
 const sdScale = () => { const w = $('#sdWrap'); return w ? w.clientWidth / sdFmt()[2] : 1; };
 const SD_UNIFORM = { text: 1, card: 1, chip: 1, logo: 1, qr: 1, prop: 1, date: 1, art: 1 };
@@ -304,8 +315,9 @@ window.addEventListener('resize', () => { if ($('#sdRoot')) sdOverlay(); });
 
 /* ---------- panels ---------- */
 const sdSw = (cur, act, list) => `<span class="sd-sw">${list.map(([v, label]) => `<button type="button" class="${String(cur).toLowerCase() === String(v).toLowerCase() ? 'on' : ''}" style="background:${v}" data-act="${act}" data-id="${act === 'sdSet' ? '' : ''}${v}" title="${esc(label)}" aria-label="${esc(label)}"></button>`).join('')}</span>`;
-function sdColors() { const C = pbBrand().colors; return [[C.primary, 'AXA Blue'], [C.navy, 'Blue Tint 3'], [C.sky, 'Blue Tint 2'], [C.paper, 'Blue Tint 1'], ['#FFFFFF', 'White'], [C.red, 'AXA Red'], [C.pink, 'Red Tint 1'], [C.ink || '#0E0E0E', 'Black'], ['#2A2A4A', 'เทาเข้ม'], ...SD_ACCENTS.map(k => [sdPastel(k), PA_COLS[k][0]]), ...SD_ACCENTS.map(k => [sdSoft(k), PA_COLS[k][0] + ' อ่อน'])]; }
-const sdColorRow = (key, cur) => `<div class="sd-colors">${sdColors().map(([v, l]) => `<button type="button" class="${String(cur || '').toLowerCase() === v.toLowerCase() ? 'on' : ''}" style="background:${v}" data-act="sdSet" data-id="${key}=${v}" title="${esc(l)}" aria-label="${esc(l)}"></button>`).join('')}</div>`;
+function sdColors(kind) { return kind === 'text' ? CI_TEXT : CI_ALL; }
+const sdColorRow = (key, cur, kind) => { const btn = ([v, l]) => `<button type="button" class="${String(cur || '').toLowerCase() === v.toLowerCase() ? 'on' : ''}" style="background:${v}" data-act="sdSet" data-id="${key}=${v}" title="${esc(l)} ${v}" aria-label="${esc(l)}"></button>`;
+  return kind === 'text' ? `<div class="sd-colors">${CI_TEXT.map(btn).join('')}</div>` : `<div class="sd-colors">${[...CI.core, ...CI.tints].map(btn).join('')}</div><div class="sd-colors sd-data" title="Data palette — ใช้กับ infographic เท่านั้น"><small>Data</small>${CI.data.map(btn).join('')}</div>`; };
 const sdRange = (key, label, v, min, max, step = 1) => `<label class="sd-range"><span>${label}</span><input type="range" data-lp="${key}" min="${min}" max="${max}" step="${step}" value="${v}"><output>${Math.round(v * 100) / 100}</output></label>`;
 const SD_TNAME = { art: 'ภาพชุด Kit', text: 'ข้อความ', card: 'การ์ด', chip: 'ป้าย / ปุ่ม', char: 'ตัวละคร', prop: 'ไอคอน / สิ่งของ', shape: 'รูปทรง', logo: 'โลโก้', qr: 'QR Code', img: 'รูปภาพ', date: 'บล็อกวันที่' };
 function sdProps() {
@@ -313,7 +325,7 @@ function sdProps() {
   if (!L) {
     const C = pbBrand().colors;
     el.innerHTML = `<h3>${ico('edit', 16)} ปรับแต่ง</h3><p class="muted small">คลิกชิ้นใดก็ได้บนภาพเพื่อ <b>ย้าย</b> (ลาก) <b>ย่อ/ขยาย</b> (ลากจุดมุม) หรือ <b>ลบ</b> · ดับเบิลคลิกเพื่อแก้ข้อความ · ปุ่มลูกศรขยับละเอียด · Ctrl+Z ย้อนกลับ</p>
-      <div class="sd-sub">พื้นหลัง</div><div class="sd-colors">${[[ '#FFFFFF', '#FFFFFF', 'ขาว'], ['#FFFFFF', C.paper, 'ขาว → ฟ้าอ่อน'], [C.paper, '#FFFFFF', 'ฟ้าอ่อน'], [C.pink, '#FFFFFF', 'ชมพูอ่อน'], ['#FFF6DD', '#FFFFFF', 'ครีม'], [C.primary, C.primary, 'AXA Blue'], [C.primary, C.navy, 'AXA Blue → Tint 3']].map(([a, b, l]) => `<button type="button" class="${SDOC.bg.c1 === a && (SDOC.bg.c2 || a) === b ? 'on' : ''}" style="background:linear-gradient(${a},${b})" data-act="sdBg" data-id="${a},${b}" title="${l}" aria-label="${l}"></button>`).join('')}</div>`;
+      <div class="sd-sub">พื้นหลัง <small class="muted">— เฉพาะสีและไล่เฉดที่ CI อนุมัติ</small></div><div class="sd-colors">${[['#FFFFFF', '#FFFFFF', 'White'], ['#E2EFFF', '#E2EFFF', 'Blue Tint 1'], ['#00008F', '#00008F', 'AXA Blue'], ...CI.gradients].map(([a, b, l]) => `<button type="button" class="${CI_HEX(SDOC.bg.c1) === CI_HEX(a) && CI_HEX(SDOC.bg.c2 || SDOC.bg.c1) === CI_HEX(b) ? 'on' : ''}" style="background:linear-gradient(${a},${b})" data-act="sdBg" data-id="${a},${b}" title="${l}" aria-label="${l}"></button>`).join('')}</div>`;
     return;
   }
   const common = `<div class="sd-acts">
@@ -324,15 +336,15 @@ function sdProps() {
   if (L.t === 'text') body = `<label class="field"><span>ข้อความ <small>(Enter = ขึ้นบรรทัดใหม่)</small></span><textarea data-lp="text" rows="${Math.min(6, String(L.text).split('\n').length + 1)}">${esc(L.text)}</textarea></label>
       ${sdRange('size', 'ขนาดตัวอักษร', Math.round(L.size), 10, Math.round(200 * u))}
       <label class="field mt"><span>ฟอนต์</span><select data-lp="ff">${sdFontOpts(L.ff || (L.font === 'body' ? 'body' : 'head'))}</select></label>
-      <div class="sd-sub">สีตัวอักษร</div>${sdColorRow('color', L.color)}
+      <div class="sd-sub">สีตัวอักษร</div>${sdColorRow('color', L.color, 'text')}
       <div class="sd-row"><span class="seg-chips">${[['left', 'ชิดซ้าย'], ['center', 'กลาง'], ['right', 'ชิดขวา']].map(([v, l]) => `<button type="button" class="${L.align === v ? 'on' : ''}" data-act="sdSet" data-id="align=${v}">${l}</button>`).join('')}</span>
       <span class="seg-chips">${[[700, 'หนา'], [500, 'กลาง'], [400, 'ปกติ']].map(([v, l]) => `<button type="button" class="${+L.weight === v ? 'on' : ''}" data-act="sdSet" data-id="weight=${v}">${l}</button>`).join('')}</span></div>
-      ${L.pill ? `<div class="sd-sub">สีป้าย</div>${sdColorRow('pill', L.pill)}` : `<div class="sd-sub">แถบเน้นบรรทัด</div><div class="seg-chips">${[[-1, 'ไม่มี'], ...String(L.text).split('\n').slice(0, 4).map((_, i) => [i, 'บรรทัด ' + (i + 1)])].map(([v, l]) => `<button type="button" class="${(L.emph == null ? -1 : L.emph) === v ? 'on' : ''}" data-act="sdSet" data-id="emph=${v}">${l}</button>`).join('')}</div>${L.emph >= 0 ? `<div class="sd-sub">สีแถบ</div>${sdColorRow('barFill', L.barFill || pbBrand().colors.primary)}` : ''}`}`;
+      ${L.pill ? `<div class="sd-sub">สีป้าย</div>${sdColorRow('pill', L.pill, 'text')}` : `<div class="sd-sub">แถบเน้นบรรทัด</div><div class="seg-chips">${[[-1, 'ไม่มี'], ...String(L.text).split('\n').slice(0, 4).map((_, i) => [i, 'บรรทัด ' + (i + 1)])].map(([v, l]) => `<button type="button" class="${(L.emph == null ? -1 : L.emph) === v ? 'on' : ''}" data-act="sdSet" data-id="emph=${v}">${l}</button>`).join('')}</div>${L.emph >= 0 ? `<div class="sd-sub">สีแถบ</div>${sdColorRow('barFill', L.barFill || pbBrand().colors.primary, 'text')}` : ''}`}`;
   else if (L.t === 'card') body = `<label class="field"><span>หัวข้อ</span><input data-lp="title" value="${esc(L.title)}"></label><label class="field"><span>รายละเอียด <small>(หลายบรรทัด = รายการ)</small></span><textarea data-lp="body" rows="3">${esc(L.body)}</textarea></label>
-      ${sdRange('size', 'ขนาดตัวอักษร', Math.round(L.size), 10, Math.round(80 * u))}<div class="sd-sub">สีการ์ด</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีหัวข้อ</div>${sdColorRow('titleInk', L.titleInk || '#00008F')}
+      ${sdRange('size', 'ขนาดตัวอักษร', Math.round(L.size), 10, Math.round(80 * u))}<div class="sd-sub">สีการ์ด</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีหัวข้อ</div>${sdColorRow('titleInk', L.titleInk || '#00008F', 'text')}
       <div class="sd-row"><span class="seg-chips"><button type="button" class="${L.shadow ? 'on' : ''}" data-act="sdSet" data-id="shadow=${!L.shadow}">เงา</button><button type="button" class="${L.num ? 'on' : ''}" data-act="sdSet" data-id="num=${L.num ? '' : '1'}">ตัวเลข</button><button type="button" class="${L.icon ? 'on' : ''}" data-act="sdSet" data-id="icon=${L.icon ? '' : 'check'}">ไอคอน</button></span></div>
       ${L.num ? `<label class="field"><span>ตัวเลข</span><input data-lp="num" value="${esc(L.num)}" maxlength="3"></label>` : ''}${L.icon ? `<div class="sd-sub">ไอคอน</div><div class="sd-props-grid sm">${SD_ICONS.map(k => `<button type="button" class="${L.icon === k ? 'on' : ''}" data-act="sdSet" data-id="icon=${k}" title="${SA_PROPS[k][0]}"><canvas data-thumb="prop:${k}" width="48" height="48"></canvas></button>`).join('')}</div>` : ''}`;
-  else if (L.t === 'chip') body = `<label class="field"><span>ข้อความ</span><input data-lp="text" value="${esc(L.text)}"></label>${sdRange('size', 'ขนาด', Math.round(L.size), 10, Math.round(80 * u))}<div class="sd-sub">สีพื้น</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีตัวอักษร</div>${sdColorRow('ink', L.ink)}
+  else if (L.t === 'chip') body = `<label class="field"><span>ข้อความ</span><input data-lp="text" value="${esc(L.text)}"></label>${sdRange('size', 'ขนาด', Math.round(L.size), 10, Math.round(80 * u))}<div class="sd-sub">สีพื้น</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีตัวอักษร</div>${sdColorRow('ink', L.ink, 'text')}
       <div class="sd-sub">ไอคอน</div><div class="sd-props-grid sm"><button type="button" class="${!L.icon ? 'on' : ''}" data-act="sdSet" data-id="icon=">ไม่มี</button>${SD_ICONS.map(k => `<button type="button" class="${L.icon === k ? 'on' : ''}" data-act="sdSet" data-id="icon=${k}" title="${SA_PROPS[k][0]}"><canvas data-thumb="prop:${k}" width="48" height="48"></canvas></button>`).join('')}</div>`;
   else if (L.t === 'char') body = `<p class="small muted">ภาพนี้มาจากชุดเดิมที่เลิกใช้แล้ว — เลือกภาพจากชุด Kit แทนได้</p><div class="sd-kit sm">${Object.entries(SD_KIT).filter(([, v]) => v[1] === 'people').map(([k, v]) => `<button type="button" data-act="sdToKit" data-id="${k}" title="${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"></button>`).join('')}</div>`;
   else if (L.t === 'prop') body = `<p class="small muted">ไอคอนนี้มาจากชุดเดิมที่เลิกใช้แล้ว — เลือกภาพจากชุด Kit แทนได้</p><div class="sd-kit sm">${Object.entries(SD_KIT).filter(([, v]) => v[1] !== 'people').map(([k, v]) => `<button type="button" data-act="sdToKit" data-id="${k}" title="${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"></button>`).join('')}</div>`;
@@ -340,14 +352,14 @@ function sdProps() {
   else if (L.t === 'logo') body = `<p class="small muted">โลโก้ตาม CI — ย่อ/ขยายได้ ห้ามบิดสัดส่วน · เลือกแบบให้เข้ากับพื้นหลัง (AXA Prime ใช้ร่วมกับโลโก้คู่ Krungthai-AXA ได้)</p><div class="sd-logos">${Object.entries(SD_LOGOS).map(([k, v]) => `<button type="button" class="${(L.variant || (L.dark ? 'bordered' : 'color')) === k ? 'on' : ''} ${k === 'color' || k === 'dark' || k === 'primeBlue' ? '' : 'dk'}" data-act="sdSet" data-id="variant=${k}"><img src="${v[1]}" alt=""><b>${v[0]}</b><small>${v[2]}</small></button>`).join('')}</div>`;
   else if (L.t === 'qr') body = `<label class="field"><span>ลิงก์สำหรับ QR Code</span><input data-lp="url" value="${esc(L.url)}" placeholder="https://…" inputmode="url"></label>${L.url && !pbQr(L.url) ? '<p class="pb-warn small">ลิงก์ยาวเกินไปสำหรับ QR</p>' : ''}`;
   else if (L.t === 'img') body = `<button type="button" class="btn btn-sm btn-ghost" data-act="sdImgSwap">${ico('image', 14)} เปลี่ยนรูป</button>${sdRange('r', 'มุมโค้ง', L.r || 0, 0, .5, .01)}`;
-  else if (L.t === 'date') body = `<label class="field"><span>บรรทัดบน (หัวปฏิทิน)</span><input data-lp="top" value="${esc(L.top)}"></label><label class="field"><span>วันที่ (ตัวใหญ่)</span><input data-lp="day" value="${esc(L.day)}"></label><label class="field"><span>เดือน / ปี</span><input data-lp="mon" value="${esc(L.mon)}"></label><div class="sd-sub">สีหัวปฏิทิน</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีตัวเลขวันที่</div>${sdColorRow('ink', L.ink || '#00008F')}`;
+  else if (L.t === 'date') body = `<label class="field"><span>บรรทัดบน (หัวปฏิทิน)</span><input data-lp="top" value="${esc(L.top)}"></label><label class="field"><span>วันที่ (ตัวใหญ่)</span><input data-lp="day" value="${esc(L.day)}"></label><label class="field"><span>เดือน / ปี</span><input data-lp="mon" value="${esc(L.mon)}"></label><div class="sd-sub">สีหัวปฏิทิน</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีตัวเลขวันที่</div>${sdColorRow('ink', L.ink || '#00008F', 'text')}`;
   else if (L.t === 'art') body = `<div class="sd-sub">เปลี่ยนภาพ (${esc(SD_KIT_GROUPS[SD_KIT[L.key][1]])})</div><div class="sd-kit sm">${Object.entries(SD_KIT).filter(([, v]) => v[1] === SD_KIT[L.key][1]).map(([k, v]) => `<button type="button" class="${L.key === k ? 'on' : ''}" data-act="sdSet" data-id="key=${k}" title="${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"></button>`).join('')}</div><div class="sd-row"><span class="seg-chips"><button type="button" class="${L.flip ? 'on' : ''}" data-act="sdSet" data-id="flip=${!L.flip}">กลับด้าน</button></span></div>`;
   el.innerHTML = `<h3>${ico('edit', 16)} ${SD_TNAME[L.t] || 'ชิ้นส่วน'}${L.role && L.role !== 'user' && L.role !== 'deco' ? ' <small class="muted">· จากข้อความ</small>' : ''}</h3>${body}<div class="sd-sub">${''}</div>${sdRange('op', 'ความโปร่งใส', L.op == null ? 1 : L.op, .1, 1, .05)}${common}`;
   sdThumbs(el);
 }
-function sdFontOpts(cur) {
-  const c = sdFontCfg(), up = (pbBrand().fontFiles || []).map(f => f.family), all = [...new Set([...SD_FONTS.head, ...SD_FONTS.body, ...SD_FONTS.thai].map(x => x[0]).concat(up))];
-  return `<option value="head" ${cur === 'head' ? 'selected' : ''}>หัวข้อ CI — ${esc(c.head)} + ${esc(c.thai)}</option><option value="body" ${cur === 'body' ? 'selected' : ''}>ตัวรอง CI — ${esc(c.body)} + ${esc(c.thai)}</option><optgroup label="เลือกฟอนต์เอง">${all.map(f => `<option value="${esc(f)}" ${cur === f ? 'selected' : ''}>${esc(f)}${sdFontOk(f) ? '' : ' (ไม่มีในเครื่องนี้)'}</option>`).join('')}</optgroup>`;
+function sdFontOpts(cur) {   // CI: headline = Publico + DB Helvethaica X, body = Source Sans Pro + DB Helvethaica X — nothing else
+  const c = sdFontCfg();
+  return `<option value="head" ${cur !== 'body' ? 'selected' : ''}>หัวข้อ — ${esc(c.head)} + ${esc(c.thai)}</option><option value="body" ${cur === 'body' ? 'selected' : ''}>เนื้อหา — ${esc(c.body)} + ${esc(c.thai)}</option>`;
 }
 const sdFontOk = f => { try { return document.fonts.check(`16px "${f}"`, 'Aก'); } catch (e) { return true; } };
 const SD_ICONS = ['check', 'cal', 'clock', 'pin', 'phone', 'doc', 'chat', 'star', 'heart'];   // small functional icons for cards and labels
@@ -443,8 +455,8 @@ V.poster = (root, force) => {
         <div class="sd-pre">
           <div class="sd-sub">ขนาดภาพ</div>
           <div class="seg-chips sd-fmts">${Object.entries(PB_FORMATS).map(([k, f]) => `<button type="button" class="${k === SDOC.format ? 'on' : ''}" data-act="sdFmt" data-id="${k}" title="${f[2]}×${f[3]} · ${f[4]}"><i style="aspect-ratio:${f[2]}/${f[3]}"></i>${f[0]} ${f[1]}</button>`).join('')}</div>
-          <div class="sd-sub">โทนสีประกอบ</div>
-          <div class="sd-sw sd-pref-col"><button type="button" class="sd-auto ${SDOC.prefAccent === 'auto' ? 'on' : ''}" data-act="sdPrefAccent" data-id="auto" title="เลือกตามเนื้อหา">อัตโนมัติ</button>${SD_ACCENTS.map(k => `<button type="button" class="${SDOC.prefAccent === k ? 'on' : ''}" style="background:${sdPastel(k)}" data-act="sdPrefAccent" data-id="${k}" title="${PA_COLS[k][0]}" aria-label="${PA_COLS[k][0]}"></button>`).join('')}</div>
+          <div class="sd-sub">โทนพื้นหลัง <small class="muted">— ตาม CI</small></div>
+          <div class="sd-themes">${Object.entries(SD_THEMES).map(([k, t]) => `<button type="button" class="${(SDOC.prefTheme || 'grad') === k ? 'on' : ''}" data-act="sdPrefTheme" data-id="${k}"><i style="background:linear-gradient(${t.bg.c1},${t.bg.c2})"></i><b>${t.name}</b><small>${t.sub}</small></button>`).join('')}</div>
           <div class="sd-sub">แบบโปสเตอร์ <small class="muted">— เลือกเอง หรือให้ระบบเลือกตามเนื้อหา (เปลี่ยนได้ภายหลัง)</small></div>
           <div class="sd-tpls"><button type="button" class="sd-tpl ${SDOC.prefDesign === 'auto' ? 'on' : ''}" data-act="sdPrefDesign" data-id="auto"><span class="sd-tpl-auto">${ico('sparkles', 22)}</span><b>เลือกให้อัตโนมัติ</b></button>${SD_ORDER.map(d => `<button type="button" class="sd-tpl ${SDOC.prefDesign === d ? 'on' : ''}" data-act="sdPrefDesign" data-id="${d}" title="${esc(SD_DESIGNS[d][1])}"><canvas data-tpl="${d}" style="aspect-ratio:${fm[2]}/${fm[3]}"></canvas><b>${SD_DESIGNS[d][0]}</b></button>`).join('')}</div>
         </div>
@@ -464,6 +476,7 @@ V.poster = (root, force) => {
           <div class="sd-empty" id="sdEmpty" ${SDOC.layers.length ? 'hidden' : ''}>${ico('sparkles', 28)}<b>พิมพ์สิ่งที่อยากสื่อสาร แล้วกด “สร้างโปสเตอร์”</b><span>ได้หลายแบบให้เลือก และปรับได้ทุกชิ้น</span></div></div></div>
         <p class="pb-fit" id="sdFit" hidden>${ico('alert', 14)} ข้อความแน่นสำหรับขนาดนี้ — ตัวอักษรถูกย่อลง ลองตัดข้อความ ลบบางชิ้น หรือเลือกขนาด Portrait / Story</p>
         <div class="sd-export">
+          <div id="sdCi" class="sd-ci"></div>
           <label class="pb-check"><input type="checkbox" id="sdReviewed" ${SDOC.reviewed ? 'checked' : ''}> ตรวจข้อความ ตัวเลข วันเวลา และสะกดแล้ว</label>
           <div class="btn-row"><button type="button" class="btn btn-ghost" data-act="sdSave">${ico('save', 15)} บันทึก</button><button type="button" class="btn btn-primary" data-act="sdExport" data-id="png" data-sd-exp>${ico('download', 15)} PNG</button><button type="button" class="btn btn-ghost" data-act="sdExport" data-id="jpg" data-sd-exp>JPG</button></div>
         </div>
@@ -509,6 +522,7 @@ const sdFileName = ext => `Poster_${(SDOC.design || 'custom')}_${sdFmt()[1].repl
 ACT.sdExport = async el => {
   if (!SDOC.layers.length) return toast('ยังไม่มีโปสเตอร์', 'error');
   if (!SDOC.reviewed) { toast('ติ๊กยืนยันว่าตรวจสอบข้อความแล้วก่อน Export', 'error'); $('#sdReviewed')?.focus(); return; }
+  const ciErr = sdCiCheck(SDOC).filter(x => x.level === 'error'); if (ciErr.length && !confirm('โปสเตอร์นี้ยังไม่ผ่านการตรวจ CI:\n• ' + ciErr.map(x => x.text).join('\n• ') + '\n\nยืนยัน Export ต่อหรือไม่?')) return;
   await sdLogosReady(); const cv = document.createElement('canvas'); sdRender(cv, SDOC);
   const jpg = el.dataset.id === 'jpg'; await pbDownload(cv, sdFileName(jpg ? 'jpg' : 'png'), jpg ? 'image/jpeg' : 'image/png');
   toast('ดาวน์โหลดแล้ว'); sdSaveDraft(true);

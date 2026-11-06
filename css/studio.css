@@ -151,3 +151,20 @@
 .sd-aipick button.on{border-color:var(--accent);background:var(--accent-l);box-shadow:inset 0 0 0 1px var(--accent)}.sd-aipick button.on .ico{color:var(--accent)}
 .sd-aipick button:disabled{opacity:.55;cursor:not-allowed}
 .sd-looks{flex-wrap:wrap}
+.sd-themes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.sd-themes button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;border:1px solid var(--line2);border-radius:12px;padding:6px;background:var(--surface);cursor:pointer;text-align:left}
+.sd-themes i{display:block;width:100%;height:34px;border-radius:8px;border:1px solid rgba(0,0,0,.06)}
+.sd-themes b{font-size:12.5px}.sd-themes small{font-size:10.5px;color:var(--muted);line-height:1.2}
+.sd-themes button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-l)}
+.sd-data{margin-top:6px;align-items:center}.sd-data small{font-size:10.5px;color:var(--muted);margin-right:2px}
+.sd-ci{width:100%;border-radius:10px;padding:8px 12px;font-size:13px}.sd-ci:empty{display:none}
+.sd-ci.ok{background:var(--green-l);color:var(--green)}.sd-ci.ok small{color:var(--muted)}
+.sd-ci.warn{background:var(--amber-l);color:var(--amber)}.sd-ci.bad{background:var(--red-l);color:var(--red)}
+.sd-ci ul{margin:4px 0 0 18px;color:var(--text);font-size:12.5px}
+.ci-guide{margin-top:14px;border:1px solid var(--line2);border-radius:12px;padding:10px 14px}.ci-guide summary{cursor:pointer;font-weight:600;color:var(--accent)}
+.ci-guide h5{margin:12px 0 6px;font-size:13px}
+.ci-sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px}.ci-sw span{display:flex;flex-direction:column;gap:1px;font-size:11.5px}
+.ci-sw i{display:block;height:34px;border-radius:8px;border:1px solid rgba(0,0,0,.08)}.ci-sw small{color:var(--muted);font-family:monospace}
+.ci-gr{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.ci-gr span{height:80px;border-radius:8px;display:flex;align-items:flex-end;padding:6px}.ci-gr small{font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.ci-dont{margin:4px 0 0 18px;font-size:12.5px;line-height:1.7}.ci-dont li::marker{color:var(--red)}
+@media (max-width:520px){.sd-themes{grid-template-columns:repeat(2,minmax(0,1fr))}.ci-gr{grid-template-columns:repeat(2,minmax(0,1fr))}}

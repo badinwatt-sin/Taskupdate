@@ -130,9 +130,9 @@ function sdFactWarn(src, b) {   // numbers the poster shows must exist in the so
 /* ---------- measuring & drawing ---------- */
 const SD_MC = document.createElement('canvas'), SD_MK = pbKit(SD_MC.getContext('2d'));
 const SD_FONTS = {   // [family, Thai label, source]
-  head: [['Publico', 'Publico (CI)'], ['Source Serif 4', 'Source Serif 4'], ['Source Sans Pro', 'Source Sans Pro']],
-  body: [['Source Sans Pro', 'Source Sans Pro (CI)'], ['Source Sans 3', 'Source Sans 3']],
-  thai: [['DB Helvethaica X', 'DB Helvethaica X (CI)'], ['IBM Plex Sans Thai', 'IBM Plex Sans Thai'], ['Sarabun', 'Sarabun'], ['Prompt', 'Prompt'], ['Kanit', 'Kanit'], ['Noto Sans Thai', 'Noto Sans Thai'], ['Anuphan', 'Anuphan']],
+  head: [['Publico', 'Publico (CI)']],   // CI: no new typefaces — fallbacks (IBM Plex Sans Thai / Source Sans 3) are automatic, never a choice
+  body: [['Source Sans Pro', 'Source Sans Pro (CI)']],
+  thai: [['DB Helvethaica X', 'DB Helvethaica X (CI)']],
 };
 function sdFontCfg() { const f = pbBrand().fonts || {}; return { head: f.head || 'Publico', body: f.body || 'Source Sans Pro', thai: f.thai || 'DB Helvethaica X' }; }
 function sdStack(kind) { const c = sdFontCfg(), lat = kind === 'head' ? c.head : kind === 'body' ? c.body : null; return [...new Set([lat, c.thai, 'IBM Plex Sans Thai', 'Source Sans Pro'].filter(Boolean))].map(n => `"${n}"`).join(', ') + ', sans-serif'; }
@@ -162,7 +162,7 @@ function sdDrawText(k, L, draw) {
 function sdCardLayout(k, L) {
   const s = L.size, pad = s * .85, lead = (L.num || L.icon) ? s * 2.1 : 0, iL = L.insetL || 0, iR = L.insetR || 0, iT = L.insetT || 0;
   const tw = Math.max(s * 2, L.w - 2 * pad - lead - iL - iR), bodyLines = String(L.body || '').split('\n').map(x => x.trim()).filter(Boolean), bul = L.bullets !== false && bodyLines.length > 1;
-  k.font(700, s, sdStack('head')); const tl = L.title ? k.wrap(L.title, tw) : [];
+  k.font(700, s, sdStack('body')); const tl = L.title ? k.wrap(L.title, tw) : [];
   k.font(400, s * .8, sdStack('body')); const bl = bodyLines.map(t => k.wrap(t, tw - (bul ? s * .9 : 0)));
   const th = tl.length * s * 1.2, bh = bl.reduce((a, x) => a + x.length * s * .8 * 1.38, 0) + Math.max(0, bl.length - 1) * s * .18;
   const h = Math.max(L.minH || 0, iT + pad + th + (th && bh ? s * .3 : 0) + bh + pad, lead ? iT + pad * 2 + s * 1.6 : 0);
@@ -175,11 +175,11 @@ function sdDrawCard(k, L, draw) {
   if (L.tail) { const tx = L.tail === 'br' ? L.x + L.w * .78 : L.x + L.w * .16, s2 = L.size * .9; g.fillStyle = L.fill || '#FFFFFF'; g.beginPath(); g.moveTo(tx - s2 * .6, L.y + L.h - 2); g.lineTo(tx + s2 * .6, L.y + L.h - 2); g.lineTo(tx + (L.tail === 'br' ? s2 * .9 : -s2 * .5), L.y + L.h + s2 * 1.1); g.closePath(); g.fill(); }
   if (L.deco === 'tape') { g.save(); g.translate(L.x + L.w / 2, L.y); g.rotate(-.05); g.fillStyle = 'rgba(255,255,255,.62)'; g.fillRect(-L.size * 2.2, -L.size * .45, L.size * 4.4, L.size * .9); g.restore(); }
   if (L.deco === 'pin') { paCircle(g, L.x + L.w / 2, L.y + L.size * .55, L.size * .38, '#FF1721'); paCircle(g, L.x + L.w / 2 - L.size * .1, L.y + L.size * .46, L.size * .12, 'rgba(255,255,255,.7)'); }
-  const x0 = L.x + m.pad + m.iL, y0 = L.y + m.pad + m.iT, ink = L.ink || '#1A1A3A';
+  const x0 = L.x + m.pad + m.iL, y0 = L.y + m.pad + m.iT, ink = L.ink || '#0C0E45';
   if (L.num) { const c = L.size * .95; paCircle(g, x0 + c, y0 + c * .86, c, L.numFill || '#00008F'); k.font(700, L.size * .95, sdStack('body')); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(L.num), x0 + c, y0 + c * .9); g.textAlign = 'left'; }
   else if (L.icon) { const c = L.size * .95; paCircle(g, x0 + c, y0 + c * .86, c, '#FFFFFF'); saProp(g, L.icon, x0 + c * .38, y0 + c * .24, c * 1.24, c * 1.24); }
   const tx = x0 + m.lead; let y = y0; g.textBaseline = 'middle';
-  k.font(700, m.s, sdStack('head')); g.fillStyle = L.titleInk || '#00008F'; m.tl.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.2; });
+  k.font(700, m.s, sdStack('body')); g.fillStyle = L.titleInk || '#00008F'; m.tl.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.2; });
   if (m.th && m.bl.length) y += m.s * .3;
   k.font(400, m.s * .8, sdStack('body')); const lh = m.s * .8 * 1.38;
   m.bl.forEach(lines => { lines.forEach((t, i) => { if (m.bul && i === 0) { g.strokeStyle = L.titleInk || '#00008F'; g.lineWidth = m.s * .09; g.beginPath(); g.arc(tx + m.s * .3, y + lh * .55, m.s * .17, 0, 6.3); g.stroke(); } g.fillStyle = ink; g.fillText(t, tx + (m.bul ? m.s * .9 : 0), y + lh * .56); y += lh; }); y += m.s * .18; });
@@ -187,7 +187,7 @@ function sdDrawCard(k, L, draw) {
 }
 function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
   const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
-  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('head')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon }; });
+  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon }; });
   return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3) };
 }
 function sdDrawList(k, L, draw) {
@@ -200,8 +200,8 @@ function sdDrawList(k, L, draw) {
   m.rows.forEach(row => {
     const cy = y + m.s * .6;
     if (row.icon) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.iconBg || '#E8EBFF'); saProp(g, row.icon, x0 + m.ic * .18, cy - m.ic * .32, m.ic * .64, m.ic * .64); }
-    else { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke(); }
-    k.font(700, m.s, sdStack('head')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
+    else { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = L.checkInk || '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke(); }
+    k.font(700, m.s, sdStack('body')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
     if (row.bb.length) { y += m.s * .12; k.font(400, m.s * .8, sdStack('body')); g.fillStyle = L.ink || 'rgba(255,255,255,.92)'; row.bb.forEach(t => { g.fillText(t, tx, y + m.s * .8 * .62); y += m.s * .8 * 1.34; }); }
     y += m.s * .55;
   });
@@ -210,12 +210,12 @@ function sdDrawList(k, L, draw) {
 function sdDrawCirc(k, L, draw) {   // round info badge: title + short body centred in a circle
   L.h = L.w; if (!draw) return; const g = k.g, r = L.w / 2, cx = L.x + r, cy = L.y + r, s = L.size, tw = L.w * .7;
   g.save(); k.shadow(true, s * .8, s * .25, .14); g.fillStyle = L.fill || '#F25C5C'; g.beginPath(); g.arc(cx, cy, r, 0, 6.3); g.fill(); g.restore();
-  k.font(700, s, sdStack('head')); const tl = L.title ? k.wrap(L.title, tw) : []; k.font(400, s * .78, sdStack('body')); const bl = String(L.body || '').split('\n').filter(Boolean).flatMap(t => k.wrap(t, tw * .96));
+  k.font(700, s, sdStack('body')); const tl = L.title ? k.wrap(L.title, tw) : []; k.font(400, s * .78, sdStack('body')); const bl = String(L.body || '').split('\n').filter(Boolean).flatMap(t => k.wrap(t, tw * .96));
   const th = tl.length * s * 1.15, bh = bl.length * s * .78 * 1.32, tot = th + (bh ? s * .35 + bh : 0); let y = cy - tot / 2;
   g.textAlign = 'center'; g.textBaseline = 'middle';
   if (L.icon) { saProp(g, L.icon, cx - s * .7, y - s * 1.9, s * 1.4, s * 1.4); }
-  k.font(700, s, sdStack('head')); g.fillStyle = L.titleInk || '#0B0B45'; tl.forEach(t => { g.fillText(t, cx, y + s * .6); y += s * 1.15; }); y += s * .35;
-  k.font(400, s * .78, sdStack('body')); g.fillStyle = L.ink || '#1A1A3A'; bl.forEach(t => { g.fillText(t, cx, y + s * .78 * .7); y += s * .78 * 1.32; });
+  k.font(700, s, sdStack('body')); g.fillStyle = L.titleInk || '#0C0E45'; tl.forEach(t => { g.fillText(t, cx, y + s * .6); y += s * 1.15; }); y += s * .35;
+  k.font(400, s * .78, sdStack('body')); g.fillStyle = L.ink || '#0C0E45'; bl.forEach(t => { g.fillText(t, cx, y + s * .78 * .7); y += s * .78 * 1.32; });
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 function sdChipLayout(k, L) { const s = L.size, ic = L.icon ? s * 1.5 : 0; k.font(L.weight || 600, s, sdStack('body')); const tw = k.g.measureText(L.text || ' ').width; return { s, ic, tw, w: tw + s * 1.4 + ic + (ic ? s * .35 : 0), h: s * 2.1 }; }
@@ -235,7 +235,7 @@ function sdDrawDate(k, L, draw) {   // calendar page: red header, white body, bi
   g.textAlign = 'center'; g.textBaseline = 'middle';
   k.font(700, h * .1, sdStack('body')); g.fillStyle = '#FFFFFF'; g.fillText(L.top || '', x + w / 2, y + hd * .6, w * .9);
   k.font(700, h * .4, sdStack('body')); g.fillStyle = ink; g.fillText(L.day || '', x + w / 2, y + hd + (h - hd) * .43, w * .9);
-  k.font(600, h * .11, sdStack('body')); g.fillStyle = '#2A2A4A'; g.fillText(L.mon || '', x + w / 2, y + hd + (h - hd) * .82, w * .9);
+  k.font(600, h * .11, sdStack('body')); g.fillStyle = '#0C0E45'; g.fillText(L.mon || '', x + w / 2, y + hd + (h - hd) * .82, w * .9);
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 const SD_LOGOS = {   // official variants from the Logo/Font/CI guidelines
@@ -262,7 +262,7 @@ function sdDrawQr(k, L, draw) {
   L.h = L.w; if (!draw) return; const g = k.g, q = pbQr(L.url || '');
   g.fillStyle = '#FFFFFF'; k.rr(L.x, L.y, L.w, L.h, L.w * .08); g.fill();
   const pad = L.w * .08, cell = (L.w - 2 * pad) / (q ? q.n : 21);
-  g.fillStyle = '#0B0B45';
+  g.fillStyle = '#0C0E45';
   if (q) { for (let r = 0; r < q.n; r++) for (let c = 0; c < q.n; c++) if (q.dark(r, c)) g.fillRect(L.x + pad + c * cell, L.y + pad + r * cell, Math.ceil(cell), Math.ceil(cell)); }
   else { g.globalAlpha = .25; [[0, 0], [14, 0], [0, 14]].forEach(([c, r]) => { g.fillRect(L.x + pad + c * cell, L.y + pad + r * cell, cell * 7, cell * 7); }); g.globalAlpha = 1; k.font(600, L.w * .1, sdStack('body')); g.textAlign = 'center'; g.fillText('ใส่ลิงก์ QR', L.x + L.w / 2, L.y + L.h * .62); g.textAlign = 'left'; }
 }
@@ -310,7 +310,7 @@ function sdCtx(b, fk, s) {
   return c;
 }
 const sdT = o => sdM({ t: 'text', weight: 700, font: 'head', lh: 1.22, align: 'left', color: '#00008F', ...o });
-const SD_DOT = '#1A1A3A';
+const SD_DOT = '#0C0E45';
 const sdFactBody = t => String(t || '').replace(/^(?:วันที่|เวลา|สถานที่|ณ)\s*[:：]?\s*/, '');
 function sdLogo(c, dark) {
   const h = (c.land ? 78 : c.story ? 92 : 84) * c.u, est = h * 2.1, left = c.B.logoPos === 'left';
@@ -328,7 +328,7 @@ function sdHead(c, o) {   // headline: a short line never breaks, a long line ta
   return c.add(sdM(L));
 }
 function sdKicker(c, o) { const t = c.b.kicker; if (!t) return null; return c.add(sdT({ role: 'kicker', text: t, auto: true, size: 30 * c.u * c.s, weight: 600, font: 'body', color: '#FFFFFF', pill: c.C.primary, ...o })); }
-function sdSub(c, o) { if (!c.b.sub) return null; return c.add(sdT({ role: 'sub', text: c.b.sub, size: 36 * c.u * c.s, weight: 500, font: 'body', lh: 1.38, color: '#2A2A4A', ...o })); }
+function sdSub(c, o) { if (!c.b.sub) return null; return c.add(sdT({ role: 'sub', text: c.b.sub, size: 36 * c.u * c.s, weight: 500, font: 'body', lh: 1.38, color: '#0C0E45', ...o })); }
 function sdFacts(c, x, y, w, o = {}) {   // date / time / venue chips, flowing in rows; returns bottom
   const f = [['date', 'cal'], ['time', 'clock'], ['venue', 'pin']].filter(([k]) => c.b[k]); if (!f.length) return y;
   let cx = x, cy = y, rowH = 0; const gap = 14 * c.u;
@@ -344,7 +344,7 @@ function sdFacts(c, x, y, w, o = {}) {   // date / time / venue chips, flowing i
 }
 function sdFoot(c, x, w, o = {}) {   // note (fine print) at the bottom, CTA above it; returns top of the footer
   let y = c.bot;
-  if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.min(1.05, Math.max(c.s, .8)), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#55557A', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
+  if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.min(1.05, Math.max(c.s, .8)), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#0C0E45', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
   if (c.b.qr && !o.noQr) {   // QR code with the call to action beside it
     const qs = Math.min(170 * c.u * Math.max(c.s, .8), w * .34), qy = y - qs; c.add({ t: 'qr', role: 'qr', url: c.b.qr, x: o.align === 'center' ? x + (w - qs) / 2 : x, y: qy, w: qs, h: qs, shadow: true });
     if (o.align !== 'center') { const tx = x + qs + 22 * c.u, tw = w - qs - 22 * c.u, t = sdT({ role: 'cta', text: c.b.cta || 'สแกนเพื่อดูรายละเอียด', size: 32 * c.u * c.s, weight: 700, font: 'head', color: o.qrInk || c.C.primary, lh: 1.25, x: tx, y: 0, w: tw }); for (let n = 0; n < 8 && t.h > qs * 1.02; n++) { t.size *= .9; sdM(t); } t.y = qy + (qs - t.h) / 2; c.add(t); }
@@ -424,8 +424,8 @@ function sdHero(c, key, x, y, w, h, o = {}) {   // kit piece (assets/kit) or a d
 }
 function sdDateParts(t) {
   t = pbThaiDigits(t || ''); const m = t.match(new RegExp(`(\\d{1,2})(?:\\s*[-–]\\s*(\\d{1,2}))?\\s*(${SD_TH_MON})\\s*(\\d{2,4})?`, 'i'));
-  if (m) return { day: m[2] ? `${m[1]}–${m[2]}` : m[1], mon: m[3] + (m[4] ? ' ' + m[4] : ''), top: (t.match(/(จันทร์|อังคาร|พุธ|พฤหัส\S*|ศุกร์|เสาร์|อาทิตย์)/) || [])[1] || 'SAVE THE DATE' };
-  const d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (d) { const mon = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][+d[2] - 1]; if (mon) return { day: d[1], mon: mon + ' ' + d[3], top: 'SAVE THE DATE' }; }
+  if (m) return { day: m[2] ? `${m[1]}–${m[2]}` : m[1], mon: m[3] + (m[4] ? ' ' + m[4] : ''), top: (t.match(/(จันทร์|อังคาร|พุธ|พฤหัส\S*|ศุกร์|เสาร์|อาทิตย์)/) || [])[1] || 'Save the date' };
+  const d = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/); if (d) { const mon = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'][+d[2] - 1]; if (mon) return { day: d[1], mon: mon + ' ' + d[3], top: 'Save the date' }; }
   return null;
 }
 
@@ -461,7 +461,7 @@ const SD_GEN = {
   circles(c) {   // “n things to know”: person in the middle, each point in a bold colour circle around them
     const { W, H, u, M, C, b } = c, bw = W - 2 * M, lg = sdLogo(c, false);
     const pts = (b.points.length ? b.points : [['date', 'วันที่'], ['time', 'เวลา'], ['venue', 'สถานที่']].filter(([k2]) => b[k2]).map(([k2, t]) => ({ title: t, body: sdFactBody(b[k2]) }))).slice(0, 4);
-    const cols0 = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0B0B45', '#1A1A3A'], ['#FFE27A', '#0B0B45', '#1A1A3A'], ['#B9B7F0', '#0B0B45', '#1A1A3A']];
+    const cols0 = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0C0E45', '#0C0E45'], ['#FFE27A', '#0C0E45', '#0C0E45'], ['#B9B7F0', '#0C0E45', '#0C0E45']];
     if (c.land) {   // text on the left half, person + circles on the right half
       const tw = W * .44; let y = c.top + lg.h * .3; const k = sdKicker(c, { x: M, y }); if (k) y += k.h + 20 * u;
       const hd = sdHead(c, { x: M, y, w: tw, size: 68 * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 20 * u;
@@ -478,7 +478,7 @@ const SD_GEN = {
     if (b.sub) { const sb = sdSub(c, { x: M, y, w: bw * .7 }); y += sb.h + 16 * u; }
     const ft = sdFoot(c, M, bw * .7), area = { x: M, y, w: bw, h: ft - y };
     if (area.h < 300 * u) c.over = true;
-    const cols = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0B0B45', '#1A1A3A'], ['#FFE27A', '#0B0B45', '#1A1A3A'], ['#B9B7F0', '#0B0B45', '#1A1A3A']];
+    const cols = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0C0E45', '#0C0E45'], ['#FFE27A', '#0C0E45', '#0C0E45'], ['#B9B7F0', '#0C0E45', '#0C0E45']];
     const n = pts.length, d = c.land ? Math.min(area.w * .22, area.h * (n > 2 ? .48 : .8)) : Math.min(bw * .5, area.h * (n > 3 ? .34 : n > 2 ? .46 : .56));
     const ph = area.h * (c.land ? 1 : .96); sdHero(c, null, M + bw * (c.land ? .34 : .22), ft - ph, bw * (c.land ? .32 : .56), ph);   // person behind the circles, standing on the footer line
     const spots = c.land ? [[0, 0], [1, 0], [0, 1], [1, 1]] : n > 3 ? [[1, 0], [0, .26], [1, .52], [0, .78]] : n > 2 ? [[1, 0], [0, .42], [1, .84]] : [[1, .05], [0, .6]];

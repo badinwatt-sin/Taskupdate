@@ -2,7 +2,7 @@
 /* ============================================================
    Poster Studio · "pro" templates (art-directed from the team's Health Content posters)
    Rules: one big illustration bleeding off the bottom edge · no floating decoration ·
-   soft single-colour gradient with a light glow behind the person · a strict left
+   CI-approved background only (White / Blue Tint 1 / approved blue gradients) · a strict left
    text column (headline → statement box → info card → checklist bubble → QR + CTA → fine print).
    Every format has its own grid — nothing is just scaled from 4:5.
    ============================================================ */
@@ -15,7 +15,6 @@ Object.assign(SD_DESIGNS, {
 });
 SD_ORDER.splice(0, SD_ORDER.length, ...SD_ACTIVE);   // the gallery and the template picker show only these
 
-const SD_BGS = { blue: ['#F1F2FF', '#C4CAFA'], pink: ['#FFF3F5', '#F5CCD6'], amber: ['#FFF9EC', '#F3DDA8'], mint: ['#F0FAF5', '#BFE5D3'], lavender: ['#F5F2FF', '#D3CBF5'] };
 const PRO = {   // per-format grid (fractions of W / H; px values are for the 1080 short side)
   portrait:  { M: 64, gap: 26, head: 84, headW: .74, col: .52, hx: .76, hy: .27, maxW: .6,  foot: .5,  cta: 32, body: 31 },
   square:    { M: 60, gap: 22, head: 72, headW: .7,  col: .5,  hx: .78, hy: .3,  maxW: .5,  foot: .48, cta: 30, body: 29 },
@@ -35,7 +34,7 @@ function proHero(c, g, o = {}) {   // the person: knees at the bottom edge, head
   const cx = (o.hx != null ? o.hx : g.hx) * W, minX = (o.minX != null ? o.minX : g.col * W + 10 * c.u) - w * .12;
   const x = Math.max(minX, Math.min(cx - w / 2, W - w * .9)), y = H - h * .74;
   c.add({ t: 'art', role: 'hero', key, x, y, w, h });
-  return { x, y, w, h, glow: { x: x + w / 2, y: y + h * .28, r: Math.max(w, h * .5) * .9, a: .55 } };
+  return { x, y, w, h, };
 }
 function proHeroAfter(c, g, hd, o = {}) {   // place the person, then move the head below the headline if they would touch
   const n = c.L.length; let hero = proHero(c, g, o);
@@ -45,18 +44,18 @@ function proHeroAfter(c, g, hd, o = {}) {   // place the person, then move the h
 }
 function proStatement(c, x, y, w, g) {   // dark box with the context sentence
   if (!c.b.sub) return y;
-  const L = c.add(sdM({ t: 'card', role: 'sub', title: '', body: c.b.sub, size: g.body * c.u * c.s, fill: c.C.primary, ink: '#FFFFFF', x, y, w, r: .14, bullets: false, shadow: true }));
+  const k = proInk(c), L = c.add(sdM({ t: 'card', role: 'sub', title: '', body: c.b.sub, size: g.body * c.u * c.s, fill: k.stmt, ink: k.stmtInk, x, y, w, r: .14, bullets: false, shadow: true }));
   return y + L.h + g.gap * c.u;
 }
 function proInfo(c, x, y, w, g) {   // white card: date / time / place with small icons
   const items = [['date', 'cal'], ['time', 'clock'], ['venue', 'pin']].filter(([k]) => c.b[k]).map(([k, icon]) => ({ title: sdFactBody(c.b[k]), icon }));
   if (!items.length) return y;
-  const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .92 * c.u * c.s, fill: '#FFFFFF', titleInk: c.C.primary, iconBg: '#EEF0FF', x, y, w, r: .12, shadow: true }));
+  const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .92 * c.u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x, y, w, r: .12, shadow: true }));
   return y + L.h + g.gap * c.u;
 }
 function proChecklist(c, x, y, w, g, o = {}) {   // periwinkle speech bubble with ✓ points
   if (!c.b.points.length) return y;
-  const L = c.add(sdM({ t: 'list', role: 'pts', items: c.b.points.map(p => ({ title: p.title, body: p.body })), size: g.body * c.u * c.s, fill: o.fill || '#5B67F1', check: '#3DD39B', x, y, w, r: .1, tail: o.tail === false ? null : 'br', shadow: true }));
+  const k = proInk(c), L = c.add(sdM({ t: 'list', role: 'pts', items: c.b.points.map(p => ({ title: p.title, body: p.body })), size: g.body * c.u * c.s, fill: o.fill || k.list, titleInk: k.listTitle, ink: k.listInk, check: k.check, checkInk: k.checkInk, x, y, w, r: .1, tail: o.tail === false ? null : 'br', shadow: true }));
   return y + L.h + (g.gap + 14) * c.u;
 }
 function proBody(c, x, y, w, g, o = {}) {   // statement → info → checklist; on wide canvases info and checklist sit side by side
@@ -69,48 +68,53 @@ function proBody(c, x, y, w, g, o = {}) {   // statement → info → checklist;
   if (!o.noInfo) y = proInfo(c, x, y, w, g);
   return proChecklist(c, x, y, w, g, o);
 }
-function proBg(c, extra) { const [a, b] = SD_BGS[c.b.accent] || SD_BGS.blue; return { c1: a, c2: b, ...(extra || {}) }; }
+function proBg(c) { return { ...sdTheme(c.b).bg }; }   // CI-approved background only (no extra glow — CI: never create your own gradients)
+function proInk(c) {   // colours for the current theme — core + tints only for type
+  const d = sdTheme(c.b).dark, C = c.C;
+  return d ? { dark: true, head: '#FFFFFF', bar: '#FFFFFF', barInk: '#00008F', stmt: '#6574F8', stmtInk: '#FFFFFF', list: '#FFFFFF', listTitle: '#00008F', listInk: '#0C0E45', check: '#00008F', checkInk: '#FFFFFF', cta: '#FFFFFF', note: '#E2EFFF' }
+           : { dark: false, head: '#00008F', bar: '#00008F', barInk: '#FFFFFF', stmt: '#00008F', stmtInk: '#FFFFFF', list: '#6574F8', listTitle: '#FFFFFF', listInk: '#FFFFFF', check: '#FFFFFF', checkInk: '#00008F', cta: '#0C0E45', note: '#0C0E45' };
+}
 
 Object.assign(SD_GEN, {
   feature(c) {
-    const g = proSetup(c), { W, H, u, b } = c, M = c.M, lg = sdLogo(c, false);
+    const g = proSetup(c), { W, H, u, b } = c, M = c.M, ik = proInk(c), lg = sdLogo(c, ik.dark);
     const colW = g.col * W - M;
     let y = c.land ? c.top + 6 * u : c.top + lg.h + 40 * u;
-    const hd = sdHead(c, { x: M, y, w: g.headW * W - M, size: g.head * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + (g.gap + 8) * u;
+    const hd = sdHead(c, { x: M, y, w: g.headW * W - M, size: g.head * u * c.s, color: ik.head, barFill: ik.bar, barInk: ik.barInk, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + (g.gap + 8) * u;
     const hero = proHeroAfter(c, g, hd);
-    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: c.C.primary });
+    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: ik.cta, noteInk: ik.note });
     y = proBody(c, M, y, colW, g);
     if (y - g.gap * u > ft) c.over = true;
-    return { bg: proBg(c, { glow: hero.glow }), layers: c.L, over: c.over };
+    return { bg: proBg(c), layers: c.L, over: c.over };
   },
   band(c) {   // AXA Blue header band; the person stands across the band edge
-    const g = proSetup(c), { W, H, u, C, b } = c, M = c.M, white = '#FFFFFF';
+    const g = proSetup(c), { W, H, u, C, b } = c, M = c.M, white = '#FFFFFF', ik = { ...proInk({ ...c, b: { ...b, theme: 'white' } }) };
     const lg = sdLogo(c, true);
     let y = c.land ? c.top + 6 * u : c.top + lg.h + 40 * u;
     const hd = sdHead(c, { x: M, y, w: (c.land ? g.headW : Math.min(g.headW, .6)) * W - M, size: g.head * u * c.s, color: white, barFill: white, barInk: C.primary, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h;
     const bandH = y + (c.land ? 50 : 56) * u;
     const hero = proHeroAfter(c, g, hd, { hy: Math.min(g.hy, (bandH * .5) / H) });
     let ty = bandH + (g.gap + 16) * u; const colW = g.col * W - M;
-    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: C.primary });
+    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: ik.cta, noteInk: ik.note });
     ty = proBody(c, M, ty, colW, g, { tail: false });
     if (ty - g.gap * u > ft) c.over = true;
-    return { bg: { c1: '#FFFFFF', c2: (SD_BGS[b.accent] || SD_BGS.blue)[0], band: { h: bandH, c1: C.primary, c2: pbMix(C.primary, '#3A3FD8', .55) } }, layers: c.L, over: c.over };
+    const tb = sdTheme(b); return { bg: { ...(tb.dark ? SD_THEMES.white.bg : tb.bg), band: { h: bandH, c1: '#00008F', c2: '#00008F' } }, layers: c.L, over: c.over };
   },
   circles(c) {   // “3 things to know”: the person in the middle, points in bold colour circles around
-    const g = proSetup(c), { W, H, u, b } = c, M = c.M, lg = sdLogo(c, false), bw = W - 2 * M;
+    const g = proSetup(c), { W, H, u, b } = c, M = c.M, ik = proInk(c), lg = sdLogo(c, ik.dark), bw = W - 2 * M;
     const pts = (b.points.length ? b.points : [['date', 'วันที่'], ['time', 'เวลา'], ['venue', 'สถานที่']].filter(([k]) => b[k]).map(([k, t]) => ({ title: t, body: sdFactBody(b[k]) }))).slice(0, 4);
     let y = c.land ? c.top + 6 * u : c.top + lg.h + 40 * u;
-    const hd = sdHead(c, { x: M, y, w: (c.land ? .46 : .8) * W - M, size: g.head * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + g.gap * u;
-    if (b.sub && c.land) { const sb = sdSub(c, { x: M, y, w: .44 * W - M, size: g.body * u * c.s }); y += sb.h + g.gap * u; }
-    const ft = sdFoot(c, M, (c.land ? .44 : .4) * W - M, { qrInk: c.C.primary });
-    const cols = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#7FDDB0', '#0B0B45', '#1A1A3A'], ['#FFE07A', '#0B0B45', '#1A1A3A'], ['#B9B7F0', '#0B0B45', '#1A1A3A']], n = pts.length;
+    const hd = sdHead(c, { x: M, y, w: (c.land ? .46 : .8) * W - M, size: g.head * u * c.s, color: ik.head, barFill: ik.bar, barInk: ik.barInk, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + g.gap * u;
+    if (b.sub && c.land) { const sb = sdSub(c, { x: M, y, w: .44 * W - M, size: g.body * u * c.s, color: ik.dark ? '#E2EFFF' : '#0C0E45' }); y += sb.h + g.gap * u; }
+    const ft = sdFoot(c, M, (c.land ? .44 : .4) * W - M, { qrInk: ik.cta, noteInk: ik.note });
+    const cols = [['#FFB4CE', '#00008F', '#0C0E45'], ['#81EEBB', '#00008F', '#0C0E45'], ['#FFF06C', '#00008F', '#0C0E45'], ['#74BDE8', '#00008F', '#0C0E45']], n = pts.length;   // CI Data palette — allowed for infographic elements
     if (c.land) {
       const ax = .5 * W, aw = W - M - ax, ay = c.top + 40 * u, ah = H - c.M - ay, d = Math.min(aw * .36, ah * (n > 2 ? .48 : .6));
       const hero = proHero(c, g, { hx: .74, minX: ax + aw * .26, maxW: .26 });
       const sp = [[0, 0], [1, .1], [0, 1], [1, 1]];
       pts.forEach((p, i) => { const [fx, fy] = sp[i], [fill, ti, ink] = cols[i % 4]; c.add(sdM({ t: 'circ', role: 'p' + i, title: p.title, body: p.body, size: d * .1, fill, titleInk: ti, ink, x: fx ? ax + aw - d : ax, y: ay + fy * (ah - d), w: d, h: d })); });
       if (y > ft) c.over = true;
-      return { bg: proBg(c, { glow: hero.glow }), layers: c.L, over: c.over };
+      return { bg: proBg(c), layers: c.L, over: c.over };
     }
     const yb = c.bot, d = Math.min(bw * (c.story ? .44 : c.square ? .34 : .42), (yb - y) * (n > 3 ? .27 : n > 2 ? .36 : .5));
     if (yb - y < 420 * u) c.over = true;
@@ -121,28 +125,28 @@ Object.assign(SD_GEN, {
       const [fx, fy] = spots[i], [fill, ti, ink] = cols[i % 4], lim = fx ? yb : ft;   // left circles stop above the QR, right ones may go lower
       c.add(sdM({ t: 'circ', role: 'p' + i, title: p.title, body: p.body, size: d * .1, fill, titleInk: ti, ink, x: fx ? W - M - d : M, y: Math.min(y0 + fy * (yb - y0 - d), lim - d - 12 * u), w: d, h: d }));
     });
-    return { bg: proBg(c, { glow: hero.glow }), layers: c.L, over: c.over };
+    return { bg: proBg(c), layers: c.L, over: c.over };
   },
   date(c) {   // events / training / deadlines: a calendar page next to the date details
-    const g = proSetup(c), { W, H, u, C, b } = c, M = c.M, lg = sdLogo(c, false), dp = sdDateParts(b.date);
+    const g = proSetup(c), { W, H, u, C, b } = c, M = c.M, ik = proInk(c), lg = sdLogo(c, ik.dark), dp = sdDateParts(b.date);
     const colW = g.col * W - M;
     let y = c.land ? c.top + 6 * u : c.top + lg.h + 40 * u;
-    const hd = sdHead(c, { x: M, y, w: g.headW * W - M, size: g.head * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + (g.gap + 8) * u;
+    const hd = sdHead(c, { x: M, y, w: g.headW * W - M, size: g.head * u * c.s, color: ik.head, barFill: ik.bar, barInk: ik.barInk, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + (g.gap + 8) * u;
     const hero = proHeroAfter(c, g, hd);
-    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: C.primary });
+    const ft = sdFoot(c, M, g.foot * W - M, { qrInk: ik.cta, noteInk: ik.note });
     if (dp) {
       const bs = Math.min(colW * .36, (c.land ? 210 : c.square ? 180 : 210) * u * Math.min(1.5, c.s));
       c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.red, ink: C.primary, x: M, y: y + 10 * u, w: bs, h: bs * 1.08 });
       const items = [['time', 'clock'], ['venue', 'pin']].filter(([k]) => b[k]).map(([k, icon]) => ({ title: sdFactBody(b[k]), icon }));
       const side = colW - bs - 22 * u >= 320 * u;   // details beside the calendar when there is room, otherwise under it
       let ry = side ? y + 10 * u : y + 10 * u + bs * 1.08 + g.gap * u;
-      if (items.length) { const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .86 * u * c.s, fill: '#FFFFFF', titleInk: C.primary, iconBg: '#EEF0FF', x: side ? M + bs + 22 * u : M, y: ry, w: side ? colW - bs - 22 * u : colW, r: .12, shadow: true })); ry += L.h; }
+      if (items.length) { const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .86 * u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x: side ? M + bs + 22 * u : M, y: ry, w: side ? colW - bs - 22 * u : colW, r: .12, shadow: true })); ry += L.h; }
       y = Math.max(y + 10 * u + bs * 1.08, ry) + (g.gap + 8) * u;
     } else y = proInfo(c, M, y, colW, g);
     if (c.land && b.sub && b.points.length) { const w1 = colW * .44, y1 = proStatement(c, M, y, w1, g), y2 = proChecklist(c, M + w1 + 20 * u, y, colW - w1 - 20 * u, g); y = Math.max(y1, y2); }   // wide canvas: statement beside the checklist
     else { y = proStatement(c, M, y, colW, g); y = proChecklist(c, M, y, colW, g); }
     if (y - g.gap * u > ft) c.over = true;
-    return { bg: proBg(c, { glow: hero.glow }), layers: c.L, over: c.over };
+    return { bg: proBg(c), layers: c.L, over: c.over };
   },
 });
 

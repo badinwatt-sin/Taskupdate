@@ -756,6 +756,7 @@ ACT.pbBrand = () => {
       </div>
       <h4 class="mt">สีที่อนุมัติ</h4>
       <div class="pb-colors">${Object.keys(PB_BRAND_DEFAULT.colors).map(key => `<label class="pb-color"><input type="color" data-col="${key}" value="${draft.colors[key]}" ${can ? '' : 'disabled'}><span><b>${PB_COLOR_LABEL[key]}</b><small>${draft.colors[key].toUpperCase()}</small></span></label>`).join('')}</div>
+      ${typeof sdCiGuideHtml === 'function' ? sdCiGuideHtml() : ''}
       <div id="sdFontBox"></div>
       ${can && typeof ACT.sdAiKey === 'function' ? `<h4 class="mt">AI ช่วยเรียบเรียงโปสเตอร์</h4><div id="sdAiBox" class="sd-aibox"><span class="small muted">กำลังตรวจสถานะ…</span></div>` : ''}`,
     actions: can ? [
