@@ -78,7 +78,7 @@ function sdBriefChanged(structural) {
 /* ---------- AI reading ---------- */
 ACT.sdRead = async () => {
   const text = SDOC.text.trim(); if (!text) { toast('พิมพ์หรือวางข้อความที่ต้องการสื่อสารก่อน', 'error'); $('#sdText')?.focus(); return; }
-  const btn = $('#sdReadBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังออกแบบโปสเตอร์…'; }
+  const btn = $('#sdReadBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังออกแบบโปสเตอร์… (ไม่เกิน ~30 วินาที)'; }
   let brief = null;
   if (Store.mode === 'server') {
     try {   // the team's AI when an Admin connected it; any problem falls back quietly to the built-in layout engine
@@ -127,8 +127,8 @@ ACT.sdAiKey = async () => {
   modal({ title: 'เชื่อมต่อ AI สำหรับ Poster', body: `
     <section class="sd-aiopt"><h4>Google Gemini <span class="badge sd-free">ฟรี · แนะนำ</span></h4>
       <p class="small">${g.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> (${srcTxt(g)})` : 'ยังไม่ได้เชื่อมต่อ'}</p>
-      <ol class="small sd-steps"><li>เปิด <b>aistudio.google.com</b> แล้วเข้าสู่ระบบด้วยบัญชี Google</li><li>กด <b>Get API key</b> → <b>Create API key</b> (ไม่ต้องผูกบัตร)</li><li>คัดลอกคีย์ (มักขึ้นต้นด้วย <code>AIza</code>) มาวางด้านล่าง แล้วกด “ทดสอบและบันทึก”</li></ol>
-      <div class="sd-keyrow"><input id="sdGemKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza..."><button type="button" class="btn btn-primary" id="sdGemSave">ทดสอบและบันทึก</button>${g.source === 'app' ? '<button type="button" class="btn btn-danger-ghost" id="sdGemDel">ยกเลิก</button>' : ''}</div>
+      <ol class="small sd-steps"><li>เปิด <b>aistudio.google.com</b> แล้วเข้าสู่ระบบด้วยบัญชี Google</li><li>กด <b>Get API key</b> → <b>Create API key</b> (ไม่ต้องผูกบัตร)</li><li>คัดลอกคีย์ (ขึ้นต้นด้วย <code>AIza</code> หรือ <code>AQ.</code>) มาวางด้านล่าง แล้วกด “ทดสอบและบันทึก”</li></ol>
+      <div class="sd-keyrow"><input id="sdGemKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza... หรือ AQ...."><button type="button" class="btn btn-primary" id="sdGemSave">ทดสอบและบันทึก</button>${g.source === 'app' ? '<button type="button" class="btn btn-danger-ghost" id="sdGemDel">ยกเลิก</button>' : ''}</div>
       <p class="small muted">โควตาฟรีมีจำกัดต่อนาทีและต่อวัน ถ้าเกิน ระบบจะจัดโปสเตอร์ให้เองโดยอัตโนมัติ (ผู้ใช้ไม่เห็นแจ้งเตือน) · <b>ข้อควรรู้:</b> ในแบบฟรี Google อาจนำข้อความที่ส่งไปใช้ปรับปรุงบริการ — ใช้กับข้อความประกาศ/ประชาสัมพันธ์ ไม่ควรใส่ข้อมูลลูกค้าหรือตัวเลขภายในที่ยังไม่เปิดเผย</p>
     </section>
     <details class="sd-aiopt sd-more"><summary>ใช้ Claude แทน (มีค่าใช้จ่าย)</summary>
