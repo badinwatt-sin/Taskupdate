@@ -516,7 +516,7 @@ V.poster = (root, force) => {
         <div class="form-grid">
           ${pbField('keyword', 'Keyword <small>(คำนำ / หมวด)</small>', st.template === 'event' ? 'เช่น เชิญร่วมงาน' : st.template === 'recognition' ? 'เช่น Congratulations' : 'เช่น ประกาศ')}
           ${hint.highlight ? pbField('highlight', hint.highlight[0], hint.highlight[1]) : '<span class="pb-gap"></span>'}
-          ${pbField('headline', 'Headline <em>*</em>', hint.headline, 'input', 'class="pb-big" maxlength="120"').replace('class="field ', 'class="field full ')}
+          <label class="field full"><span>Headline <em>*</em> <small>(Enter = ขึ้นบรรทัดใหม่ · บรรทัดแรกอยู่บนแถบเน้น)</small></span><textarea data-pf="headline" class="pb-big" rows="2" maxlength="140" placeholder="${esc(hint.headline)}">${esc(st.f.headline)}</textarea></label>
           ${pbField('sub', st.template === 'recognition' ? 'คำโปรย <small>(เช่น ผลงาน / รางวัล)</small>' : 'Sub-headline', st.template === 'recognition' ? 'เช่น ยอดขายสูงสุดประจำไตรมาส 3' : 'ประโยคสนับสนุน 1 บรรทัด').replace('class="field ', 'class="field full ')}
           ${pbField('content', 'Content', hint.content, 'textarea')}
           ${pbField('cta', 'Call to action <small>(ปุ่ม / คำชวน)</small>', 'เช่น ลงทะเบียนเลย')}
