@@ -52,8 +52,9 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   const all = lines.join(' ');
   b.kicker = kick0 || (/^(?:ขอ)?เชิญ/.test(b.headline[0] || '') && b.kind === 'event' ? '' : SD_KINDS[b.kind][1]); b.kindText = SD_KINDS[b.kind][0];
   b.hero = sdKitPick(head, 'people') || sdKitPick(all, 'people') || SD_KIND_HERO[b.kind];   // the headline decides first
+  b.scene = sdScenePick(all, head);
   const usedK = [];
-  b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || sdKitFallback(i, usedK); usedK.push(p.visual); });
+  b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK) || sdKitPick(p.title + ' ' + p.body + ' ' + head, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || sdKitFallback(i, usedK); usedK.push(p.visual); });
   b.props = SD_KIND_DECOR[b.kind];
   b.accent = { recognition: 'pink', campaign: 'amber', reminder: 'amber', knowledge: 'mint', change: 'lavender' }[b.kind] || 'blue';
   b.designs = sdRank(b);
@@ -61,7 +62,7 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   return b;
 }
 const SD_KIND_DECOR = { event: ['H19', 'H20'], change: ['H20', 'H11'], reminder: ['H19', 'F14'], recognition: ['H39', 'F03'], campaign: ['F05', 'F03'], recruit: ['H20', 'H40'], knowledge: ['F14', 'H18'], announce: ['H40', 'H20'] };
-const sdKitFallback = (i, avoid = []) => ['H18', 'H20', 'F14', 'H19', 'H40', 'F05'].filter(k => !avoid.includes(k))[i % 4] || 'H18';
+const sdKitFallback = (i, avoid = []) => ['E08', 'E51', 'E53', 'E17', 'E05', 'E46'].filter(k => !avoid.includes(k))[i % 4] || 'H18';
 const SD_KIND_HERO = { event: 'H36', change: 'H02', reminder: 'H37', recognition: 'H38', campaign: 'H35', recruit: 'H22', knowledge: 'H01', announce: 'H02' };
 function sdGuessKind(head, all) {   // kind from free text (headline first, then the whole message)
   const t = [head, all || head];
@@ -114,6 +115,8 @@ function sdNormBrief(x) {
   b.emph = Number.isInteger(+b.emph) ? Math.max(-1, Math.min(b.headline.length - 1, +b.emph)) : 0;
   b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: p && SD_KIT[p.visual] ? p.visual : (sdKitPick(str(p && p.title) + ' ' + str(p && p.body), ['objects', 'money', 'info']) || sdKitFallback(i)) })).filter(p => p.title || p.body);
   if (!SD_KIT[b.hero]) b.hero = SD_KIND_HERO[b.kind] || 'H02';
+  if (!SD_BGIMG[b.scene] || SD_BGIMG[b.scene][1] !== 'photo') b.scene = sdScenePick([b.kindText, b.sub, ...b.points.map(p => p.title)].join(' '), b.headline.join(' '));
+  { const seen = new Set(); b.points.forEach((p, i) => { if (seen.has(p.visual)) p.visual = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], [...seen]) || sdKitFallback(i, [...seen]); seen.add(p.visual); }); }   // never the same picture twice
   b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SD_KIT[k] && !sdIsPerson(k)).slice(0, 2); if (!b.props.length) b.props = (SD_KIND_DECOR[b.kind] || SD_KIND_DECOR.announce).slice();
   if (!SD_ACCENTS.includes(b.accent)) b.accent = 'blue';
   if (!SD_LOOKS[b.look]) b.look = '';
@@ -188,8 +191,8 @@ function sdDrawCard(k, L, draw) {
   g.textBaseline = 'alphabetic';
 }
 function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
-  const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
-  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon, num: it.num }; });
+  const s = L.size, pad = s * .9, ic = (L.items || []).some(it => it.kit) ? s * 1.6 : s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
+  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += Math.max(rh, it.kit ? ic : 0) + s * .55; return { t, bb, th: rh, rh: Math.max(rh, it.kit ? ic : 0), icon: it.icon, num: it.num, kit: it.kit }; });
   return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3, L.minH || 0) };
 }
 function sdDrawList(k, L, draw) {
@@ -200,13 +203,15 @@ function sdDrawList(k, L, draw) {
   g.restore();
   let y = L.y + m.pad; const x0 = L.x + m.pad, tx = x0 + m.ic + m.s * .5; g.textBaseline = 'middle';
   m.rows.forEach(row => {
+    const ys = y; if (row.kit && row.th < row.rh) y += (row.rh - row.th) / 2;   // text centred on the icon
     const cy = y + m.s * .6;
     if (row.num) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#FFFFFF'); k.font(700, m.s * .78, sdStack('body')); g.fillStyle = L.checkInk || '#00008F'; g.textAlign = 'center'; g.fillText(row.num, x0 + m.ic / 2, cy + m.s * .03); g.textAlign = 'left'; }
+    else if (row.kit) { const kc = ys + m.ic / 2; paCircle(g, x0 + m.ic / 2, kc, m.ic / 2, '#FFFFFF'); const K = SD_KIT[row.kit], im = pbImg(sdKitSrc(row.kit)) || pbImg(sdKitThumb(row.kit)); if (im && K) { const bx = m.ic * .64, sc = Math.min(bx / K[2], bx / K[3]); g.drawImage(im, x0 + (m.ic - K[2] * sc) / 2, kc - K[3] * sc / 2, K[2] * sc, K[3] * sc); } }
     else if (row.icon) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.iconBg || '#E8EBFF'); saProp(g, row.icon, x0 + m.ic * .18, cy - m.ic * .32, m.ic * .64, m.ic * .64); }
     else { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = L.checkInk || '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke(); }
     k.font(700, m.s, sdStack('body')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
     if (row.bb.length) { y += m.s * .12; k.font(400, m.s * .8, sdStack('body')); g.fillStyle = L.ink || 'rgba(255,255,255,.92)'; row.bb.forEach(t => { g.fillText(t, tx, y + m.s * .8 * .62); y += m.s * .8 * 1.34; }); }
-    y += m.s * .55;
+    y = Math.max(y, ys + row.rh) + m.s * .55;
   });
   g.textBaseline = 'alphabetic';
 }
@@ -290,6 +295,12 @@ function sdRender(cv, doc, opt = {}) {
   cv.width = Math.round(W * sc); cv.height = Math.round(H * sc);
   const g = cv.getContext('2d'), k = pbKit(g); g.setTransform(sc, 0, 0, sc, 0, 0);
   const bg = doc.bg || {}, gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, bg.c1 || '#FFFFFF'); gr.addColorStop(1, bg.c2 || bg.c1 || '#FFFFFF'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  if (bg.img && SD_BGIMG[bg.img]) {   // ready-made background: cover the page; photos get a light wash so type stays legible
+    const im = pbImg(sdBgSrc(bg.img)) || pbImg(sdBgSrc(bg.img, true));
+    if (im) { const s2 = Math.max(W / im.width, H / im.height), iw = im.width * s2, ih = im.height * s2; g.drawImage(im, (W - iw) / 2, (H - ih) / 2, iw, ih); }
+    const wash = bg.wash != null ? bg.wash : SD_BGIMG[bg.img][1] === 'photo' ? .72 : 0;
+    if (wash) { const wg = g.createLinearGradient(0, 0, W, 0); wg.addColorStop(0, `rgba(226,239,255,${Math.min(.94, wash + .14)})`); wg.addColorStop(1, `rgba(226,239,255,${Math.max(0, wash - .18)})`); g.fillStyle = wg; g.fillRect(0, 0, W, H); }
+  }
   if (bg.glow) { const o = bg.glow, rg = g.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r); rg.addColorStop(0, `rgba(255,255,255,${o.a == null ? .6 : o.a})`); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
   if (bg.band) { const o = bg.band, lg2 = g.createLinearGradient(0, 0, W, o.h); lg2.addColorStop(0, o.c1); lg2.addColorStop(1, o.c2 || o.c1); g.fillStyle = lg2; g.fillRect(0, 0, W, o.h); }
   (doc.layers || []).forEach(L => {

@@ -25,6 +25,7 @@ const SD_THEMES = {
   grad:  { name: 'ไล่ฟ้า', sub: 'Blue Tint 1 → 2', bg: { c1: '#E2EFFF', c2: '#6574F8' }, dark: false },
   tint:  { name: 'ฟ้าอ่อน', sub: 'Blue Tint 1', bg: { c1: '#E2EFFF', c2: '#E2EFFF' }, dark: false },
   white: { name: 'ขาว', sub: 'White', bg: { c1: '#FFFFFF', c2: '#FFFFFF' }, dark: false },
+  photo: { name: 'ภาพฉาก', sub: 'ภาพถ่ายนุ่ม + Blue Tint 1', bg: { c1: '#E2EFFF', c2: '#E2EFFF' }, dark: false, photo: true },
   deep:  { name: 'น้ำเงินเข้ม', sub: 'AXA Blue → Blue Tint 3', bg: { c1: '#00008F', c2: '#0C0E45' }, dark: true },
 };
 const sdTheme = b => SD_THEMES[b && b.theme] || SD_THEMES.grad;

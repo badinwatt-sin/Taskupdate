@@ -60,7 +60,8 @@ function proInfo(c, x, y, w, g) {   // white card: date / time / place with smal
   const L = c.add(sdM({ t: 'list', role: 'facts', items, size: g.body * .92 * c.u * c.s, fill: '#FFFFFF', titleInk: '#00008F', iconBg: '#E2EFFF', x, y, w, r: .12, shadow: true }));
   return y + L.h + g.gap * c.u;
 }
-const proItems = pts => { const numbered = pts.length > 1 && pts.every(p => /^\s*\d+[.)]\s*/.test(p.title)); return pts.map(p => numbered ? { title: p.title.replace(/^\s*(\d+)[.)]\s*/, ''), body: p.body, num: p.title.match(/^\s*(\d+)/)[1] } : { title: p.title, body: p.body }); };
+const proIcon = v => SD_KIT[v] && !sdIsPerson(v) && (/^E\d/.test(v) || SD_KIT[v][1] !== 'info') ? v : '';   // a clean kit object can stand in for the ✓ (infographic panels are too busy at icon size)
+const proItems = pts => { const numbered = pts.length > 1 && pts.every(p => /^\s*\d+[.)]\s*/.test(p.title)), kits = pts.map(p => proIcon(p.visual)), useKit = !numbered && kits.every(Boolean) && new Set(kits).size === kits.length; return pts.map((p, i) => numbered ? { title: p.title.replace(/^\s*(\d+)[.)]\s*/, ''), body: p.body, num: p.title.match(/^\s*(\d+)/)[1] } : useKit ? { title: p.title, body: p.body, kit: kits[i] } : { title: p.title, body: p.body }); };
 function proChecklist(c, x, y, w, g, o = {}) {   // periwinkle speech bubble with ✓ points
   if (!c.b.points.length) return y;
   if (c.land && c.b.points.length >= 2 && !o.stack) {   // wide canvas: one card per point in a row — uses the width, keeps the type big
@@ -90,7 +91,7 @@ function proBalance(c, ft) {   // spread leftover height between the body blocks
   const lead = Math.min(free * .25, 120 * c.u), per = Math.min((free - lead) * .6 / Math.max(1, rows.length), 90 * c.u);
   rows.forEach((r, i) => r.items.forEach(L => { L.y += lead + per * i; }));
 }
-function proBg(c) { return { ...sdTheme(c.b).bg }; }   // CI-approved background only (no extra glow — CI: never create your own gradients)
+function proBg(c) { const t = sdTheme(c.b); return t.photo ? { ...t.bg, img: SD_BGIMG[c.b.scene] ? c.b.scene : 'P06' } : { ...t.bg }; }   // photo theme: a soft set photo under a Blue Tint 1 wash   // CI-approved background only (no extra glow — CI: never create your own gradients)
 function proInk(c) {   // colours for the current theme — core + tints only for type
   const d = sdTheme(c.b).dark, C = c.C;
   return d ? { dark: true, head: '#FFFFFF', bar: '#FFFFFF', barInk: '#00008F', stmt: '#6574F8', stmtInk: '#FFFFFF', list: '#FFFFFF', listTitle: '#00008F', listInk: '#0C0E45', check: '#00008F', checkInk: '#FFFFFF', cta: '#FFFFFF', note: '#E2EFFF' }
@@ -120,7 +121,7 @@ Object.assign(SD_GEN, {
     const ft = sdFoot(c, M, g.foot * W - M, { qrInk: ik.cta, noteInk: ik.note });
     ty = proBody(c, M, ty, colW, g, { tail: false });
     if (ty - g.gap * u > ft) c.over = true; else proBalance(c, ft);
-    const tb = sdTheme(b); return { bg: { ...(tb.dark ? SD_THEMES.white.bg : tb.bg), band: { h: bandH, c1: '#00008F', c2: '#00008F' } }, layers: c.L, over: c.over };
+    const tb = sdTheme(b); return { bg: { ...(tb.dark ? SD_THEMES.white.bg : proBg(c)), band: { h: bandH, c1: '#00008F', c2: '#00008F' } }, layers: c.L, over: c.over };
   },
   circles(c) {   // “3 things to know”: the person in the middle, points in bold colour circles around
     const g = proSetup(c), { W, H, u, b } = c, M = c.M, ik = proInk(c), lg = sdLogo(c, ik.dark), bw = W - 2 * M;
