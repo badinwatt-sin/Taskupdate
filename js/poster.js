@@ -8,12 +8,12 @@
    ============================================================ */
 
 /* ---------- vocabulary ---------- */
-const PB_TEMPLATES = {   // key: [English name, Thai, icon, default motif, default style, default accent]
-  announce: ['Announcement', 'ข่าวประกาศ', 'megaphone', 'geometric', 'royal', 'sky'],
-  event: ['Event & Invitation', 'เชิญร่วมกิจกรรม', 'calendar', 'rays', 'paper', 'primary'],
-  campaign: ['Campaign', 'แคมเปญ / กระตุ้นยอด', 'target', 'stripes', 'royal', 'coral'],
-  howto: ['How-to & Tips', 'ขั้นตอน / ความรู้สั้น ๆ', 'bulb', 'dots', 'white', 'sky'],
-  recognition: ['Recognition', 'ผลงานและการแสดงความยินดี', 'trophy', 'confetti', 'navy', 'amber'],
+const PB_TEMPLATES = {   // key: [English name, Thai, default scene, default style, default accent]
+  announce: ['Announcement', 'ข่าวประกาศ', 'announce', 'deep', 'sky'],
+  event: ['Event & Invitation', 'เชิญร่วมกิจกรรม', 'event', 'sky', 'red'],
+  campaign: ['Campaign', 'แคมเปญ / กระตุ้นยอด', 'campaign', 'lavender', 'red'],
+  howto: ['How-to & Tips', 'ขั้นตอน / ความรู้สั้น ๆ', 'checklist', 'sky', 'sky'],
+  recognition: ['Recognition', 'ผลงานและการแสดงความยินดี', 'award', 'deep', 'sky'],
 };
 const PB_FORMATS = {   // key: [label, ratio, W, H, use]
   square: ['Square', '1:1', 1080, 1080, 'LINE · Facebook'],
@@ -21,22 +21,42 @@ const PB_FORMATS = {   // key: [label, ratio, W, H, use]
   story: ['Story', '9:16', 1080, 1920, 'Story · Reels'],
   landscape: ['Landscape', '16:9', 1920, 1080, 'จอ · พรีเซนต์'],
 };
-/* fields shown per template — [key, label, placeholder, kind] */
 const PB_FIELD_HINT = {
-  announce: { headline: 'เช่น ปรับเวลาทำการศูนย์บริการ', content: 'รายละเอียด — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
-  event: { headline: 'เช่น ขอเชิญร่วมงาน Agency Kick-off 2027', content: 'ไฮไลต์ของงาน / Agenda — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
-  campaign: { headline: 'เช่น ปิดยอดไตรมาส 4 รับรางวัลพิเศษ', content: 'กติกาหลัก / สิ่งที่ได้รับ — ขึ้นบรรทัดใหม่ = 1 ข้อ', highlight: ['ตัวเลขเด่น', 'เช่น รับเพิ่ม 2 เท่า หรือ 5,000 บาท'] },
-  howto: { headline: 'เช่น 4 ขั้นตอนส่งเคลมออนไลน์', content: 'แต่ละขั้นตอน — ขึ้นบรรทัดใหม่ = 1 ขั้น (เรียงตามลำดับ)' },
+  announce: { headline: 'บรรทัดแรก = แถบเน้น · ขึ้นบรรทัดใหม่ = ข้อความตัวใหญ่ต่อ', content: 'รายละเอียด — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
+  event: { headline: 'เช่น ขอเชิญร่วมงาน (Enter) Agency Kick-off 2027', content: 'ไฮไลต์ของงาน / Agenda — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
+  campaign: { headline: 'เช่น ปิดยอดปลายปี (Enter) รับรางวัลพิเศษ', content: 'กติกาหลัก / สิ่งที่ได้รับ — ขึ้นบรรทัดใหม่ = 1 ข้อ', highlight: ['ตัวเลขเด่น', 'เช่น รับเพิ่ม 2 เท่า หรือ 5,000 บาท'] },
+  howto: { headline: 'เช่น 3 เรื่องต้องเช็ก (Enter) ก่อนซื้อประกันสุขภาพ', content: 'แต่ละขั้นตอน — ขึ้นบรรทัดใหม่ = 1 ขั้น (เรียงตามลำดับ)' },
   recognition: { headline: 'เช่น ขอแสดงความยินดี', content: 'ผลงาน / คำชื่นชม — ขึ้นบรรทัดใหม่ = 1 ข้อ', highlight: ['ชื่อผู้ได้รับรางวัล / ทีม', 'เช่น คุณสมหญิง ใจดี · ทีม Agency North'] },
 };
-const PB_STYLES = {   // CI-approved backgrounds (colours come from the brand palette)
-  royal: ['Royal', 'พื้นน้ำเงินหลัก'], navy: ['Navy', 'พื้นน้ำเงินเข้ม'], paper: ['Paper', 'พื้นครีม'], white: ['White', 'พื้นขาว'],
+const PB_STYLES = {   // CI-approved backgrounds — [name, Thai, dark?]
+  deep: ['Deep Blue', 'น้ำเงินเข้ม', 1], lavender: ['Lavender', 'ม่วงลาเวนเดอร์', 1], sky: ['Light Blue', 'ฟ้าอ่อน', 0], pink: ['Soft Pink', 'ชมพูอ่อน', 0], white: ['White', 'ขาว', 0], photo: ['Photo', 'รูปเต็มพื้นหลัง', 1],
 };
-const PB_ACCENTS = { sky: 'ฟ้า', coral: 'ส้มคอรัล', amber: 'เหลืองอำพัน', primary: 'น้ำเงินหลัก' };
-const PB_MOTIFS = { geometric: 'Geometric', rays: 'Rays', dots: 'Dots', waves: 'Waves', confetti: 'Confetti', stripes: 'Stripes' };
+const PB_ACCENTS = { sky: 'ฟ้า Krungthai', red: 'แดง AXA', primary: 'น้ำเงิน AXA' };
 /* poster icons — single SVG path strings on a 24 grid (drawn with Path2D, stroked) */
 const PB_ICONS = {
   megaphone: 'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z M15 9a4 4 0 0 1 0 6 M18 6a8 8 0 0 1 0 12',
+  stethoscope: 'M5 3H4v6a5 5 0 0 0 10 0V3h-1 M9 14v1a6 6 0 0 0 12 0v-2 M21 9a2 2 0 1 0 0 4a2 2 0 1 0 0-4z',
+  syringe: 'M18 2l4 4 M20 4l-3 3 M15 5l4 4 M17 7L8 16H5v-3l9-9 M5 19l-3 3 M10 10l2 2 M12 8l2 2',
+  pill: 'M10.5 20.5a5 5 0 0 1-7-7l10-10a5 5 0 0 1 7 7z M8.5 8.5l7 7',
+  hospital: 'M3 21h18 M5 21V7l7-4 7 4v14 M10 21v-4h4v4 M12 8v4 M10 10h4',
+  cross: 'M9 3h6v6h6v6h-6v6H9v-6H3V9h6z',
+  doctor: 'M12 2a4 4 0 1 0 0 8a4 4 0 1 0 0-8z M4 22v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2 M15 16v4 M13 18h4',
+  thermometer: 'M14 14.8V4a2 2 0 0 0-4 0v10.8a4 4 0 1 0 4 0z',
+  umbrella: 'M22 12a10 10 0 0 0-20 0z M12 12v8a2 2 0 0 0 4 0 M12 2v1',
+  shieldPlus: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M12 8v6 M9 11h6',
+  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
+  family: 'M7 3a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M17 3a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5z M12 11a2 2 0 1 0 0 4a2 2 0 1 0 0-4z M3 21v-6a4 4 0 0 1 7-2.6 M21 21v-6a4 4 0 0 0-7-2.6 M9 21v-2a3 3 0 0 1 6 0v2',
+  phone: 'M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z M11 18h2',
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z M8 9h8 M8 13h5',
+  clipboard: 'M9 2h6v4H9z M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3 M8 13l2 2 4-4 M8 18h8',
+  wallet: 'M3 7a2 2 0 0 1 2-2h13v4 M3 7v11a2 2 0 0 0 2 2h15V9H5a2 2 0 0 1-2-2z M16 14h.01',
+  pulse: 'M3 12h4l3-8 4 16 3-8h4',
+  virus: 'M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9L7 7 M17 17l2.1 2.1 M4.9 19.1L7 17 M17 7l2.1-2.1',
+  drop: 'M12 2.7l5.7 5.6a8 8 0 1 1-11.3 0z',
+  mask: 'M3 8c3 0 6-2 9-2s6 2 9 2v5c0 3-4 6-9 6s-9-3-9-6z M7 11h10 M8 14h8',
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
+  rain: 'M20 16.6A5 5 0 0 0 18 7h-1.3A8 8 0 1 0 4 15.3 M8 19v2 M8 13v2 M16 19v2 M16 13v2 M12 15v2 M12 21v1',
+  plane: 'M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z',
   calendar: 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M16 2v4 M8 2v4 M3 10h18',
   clock: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M12 6v6l4 2',
   pin: 'M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z M12 7a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
@@ -49,7 +69,6 @@ const PB_ICONS = {
   heart: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8z',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 0 0 8a4 4 0 1 0 0-8z M23 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
   chart: 'M3 3v18h18 M7 15l4-4 3 3 6-7 M16 7h4v4',
-  shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
   book: 'M2 4h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z M22 4h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z',
   check: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M8 12l3 3 5-6',
   sparkles: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z',
@@ -60,21 +79,50 @@ const PB_ICONS = {
   info: 'M12 2a10 10 0 1 0 0 20a10 10 0 1 0 0-20z M12 16v-4 M12 8h.01',
 };
 const pbIconSvg = (k, s = 20) => `<svg class="ico" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${PB_ICONS[k] || ''}"/></svg>`;
+/* scenes: illustration that matches the content — [Thai label, hero icon, 3 floating badges, keyword pattern] */
+const PB_SCENES = {
+  health: ['สุขภาพทั่วไป', 'stethoscope', ['heart', 'pulse', 'cross'], /สุขภาพ|ตรวจสุขภาพ|health|check.?up|ป่วย|โรค/i],
+  vaccine: ['วัคซีน / ป้องกันโรค', 'syringe', ['shieldPlus', 'virus', 'check'], /วัคซีน|ฉีด|vaccine|ภูมิคุ้มกัน|ไข้หวัด|งูสวัด|rsv/i],
+  hospital: ['โรงพยาบาล / เคลม', 'hospital', ['cross', 'clipboard', 'doctor'], /โรงพยาบาล|รพ\.|เคลม|claim|ผ่าตัด|opd|ipd|นอนโรงพยาบาล|surgery/i],
+  doctor: ['ปรึกษาแพทย์', 'doctor', ['chat', 'stethoscope', 'phone'], /แพทย์|หมอ|doctor|ปรึกษา|consult/i],
+  telehealth: ['แอป / ออนไลน์', 'phone', ['chat', 'doctor', 'pill'], /แอป|app|ออนไลน์|online|telehealth|emma|line|ดาวน์โหลด/i],
+  medicine: ['ยา / อาการป่วย', 'pill', ['thermometer', 'drop', 'clipboard'], /ยา|อาการ|ไข้|ปวด|ท้องเสีย|เจ็บ/i],
+  protect: ['ความคุ้มครอง / ประกัน', 'umbrella', ['shieldPlus', 'heart', 'family'], /คุ้มครอง|ประกัน|กรมธรรม์|insurance|ความเสี่ยง|ปลอดภัย/i],
+  family: ['ครอบครัว', 'family', ['heart', 'umbrella', 'shieldPlus'], /ครอบครัว|ลูก|พ่อแม่|ผู้สูงวัย|เด็ก|family/i],
+  money: ['ค่าใช้จ่าย / ผลตอบแทน', 'wallet', ['coin', 'chart', 'shield'], /ค่าใช้จ่าย|ค่ารักษา|บาท|เงิน|เบี้ย|ราคา|โบนัส|คอมมิชชั่น|commission|incentive|ลดหย่อน/i],
+  time: ['ระยะเวลา / กำหนดการ', 'clock', ['calendar', 'check', 'clipboard'], /ระยะเวลา|รอคอย|ภายใน|deadline|กำหนด|เวลา/i],
+  checklist: ['ขั้นตอน / เช็กลิสต์', 'clipboard', ['check', 'bulb', 'pin'], /ขั้นตอน|วิธี|เช็ก|เช็ค|how.?to|tips|เคล็ดลับ|ต้องรู้/i],
+  event: ['งาน / กิจกรรม', 'calendar', ['mic', 'users', 'pin'], /งาน|กิจกรรม|event|สัมมนา|ประชุม|kick.?off|เชิญ|อบรม/i],
+  award: ['รางวัล / ยินดี', 'trophy', ['star', 'sparkles', 'flag'], /รางวัล|ยินดี|award|congrat|ชื่นชม|แชมป์|ผลงาน/i],
+  campaign: ['แคมเปญ / เป้าหมาย', 'target', ['coin', 'gift', 'chart'], /แคมเปญ|campaign|เป้า|ยอดขาย|ปิดยอด|โปรโมชั่น|promotion/i],
+  travel: ['เดินทาง', 'plane', ['pin', 'shieldPlus', 'phone'], /เดินทาง|ต่างประเทศ|travel|ท่องเที่ยว|เที่ยว/i],
+  weather: ['ฤดูกาล / หน้าฝน', 'rain', ['drop', 'virus', 'thermometer'], /ฝน|หน้าฝน|น้ำท่วม|น้ำลด|ไข้เลือดออก|ยุง|อากาศเปลี่ยน/i],
+  air: ['อากาศ / PM 2.5', 'mask', ['virus', 'eye', 'heart'], /pm ?2\.?5|ฝุ่น|หน้ากาก|มลพิษ|ทางเดินหายใจ/i],
+  announce: ['ประกาศทั่วไป', 'megaphone', ['bell', 'info', 'check'], /ประกาศ|แจ้ง|announce|เปลี่ยนแปลง|ปรับ/i],
+};
+/* zero-token scene pick: the first scene whose words appear most in the copy */
+function pbAutoScene(st) {
+  const f = st.f, t = [f.keyword, f.headline, f.headline, f.sub, f.content, f.highlight].join(' ');
+  let best = null, n = 0;
+  for (const [key, s] of Object.entries(PB_SCENES)) { const m = (t.match(new RegExp(s[3].source, 'gi')) || []).length; if (m > n) { n = m; best = key; } }
+  return best || PB_TEMPLATES[st.template][2];
+}
+const pbSceneOf = st => (st.scene && st.scene !== 'auto' && PB_SCENES[st.scene]) ? st.scene : pbAutoScene(st);
 
 /* ---------- CI (set by Admin / Brand team, shared with everyone) ---------- */
 const PB_BRAND_DEFAULT = {
-  org: 'Agency Experience Team', footer: 'Internal Communications', logo: '', logoDark: '',
-  colors: { primary: '#0026E1', navy: '#0B1A4A', sky: '#3979FF', coral: '#FF5A36', amber: '#F2B705', ink: '#111318', paper: '#F3EFE6' },
+  org: 'Krungthai-AXA', footer: '', logo: '', logo2: '',
+  colors: { primary: '#00008F', sky: '#00A5E3', red: '#FF1721', lavender: '#6E70EE', pink: '#FBE1E5', paper: '#E8F2FC', ink: '#0B0B45' },
 };
-const PB_COLOR_LABEL = { primary: 'Primary (Royal Blue)', navy: 'Navy', sky: 'Sky', coral: 'Coral', amber: 'Amber', ink: 'Ink (ตัวอักษร)', paper: 'Paper (พื้นครีม)' };
+const PB_COLOR_LABEL = { primary: 'AXA Blue (หลัก)', sky: 'Krungthai Sky', red: 'AXA Red', lavender: 'Lavender (พื้น)', pink: 'Soft Pink (พื้น)', paper: 'Light Blue (พื้น)', ink: 'Ink (ตัวอักษร)' };
 const pbBrand = () => { const b = S().settings.brand || {}; return { ...PB_BRAND_DEFAULT, ...b, colors: { ...PB_BRAND_DEFAULT.colors, ...(b.colors || {}) } }; };
-const PB_HEAD = '"Brand Serif", "Source Serif 4", "IBM Plex Sans Thai", Georgia, serif';   // Publico when installed
+const PB_HEAD = '"IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';   // poster headlines: bold Thai sans (per the health-content posters)
 const PB_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
 const PB_THAI = '"IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';
 
 /* ---------- working state ---------- */
 const pbBlank = () => ({
-  id: uid('pst'), template: 'announce', format: 'square', style: 'royal', accent: 'sky', visual: 'auto', icon: 'megaphone', motif: 'geometric',
+  id: uid('pst'), template: 'announce', format: 'portrait', style: 'deep', accent: 'sky', visual: 'auto', scene: 'auto', icon: null, badges: null,
   photo: null, photoY: .5, qrUrl: '', qrImg: null, qrLabel: '',
   f: { keyword: '', headline: '', sub: '', content: '', highlight: '', date: '', dateEnd: '', time: '', venue: '', cta: '', note: '' },
   ai: null, reviewed: false, updated: 0,
@@ -122,39 +170,43 @@ function pbLoadImage(file, maxSide, png) {   // photo → JPEG; logo / QR → PN
 const pickFile = (accept = 'image/*') => new Promise(res => { const i = document.createElement('input'); i.type = 'file'; i.accept = accept; i.onchange = () => res(i.files[0] || null); i.click(); });
 
 /* ============================================================
-   Drawing
+   Drawing — design language from the health-content posters:
+   logo pair top-right · headline with a highlight bar on line 1 ·
+   rounded white content cards · illustration that matches the content ·
+   QR + caption box at the bottom · fine print last
    ============================================================ */
 const pbLum = hex => { const n = parseInt(hex.replace('#', ''), 16), ch = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * ch((n >> 16) & 255) + .7152 * ch((n >> 8) & 255) + .0722 * ch(n & 255); };
 const pbContrast = (a, b) => { const x = pbLum(a), y = pbLum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
-const pbOn = (c, bg, alt, min = 2.2) => pbContrast(c, bg) >= min ? c : alt;   // keep a colour only when it reads on its background
-function pbPalette(st, B) {
-  const c = B.colors, acc = c[st.accent] || c.sky;
-  const dark = st.style === 'royal' || st.style === 'navy';
-  const bg = { royal: c.primary, navy: c.navy, paper: c.paper, white: '#FFFFFF' }[st.style] || c.primary;
-  const panel = st.style === 'royal' ? c.navy : c.primary;
-  const light = dark ? '#FFFFFF' : c.ink;
+const pbTextOn = fill => pbContrast(fill, '#FFFFFF') >= 2.6 ? '#FFFFFF' : '#0B0B45';
+const pbMix = (a, b, t) => { const p = h => [0, 2, 4].map(i => parseInt(h.replace('#', '').slice(i, i + 2), 16)), x = p(a), y = p(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function pbPalette(st, B, hasPhoto) {
+  const c = B.colors, style = st.style === 'photo' && !hasPhoto ? 'deep' : st.style, dark = !!PB_STYLES[style]?.[2];
+  const bg = { deep: [c.primary, pbMix(c.primary, c.sky, .35)], lavender: [c.lavender, pbMix(c.lavender, '#FFFFFF', .25)], sky: [c.paper, '#FFFFFF'], pink: [c.pink, '#FFFFFF'], white: ['#FFFFFF', '#FFFFFF'], photo: [c.primary, c.primary] }[style] || [c.primary, c.primary];
+  const acc = c[st.accent] || c.sky;
   return {
-    c, dark, bg, panel, light,
-    acc: pbOn(acc, panel, '#FFFFFF', 1.6),                       // graphics on the visual panel
-    accOnBg: pbOn(acc, bg, dark ? '#FFFFFF' : c.primary, 2.4),   // bullets, icons, big numbers on the page
-    chip: dark ? pbOn(acc, bg, '#FFFFFF', 2.4) : c.primary,       // filled pills / tiles
-    ink: light, sub: dark ? 'rgba(255,255,255,.84)' : hexA(c.ink, .74), mute: dark ? 'rgba(255,255,255,.62)' : hexA(c.ink, .52),
-    line: dark ? 'rgba(255,255,255,.2)' : hexA(c.ink, .12), card: dark ? 'rgba(255,255,255,.1)' : hexA(c.primary, .06),
+    c, style, dark, bg,
+    head: dark ? '#FFFFFF' : c.primary,                         // plain headline lines
+    boxBg: style === 'deep' ? '#FFFFFF' : c.primary,            // highlight bar behind headline line 1
+    boxInk: style === 'deep' ? c.primary : '#FFFFFF',
+    sub: dark ? 'rgba(255,255,255,.9)' : hexA(c.ink, .78), mute: dark ? 'rgba(255,255,255,.72)' : hexA(c.ink, .55),
+    card: style === 'white' ? c.paper : 'rgba(255,255,255,.96)', cardShadow: style !== 'white',
+    title: c.primary, text: c.ink, acc, accInk: pbTextOn(acc),
   };
 }
-const pbTextOn = fill => pbContrast(fill, '#FFFFFF') >= 2.6 ? '#FFFFFF' : '#111318';
 function pbKit(g) {
   const k = {
     g,
     font: (w, px, fam) => { g.font = `${w} ${Math.round(px * 10) / 10}px ${fam || PB_BODY}`; },
     rr: (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); },
+    shadow: (on, blur = 30, dy = 10, a = .18) => { g.shadowColor = on ? `rgba(0,0,60,${a})` : 'transparent'; g.shadowBlur = on ? blur : 0; g.shadowOffsetY = on ? dy : 0; },
     segs: t => {
       const raw = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter('th', { granularity: 'word' }).segment(String(t))].map(x => x.segment) : String(t).split(/(\s+)/);
       const out = [];
       raw.forEach(x => {
         if (!out.length) return out.push(x);
         if (/^\s+$/.test(x) || /^[)\]}.,!?:;%”’'"…\-–]+$/.test(x)) out[out.length - 1] += x;
-        else if (/[(\[{“‘]$/.test(out[out.length - 1]) && !/\s$/.test(out[out.length - 1])) out[out.length - 1] += x;
+        else if (/[(\[{“‘'"]$/.test(out[out.length - 1]) && !/\s$/.test(out[out.length - 1])) out[out.length - 1] += x;
+        else if (/^\d/.test(x) && /\S$/.test(out[out.length - 1]) && /\d$/.test(out[out.length - 1])) out[out.length - 1] += x;
         else out.push(x);
       });
       return out;
@@ -188,14 +240,14 @@ function pbKit(g) {
       g.save(); g.translate(x, y); g.scale(size / 24, size / 24); g.strokeStyle = color; g.lineWidth = lw; g.lineCap = 'round'; g.lineJoin = 'round';
       g.stroke(new Path2D(d)); g.restore();
     },
+    plus: (x, y, s, color) => { g.fillStyle = color; g.fillRect(x - s / 2, y - s / 6, s, s / 3); g.fillRect(x - s / 6, y - s / 2, s / 3, s); },
   };
   return k;
 }
 /* text block: measure (draw=false) or draw; returns height */
-function pbText(k, t, { x = 0, y = 0, w, size, weight = 600, fam, color, lh = 1.3, draw, align = 'left', maxLines }) {
+function pbText(k, t, { x = 0, y = 0, w, size, weight = 600, fam, color, lh = 1.3, draw, align = 'left' }) {
   if (!t) return 0;
-  k.font(weight, size, fam); let lines = k.wrap(t, w);
-  if (maxLines && lines.length > maxLines) lines = lines.slice(0, maxLines);
+  k.font(weight, size, fam || PB_THAI); const lines = k.wrap(t, w);
   if (draw) {
     k.g.fillStyle = color; k.g.textAlign = align; const ax = align === 'center' ? x + w / 2 : align === 'right' ? x + w : x;
     lines.forEach((l, i) => k.g.fillText(l, ax, y + size * (0.92 + (lh - 1) / 2) + i * size * lh));
@@ -203,217 +255,221 @@ function pbText(k, t, { x = 0, y = 0, w, size, weight = 600, fam, color, lh = 1.
   }
   return lines.length * size * lh;
 }
-
-function pbMotif(k, st, P, x, y, w, h) {
-  const { g } = k, m = st.motif, a = P.acc, wh = 'rgba(255,255,255,';
-  g.save(); k.rr(x, y, w, h, 28 * (Math.min(w, h) / 600)); g.clip();
-  g.fillStyle = P.panel; g.fillRect(x, y, w, h);
-  const R = Math.max(w, h), cx = x + w, cy = y;
-  if (m === 'geometric') {
-    g.fillStyle = a; g.beginPath(); g.arc(x + w * .86, y + h * .18, R * .26, 0, Math.PI * 2); g.fill();
-    g.fillStyle = wh + '.12)'; g.beginPath(); g.arc(x + w * .1, y + h * 1.02, R * .34, Math.PI, 0); g.fill();
-    g.strokeStyle = wh + '.35)'; g.lineWidth = Math.max(3, R * .008); g.beginPath(); g.arc(x + w * .14, y + h * .2, R * .09, 0, Math.PI * 2); g.stroke();
-    g.fillStyle = wh + '.9)'; g.fillRect(x + w * .72, y + h * .74, R * .1, R * .1);
-  } else if (m === 'rays') {
-    const ox = x + w * .5, oy = y + h * 1.08;
-    for (let i = 0; i < 18; i++) { const a0 = Math.PI + i * Math.PI / 18; g.fillStyle = i % 2 ? wh + '.07)' : hexA(a, .28); g.beginPath(); g.moveTo(ox, oy); g.arc(ox, oy, R * 1.4, a0, a0 + Math.PI / 18); g.closePath(); g.fill(); }
-    g.fillStyle = a; g.beginPath(); g.arc(ox, oy, R * .2, Math.PI, 0); g.fill();
-  } else if (m === 'dots') {
-    const step = R / 16;
-    for (let i = 0; i * step < w + step; i++) for (let j = 0; j * step < h + step; j++) { const d = Math.hypot(i * step - w, j * step) / R; g.fillStyle = d < .55 ? hexA(a, .9 - d) : wh + '.14)'; g.beginPath(); g.arc(x + i * step + step / 2, y + j * step + step / 2, step * .14, 0, Math.PI * 2); g.fill(); }
-  } else if (m === 'waves') {
-    for (let i = 0; i < 7; i++) {
-      g.strokeStyle = i === 2 ? a : wh + (.08 + i * .025) + ')'; g.lineWidth = i === 2 ? R * .02 : R * .01; g.beginPath();
-      for (let t = 0; t <= 40; t++) { const px = x + w * t / 40, py = y + h * (.25 + i * .1) + Math.sin(t / 40 * Math.PI * 3 + i * .7) * h * .06; t ? g.lineTo(px, py) : g.moveTo(px, py); }
-      g.stroke();
-    }
-  } else if (m === 'confetti') {
-    const cols = [a, P.c.sky, P.c.coral, P.c.amber, '#FFFFFF'];
-    let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    for (let i = 0; i < 46; i++) {
-      const px = x + rnd() * w, py = y + rnd() * h, s = R * (.012 + rnd() * .02);
-      g.save(); g.translate(px, py); g.rotate(rnd() * Math.PI); g.fillStyle = cols[i % cols.length]; g.globalAlpha = .55 + rnd() * .45;
-      i % 3 ? g.fillRect(-s, -s / 3, s * 2, s / 1.5) : (g.beginPath(), g.arc(0, 0, s * .6, 0, Math.PI * 2), g.fill()); g.restore();
-    }
-  } else if (m === 'stripes') {
-    g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4);
-    for (let i = -20; i < 20; i++) { g.fillStyle = i % 4 === 0 ? hexA(a, .85) : wh + (i % 2 ? '.05)' : '.1)'); g.fillRect(i * R * .06, -R * 2, R * .03, R * 4); }
-    g.restore();
+/* background per CI style (no photo) */
+function pbBackground(k, P, W, H, u) {
+  const { g } = k, gr = g.createLinearGradient(0, 0, W * .4, H);
+  gr.addColorStop(0, P.bg[0]); gr.addColorStop(1, P.bg[1]); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  g.save();
+  if (P.style === 'deep') {   // faint molecular network, like the health posters
+    let seed = 11; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280, pts = [];
+    for (let i = 0; i < 16; i++) pts.push([W * (.45 + rnd() * .6), H * rnd()]);
+    g.strokeStyle = 'rgba(255,255,255,.09)'; g.lineWidth = 2 * u; g.beginPath();
+    pts.forEach((p, i) => { const q = pts[(i * 7 + 3) % pts.length]; g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); }); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.16)'; pts.forEach(p => { g.beginPath(); g.arc(p[0], p[1], 6 * u, 0, Math.PI * 2); g.fill(); });
+  } else if (P.style === 'lavender') {
+    g.fillStyle = 'rgba(255,255,255,.1)'; g.beginPath(); g.arc(W * .95, H * .1, Math.min(W, H) * .42, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(-W * .05, H * .95, Math.min(W, H) * .3, 0, Math.PI * 2); g.fill();
+  } else {
+    g.fillStyle = hexA(P.c.sky, P.style === 'white' ? .08 : .12); g.beginPath(); g.arc(W * .98, H * .04, Math.min(W, H) * .36, 0, Math.PI * 2); g.fill();
+    k.plus(W * .06, H * .9, 26 * u, hexA(P.c.sky, .35)); k.plus(W * .92, H * .55, 18 * u, hexA(P.c.red, .3));
   }
   g.restore();
 }
-function pbVisual(k, st, P, x, y, w, h) {
-  const { g } = k, rad = 28 * (Math.min(w, h) / 600) + 8, photo = st.visual !== 'graphic' && pbImg(st.photo);
-  if (photo && st.template !== 'recognition') {
-    g.save(); k.rr(x, y, w, h, rad); g.clip();
-    const s = Math.max(w / photo.width, h / photo.height), pw = photo.width * s, ph = photo.height * s;
-    g.drawImage(photo, x + (w - pw) / 2, y + (h - ph) * st.photoY, pw, ph); g.restore();
-    return;
-  }
-  pbMotif(k, st, P, x, y, w, h);
-  const cx = x + w / 2, cy = y + h / 2, r = Math.min(w, h) * .3;
-  if (photo) {   // recognition: round portrait with a ring
-    g.save(); g.beginPath(); g.arc(cx, cy, r * 1.12, 0, Math.PI * 2); g.fillStyle = P.c.amber; g.fill();
-    g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.clip();
-    const s = Math.max(2 * r / photo.width, 2 * r / photo.height), pw = photo.width * s, ph = photo.height * s;
-    g.drawImage(photo, cx - pw / 2, cy - r + (2 * r - ph) * st.photoY, pw, ph); g.restore();
-    k.icon('star', cx + r * .62, cy + r * .5, r * .5, '#FFFFFF', 2.4);
-    return;
-  }
-  g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
-  k.icon(st.icon, cx - r * .55, cy - r * .55, r * 1.1, P.panel, 1.9);
+function pbPhotoBg(k, P, img, st, W, H, side) {
+  const { g } = k, s = Math.max(W / img.width, H / img.height), pw = img.width * s, ph = img.height * s;
+  g.drawImage(img, side ? W - pw : (W - pw) / 2, (H - ph) * st.photoY, pw, ph);   // side layouts: subject stays on the right, text side gets the shade
+  const n = P.c.primary, gr = side ? g.createLinearGradient(0, 0, W, 0) : g.createLinearGradient(0, 0, 0, H);
+  if (side) { gr.addColorStop(0, hexA(n, .9)); gr.addColorStop(.48, hexA(n, .62)); gr.addColorStop(.8, hexA(n, .05)); gr.addColorStop(1, hexA(n, 0)); }
+  else { gr.addColorStop(0, hexA(n, .88)); gr.addColorStop(.42, hexA(n, .45)); gr.addColorStop(.62, hexA(n, .15)); gr.addColorStop(1, hexA(n, .55)); }
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
 }
-function pbLogo(k, P, B, x, y, hMax, wMax) {   // returns width used
-  const { g } = k, src = P.dark ? (B.logoDark || B.logo) : (B.logo || B.logoDark), im = pbImg(src);
-  if (im) {
-    const s = Math.min(hMax / im.height, wMax / im.width), w = im.width * s, h = im.height * s;
-    if (P.dark && !B.logoDark) { g.fillStyle = '#FFFFFF'; k.rr(x - hMax * .18, y - hMax * .18 + (hMax - h) / 2, w + hMax * .36, h + hMax * .36, hMax * .2); g.fill(); }
-    g.drawImage(im, x, y + (hMax - h) / 2, w, h); return w;
+/* contextual illustration: hero object + 3 floating badges + medical marks */
+function pbScene(k, st, P, x, y, w, h) {
+  const { g } = k, key = pbSceneOf(st), sc = PB_SCENES[key], hero = st.icon || sc[1], badges = (st.badges && st.badges.length === 3 ? st.badges : sc[2]);
+  const m = Math.min(w, h), cx = x + w / 2, cy = y + h / 2, r = m * .22, photo = pbImg(st.photo);
+  g.save();
+  g.fillStyle = P.dark ? 'rgba(255,255,255,.12)' : hexA(P.c.sky, .14); g.beginPath(); g.arc(cx, cy, m * .45, 0, Math.PI * 2); g.fill();
+  g.fillStyle = hexA(P.acc, P.dark ? .3 : .16); g.beginPath(); g.arc(cx + m * .26, cy + m * .24, m * .14, 0, Math.PI * 2); g.fill();
+  const markC = P.dark ? 'rgba(255,255,255,.55)' : hexA(P.c.sky, .6);
+  k.plus(cx - m * .42, cy - m * .3, m * .06, markC); k.plus(cx + m * .44, cy - m * .08, m * .04, hexA(P.c.red, .7)); k.plus(cx - m * .3, cy + m * .42, m * .045, markC);
+  if (/health|medicine|doctor|hospital/.test(key)) { g.strokeStyle = P.dark ? 'rgba(255,255,255,.35)' : hexA(P.c.sky, .45); g.lineWidth = m * .012; g.lineJoin = 'round'; g.beginPath(); const py = cy + r * 1.05, pts = [[-.48, 0], [-.2, 0], [-.12, -.12], [-.02, .12], [.06, -.2], [.14, 0], [.48, 0]]; pts.forEach(([a, b], i) => i ? g.lineTo(cx + a * m, py + b * m) : g.moveTo(cx + a * m, py + b * m)); g.stroke(); }
+  if (photo && st.template === 'recognition' && P.style !== 'photo') {   // round portrait with a ring
+    k.shadow(true, m * .06, m * .02); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx, cy, r * 1.5, 0, Math.PI * 2); g.fill(); k.shadow(false);
+    g.save(); g.beginPath(); g.arc(cx, cy, r * 1.38, 0, Math.PI * 2); g.clip();
+    const s = Math.max(2.76 * r / photo.width, 2.76 * r / photo.height), pw = photo.width * s, ph = photo.height * s;
+    g.drawImage(photo, cx - pw / 2, cy - r * 1.38 + (2.76 * r - ph) * st.photoY, pw, ph); g.restore();
+  } else {
+    k.shadow(true, m * .07, m * .025); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill(); k.shadow(false);
+    g.strokeStyle = hexA(P.c.sky, .35); g.lineWidth = m * .008; g.beginPath(); g.arc(cx, cy, r * .86, 0, Math.PI * 2); g.stroke();
+    k.icon(hero, cx - r * .52, cy - r * .52, r * 1.04, P.c.primary, 1.9);
   }
-  // wordmark fallback: brand square + organisation name
-  g.fillStyle = P.dark ? '#FFFFFF' : P.c.primary; k.rr(x, y, hMax, hMax, hMax * .22); g.fill();
-  k.icon('check', x + hMax * .16, y + hMax * .16, hMax * .68, P.dark ? P.c.primary : '#FFFFFF', 2.6);
-  k.font(900, hMax * .42, PB_BODY); g.fillStyle = P.ink; g.fillText(k.wrap(B.org, wMax - hMax * 1.3)[0] || '', x + hMax * 1.25, y + hMax * .66);
-  return wMax;
+  const ring = photo && st.template === 'recognition' ? r * 1.5 : r, cols = [P.acc, P.c.red, P.c.primary];
+  [-2.45, -.45, 2.2].forEach((a, i) => {
+    const bx = cx + Math.cos(a) * ring * 1.5, by = cy + Math.sin(a) * ring * 1.5, br = r * .42;
+    k.shadow(true, m * .04, m * .012, .16); g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(bx, by, br, 0, Math.PI * 2); g.fill(); k.shadow(false);
+    k.icon(badges[i], bx - br * .55, by - br * .55, br * 1.1, cols[i] === '#FFFFFF' ? P.c.primary : cols[i], 2.2);
+  });
+  g.restore();
+}
+function pbLogos(k, P, B, right, y, h) {   // logo lockup, right-aligned; returns width used
+  const { g } = k, ims = [B.logo, B.logo2].map(pbImg).filter(Boolean), gap = h * .1;
+  if (ims.length) {
+    let x = right;
+    for (const im of ims.slice().reverse()) { const w = im.width * h / im.height; x -= w; g.drawImage(im, x, y, w, h); x -= gap; }
+    return right - x - gap;
+  }
+  k.font(700, h * .3, PB_BODY); const t = B.org || 'LOGO', tw = g.measureText(t).width, w = tw + h * .6;   // placeholder until the official files are uploaded
+  g.fillStyle = '#FFFFFF'; k.rr(right - w, y + h * .2, w, h * .6, h * .12); g.fill();
+  g.fillStyle = P.c.primary; g.fillText(t, right - w + h * .3, y + h * .6);
+  return w;
 }
 
 /* the poster — everything is relative to the canvas size */
 function pbDraw(cv, st, fmtKey) {
-  const fm = PB_FORMATS[fmtKey || st.format], W = fm[2], H = fm[3], B = pbBrand(), P = pbPalette(st, B), f = st.f;
+  const fk = fmtKey || st.format, fm = PB_FORMATS[fk], W = fm[2], H = fm[3], B = pbBrand(), f = st.f, photo = pbImg(st.photo);
+  const P = pbPalette(st, B, !!photo), photoBg = P.style === 'photo' && photo;
   cv.width = W; cv.height = H;
   const g = cv.getContext('2d'), k = pbKit(g), u = Math.min(W, H) / 1080, land = W / H > 1.2, story = H / W > 1.6;
   g.textBaseline = 'alphabetic';
-  g.fillStyle = P.bg; g.fillRect(0, 0, W, H);
-  if (!P.dark) { g.fillStyle = hexA(P.c.primary, .05); g.beginPath(); g.arc(W * 1.02, H * .02, Math.min(W, H) * .28, 0, Math.PI * 2); g.fill(); }
+  const M = 70 * u, safeT = story ? 120 * u : 0, safeB = story ? 150 * u : 0, bw = W - 2 * M;
+  if (photoBg) pbPhotoBg(k, P, photo, st, W, H, !story); else pbBackground(k, P, W, H, u);
 
-  const M = 72 * u, safeT = story ? 150 * u : 0, safeB = story ? 170 * u : 0;   // Story: keep clear of app UI
-  /* header: logo + poster type */
-  const hh = 64 * u, hy = M + safeT;
-  pbLogo(k, P, B, M, hy, hh, W * .5);
-  const tagTxt = PB_TEMPLATES[st.template][0].toUpperCase();
-  k.font(600, 22 * u, PB_BODY); const tw = g.measureText(tagTxt).width;
-  g.strokeStyle = P.line; g.lineWidth = 2 * u; k.rr(W - M - tw - 36 * u, hy + hh / 2 - 22 * u, tw + 36 * u, 44 * u, 22 * u); g.stroke();
-  g.fillStyle = P.sub; g.fillText(tagTxt, W - M - tw - 18 * u, hy + hh / 2 + 8 * u);
+  /* header: logo lockup (fixed size) */
+  const lh = 92 * u, top0 = M + safeT, logoW = pbLogos(k, P, B, W - M, top0, lh);
+  const bottom = H - M - safeB;
 
-  /* footer: org line + brand stripe */
-  const stripe = 14 * u, fy = H - stripe - safeB - M * .55;
-  k.font(600, 22 * u, PB_THAI); g.fillStyle = P.mute;
-  g.fillText([B.org, B.footer].filter(Boolean).join('  ·  '), M, fy);
-  const sc = [P.c.primary, P.c.sky, P.c.coral, P.c.amber], sw = W / sc.length;
-  sc.forEach((c, i) => { g.fillStyle = (P.dark && c === P.bg) ? P.c.navy : c; g.fillRect(i * sw, H - stripe, sw + 1, stripe); });
-
-  /* body region */
-  const top = hy + hh + 44 * u, bottom = fy - 46 * u, bw = W - 2 * M;
-  const hasVisual = st.visual !== 'none';
-  const region = frac => {   // text area + visual area for a given share of the visual
-    if (land) {
-      const vw = frac ? bw * frac : 0;
-      return { T: { x: M, y: top, w: bw - (vw ? vw + 64 * u : 0), h: bottom - top }, Vr: vw ? { x: W - M - vw, y: top, w: vw, h: bottom - top } : null };
-    }
-    const vh = frac ? (bottom - top) * frac : 0;
-    return { T: { x: M, y: top + (vh ? vh + 48 * u : 0), w: bw, h: bottom - top - (vh ? vh + 48 * u : 0) }, Vr: vh ? { x: M, y: top, w: bw, h: vh } : null };
-  };
-  const base = !hasVisual ? 0 : land ? .4 : story ? .36 : (fmtKey || st.format) === 'portrait' ? .34 : .3;
-
-  /* text blocks */
+  /* content pieces (measured at scale s) */
   const pts = pbPoints(f.content), date = pbDateText(f), qr = st.qrImg ? null : pbQr(safeUrl(st.qrUrl) || st.qrUrl.trim()), qrIm = pbImg(st.qrImg), hasQr = !!(qr || qrIm);
-  const blocks = (s, w) => {
-    const L = [];
-    if (f.keyword) L.push({ gap: 24, h: () => 50 * u * s, d: (x, y) => { k.font(700, 24 * u * s, PB_THAI); const t = f.keyword.trim(), tw2 = g.measureText(t).width; g.fillStyle = P.chip; k.rr(x, y, tw2 + 40 * u * s, 50 * u * s, 25 * u * s); g.fill(); g.fillStyle = pbTextOn(P.chip); g.fillText(t, x + 20 * u * s, y + 34 * u * s); } });
-    if (st.template === 'recognition' && f.highlight) L.push({ gap: 14, h: () => pbText(k, f.sub || '', { w, size: 34 * u * s, weight: 600, fam: PB_THAI }), d: (x, y) => pbText(k, f.sub || '', { x, y, w, size: 34 * u * s, weight: 600, fam: PB_THAI, color: P.sub, draw: 1 }) });
-    const hSize = (land ? 92 : story ? 104 : 88) * u * s;
-    L.push({ gap: 22, h: () => pbText(k, f.headline || 'Headline', { w, size: hSize, weight: 900, fam: PB_HEAD, lh: 1.22 }), d: (x, y) => pbText(k, f.headline || 'Headline', { x, y, w, size: hSize, weight: 900, fam: PB_HEAD, lh: 1.22, color: f.headline ? P.ink : P.mute, draw: 1 }) });
-    if (st.template === 'recognition' && f.highlight) {
-      const hs = 64 * u * s;
-      L.push({ gap: 24, h: () => pbText(k, f.highlight, { w, size: hs, weight: 700, fam: PB_THAI, lh: 1.25 }) + 20 * u * s, d: (x, y) => { g.fillStyle = P.accOnBg; g.fillRect(x, y, 90 * u * s, 8 * u * s); pbText(k, f.highlight, { x, y: y + 20 * u * s, w, size: hs, weight: 700, fam: PB_THAI, lh: 1.25, color: P.dark ? P.accOnBg : P.c.primary, draw: 1 }); } });
-    } else if (f.sub) L.push({ gap: 26, h: () => pbText(k, f.sub, { w, size: 38 * u * s, weight: 500, fam: PB_THAI, lh: 1.4 }), d: (x, y) => pbText(k, f.sub, { x, y, w, size: 38 * u * s, weight: 500, fam: PB_THAI, lh: 1.4, color: P.sub, draw: 1 }) });
-    if (st.template === 'campaign' && f.highlight) {
-      const hs = 132 * u * s;
-      L.push({ gap: 26, h: () => pbText(k, f.highlight, { w, size: hs, weight: 900, fam: PB_HEAD, lh: 1.12 }), d: (x, y) => pbText(k, f.highlight, { x, y, w, size: hs, weight: 900, fam: PB_HEAD, lh: 1.12, color: P.accOnBg, draw: 1 }) });
+  const rows = [date && ['calendar', date], f.time && ['clock', f.time], f.venue && ['pin', f.venue]].filter(Boolean);
+  const head = (s, draw, x, y) => {   // keyword pill + headline (line 1 on a highlight bar)
+    let h = 0, w = bw - logoW - 36 * u;
+    if (f.keyword) {
+      const ks = Math.min(s, 1.05); k.font(700, 26 * u * ks, PB_THAI); const t = f.keyword.trim(), tw = g.measureText(t).width, ph = 50 * u * ks;
+      if (draw) { g.fillStyle = P.c.red; k.rr(x, y, tw + 40 * u * ks, ph, ph / 2); g.fill(); g.fillStyle = '#FFFFFF'; g.fillText(t, x + 20 * u * ks, y + ph * .68); }
+      h += ph + 20 * u * ks;
     }
+    const size = (land ? 74 : story ? 86 : 68) * u * Math.min(s, 1.05), text = (f.headline || 'Headline').trim();
+    k.font(700, size, PB_HEAD);
+    const parts = text.split('\n');
+    let boxed, rest;
+    if (parts.length > 1) { boxed = k.wrap(parts[0], w - size * .5); rest = parts.slice(1).join(' '); }
+    else { boxed = k.wrap(text, w - size * .5).slice(0, 1); rest = text.slice(text.indexOf(boxed[0]) + boxed[0].length).trim(); }
+    const plain = rest ? k.wrap(rest, w) : [];
+    boxed.forEach(l => {
+      if (draw) { k.font(700, size, PB_HEAD); const lw = g.measureText(l).width; g.fillStyle = f.headline ? P.boxBg : hexA(P.boxBg, .4); g.fillRect(x, y + h, lw + size * .44, size * 1.34); g.fillStyle = P.boxInk; g.fillText(l, x + size * .22, y + h + size * 1.0); }
+      h += size * 1.34 + size * .12;
+    });
+    plain.forEach(l => { if (draw) { k.font(700, size, PB_HEAD); g.fillStyle = P.head; g.fillText(l, x, y + h + size * 1.02); } h += size * 1.3; });
+    if (f.sub && st.template !== 'recognition' && !hasCardTitle()) { h += 8 * u * s; h += pbText(k, f.sub, { x, y: y + h, w, size: 34 * u * s, weight: 500, lh: 1.4, color: P.sub, draw }); }
+    return h;
+  };
+  /* card: sub as title (when there is a body), highlight, points, details */
+  const hasCardTitle = () => !!(f.sub && (pts.length || rows.length || f.highlight)) || st.template === 'recognition';
+  const cardItems = (s, w) => {
+    const L = [], p = 34 * u * s;
+    if (st.template === 'recognition') {
+      if (f.sub) L.push(['t', (dr, x, y) => pbText(k, f.sub, { x, y, w, size: 32 * u * s, weight: 600, lh: 1.38, color: P.title, draw: dr })]);
+      if (f.highlight) L.push(['h', (dr, x, y) => { if (dr) { g.fillStyle = P.c.red; g.fillRect(x, y, 80 * u * s, 8 * u * s); } return 22 * u * s + pbText(k, f.highlight, { x, y: y + 22 * u * s, w, size: 58 * u * s, weight: 700, lh: 1.25, color: P.c.primary, draw: dr }); }]);
+    } else if (f.sub && hasCardTitle()) L.push(['t', (dr, x, y) => pbText(k, f.sub, { x, y, w, size: 36 * u * s, weight: 700, lh: 1.35, color: P.title, draw: dr })]);
+    if (st.template === 'campaign' && f.highlight) L.push(['h', (dr, x, y) => pbText(k, f.highlight, { x, y, w, size: 104 * u * s, weight: 700, fam: PB_HEAD, lh: 1.15, color: P.c.red, draw: dr })]);
     if (pts.length) {
-      const ps = 33 * u * s, numbered = st.template === 'howto', ind = numbered ? 66 * u * s : 34 * u * s;
-      const one = p => pbText(k, p, { w: w - ind, size: ps, weight: 500, fam: PB_THAI, lh: 1.42 });
-      L.push({
-        gap: 28, h: () => pts.reduce((a, p) => a + Math.max(one(p), numbered ? 48 * u * s : 0) + 16 * u * s, 0) - 16 * u * s, d: (x, y) => {
-          pts.forEach((p, i) => {
-            const hh2 = Math.max(one(p), numbered ? 48 * u * s : 0);
-            if (numbered) { g.fillStyle = P.chip; g.beginPath(); g.arc(x + 24 * u * s, y + 24 * u * s, 24 * u * s, 0, Math.PI * 2); g.fill(); k.font(700, 26 * u * s, PB_BODY); g.fillStyle = pbTextOn(P.chip); g.textAlign = 'center'; g.fillText(String(i + 1), x + 24 * u * s, y + 33 * u * s); g.textAlign = 'left'; }
-            else { g.fillStyle = P.accOnBg; g.fillRect(x, y + ps * .55, 14 * u * s, 14 * u * s); }
-            pbText(k, p, { x: x + ind, y: numbered ? y + Math.max(0, (48 * u * s - ps * 1.42) / 2) : y, w: w - ind, size: ps, weight: 500, fam: PB_THAI, lh: 1.42, color: P.ink, draw: 1 });
-            y += hh2 + 16 * u * s;
-          });
-        },
-      });
+      const ps = 31 * u * s, num = st.template === 'howto', ind = 58 * u * s, d = 40 * u * s;
+      L.push(['p', (dr, x, y) => {
+        let yy = y;
+        pts.forEach((t, i) => {
+          const th = pbText(k, t, { w: w - ind, size: ps, weight: 500, lh: 1.4 }), hh = Math.max(th, d);
+          if (dr) {
+            const cy = yy + Math.min(hh, ps * 1.4) / 2;
+            if (num) { g.fillStyle = P.c.primary; g.beginPath(); g.arc(x + d / 2, cy, d / 2, 0, Math.PI * 2); g.fill(); k.font(700, 24 * u * s, PB_BODY); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.fillText(String(i + 1), x + d / 2, cy + 8.5 * u * s); g.textAlign = 'left'; }
+            else { g.fillStyle = P.acc; g.beginPath(); g.arc(x + d / 2, cy, d / 2, 0, Math.PI * 2); g.fill(); g.strokeStyle = P.accInk; g.lineWidth = 4 * u * s; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x + d * .28, cy); g.lineTo(x + d * .45, cy + d * .17); g.lineTo(x + d * .74, cy - d * .16); g.stroke(); }
+            pbText(k, t, { x: x + ind, y: yy, w: w - ind, size: ps, weight: 500, lh: 1.4, color: P.text, draw: 1 });
+          }
+          yy += hh + 14 * u * s;
+        });
+        return yy - y - 14 * u * s;
+      }]);
     }
-    const rows = [date && ['calendar', date], f.time && ['clock', f.time], f.venue && ['pin', f.venue]].filter(Boolean);
     if (rows.length) {
-      const rs = 31 * u * s, big = st.template === 'event' && f.date, tile = big ? 132 * u * s : 0, rw = w - (tile ? tile + 28 * u * s : 0) - 56 * u * s;
-      const rowH = r => Math.max(pbText(k, r[1], { w: rw, size: rs, weight: 600, fam: PB_THAI, lh: 1.32 }), 40 * u * s);
-      const totalH = () => Math.max(rows.reduce((a, r) => a + rowH(r) + 12 * u * s, -12 * u * s), tile) + 48 * u * s;
-      L.push({
-        gap: 28, h: totalH, d: (x, y) => {
-          const hb = totalH(); g.fillStyle = P.card; k.rr(x, y, w, hb, 22 * u * s); g.fill();
-          let cx = x + 24 * u * s;
+      const rs = 29 * u * s, tile = st.template === 'event' && f.date ? 118 * u * s : 0, iw = 44 * u * s;
+      L.push(['d', (dr, x, y) => {
+        const rw = w - (tile ? tile + 24 * u * s : 0) - iw - 32 * u * s;
+        const rh = r => Math.max(pbText(k, r[1], { w: rw, size: rs, weight: 600, lh: 1.32 }), 36 * u * s);
+        const inner = rows.reduce((a, r) => a + rh(r) + 10 * u * s, -10 * u * s), hb = Math.max(inner, tile) + 36 * u * s;
+        if (dr) {
+          g.fillStyle = hexA(P.c.sky, .12); k.rr(x, y, w, hb, 18 * u * s); g.fill();
+          let cx = x + 16 * u * s;
           if (tile) {
             const d0 = parse(f.date), ty = y + (hb - tile) / 2;
-            g.fillStyle = P.chip; k.rr(cx, ty, tile, tile, 18 * u * s); g.fill();
-            const tc = pbTextOn(P.chip); g.fillStyle = tc; g.textAlign = 'center';
-            k.font(900, 64 * u * s, PB_HEAD); g.fillText(String(d0.getDate()), cx + tile / 2, ty + tile * .56);
-            k.font(700, 24 * u * s, PB_THAI); g.fillText(`${TH_MON[d0.getMonth()]} ${String(d0.getFullYear() + 543).slice(2)}`, cx + tile / 2, ty + tile * .84); g.textAlign = 'left';
-            cx += tile + 28 * u * s;
+            g.fillStyle = P.c.primary; k.rr(cx, ty, tile, tile, 16 * u * s); g.fill(); g.fillStyle = '#FFFFFF'; g.textAlign = 'center';
+            k.font(700, 58 * u * s, PB_HEAD); g.fillText(String(d0.getDate()), cx + tile / 2, ty + tile * .56);
+            k.font(600, 22 * u * s, PB_THAI); g.fillText(`${TH_MON[d0.getMonth()]} ${String(d0.getFullYear() + 543).slice(2)}`, cx + tile / 2, ty + tile * .84); g.textAlign = 'left';
+            cx += tile + 24 * u * s;
           }
-          let ry = y + (hb - rows.reduce((a, r) => a + rowH(r) + 12 * u * s, -12 * u * s)) / 2;
-          rows.forEach(r => { const rh = rowH(r); k.icon(r[0], cx, ry + 4 * u * s, 32 * u * s, P.accOnBg, 2.2); pbText(k, r[1], { x: cx + 48 * u * s, y: ry, w: rw, size: rs, weight: 600, fam: PB_THAI, lh: 1.32, color: P.ink, draw: 1 }); ry += rh + 12 * u * s; });
-        },
-      });
+          let ry = y + (hb - inner) / 2;
+          rows.forEach(r => { const h2 = rh(r); k.icon(r[0], cx, ry + 2 * u * s, 32 * u * s, P.c.sky, 2.3); pbText(k, r[1], { x: cx + iw, y: ry, w: rw, size: rs, weight: 600, lh: 1.32, color: P.text, draw: 1 }); ry += h2 + 10 * u * s; });
+        }
+        return hb;
+      }]);
     }
-    return L;
+    return { L, p };
   };
-  const tail = (s, w) => {   // anchored to the bottom of the text area: CTA + QR, fine print
-    const L = [], q = hasQr ? Math.max(150, 210 * s) * u : 0, cw = w - (q ? q + 32 * u : 0);
-    const label = st.qrLabel || (hasQr ? 'สแกน QR Code' : '');
-    if (f.cta || hasQr) {
-      L.push({
-        gap: 20, h: () => Math.max(q + (label ? 40 * u : 0), f.cta ? 84 * u * s : 0), d: (x, y) => {
-          const hb = Math.max(q + (label ? 40 * u : 0), f.cta ? 84 * u * s : 0);
-          if (f.cta) {
-            k.font(700, 32 * u * s, PB_THAI); const t = k.wrap(f.cta.trim(), cw - 120 * u * s)[0] || '', tw2 = g.measureText(t).width, ph = 84 * u * s, py = y + hb - ph - (q ? (label ? 40 * u : 0) : 0);
-            g.fillStyle = P.chip; k.rr(x, py, tw2 + 120 * u * s, ph, ph / 2); g.fill();
-            const tc = pbTextOn(P.chip); g.fillStyle = tc; g.fillText(t, x + 42 * u * s, py + ph * .64);
-            g.strokeStyle = tc; g.lineWidth = 4 * u * s; g.lineCap = 'round'; g.beginPath(); const ax = x + tw2 + 72 * u * s, ay = py + ph / 2; g.moveTo(ax, ay); g.lineTo(ax + 22 * u * s, ay); g.moveTo(ax + 12 * u * s, ay - 10 * u * s); g.lineTo(ax + 22 * u * s, ay); g.lineTo(ax + 12 * u * s, ay + 10 * u * s); g.stroke();
-          }
-          if (q) {
-            const qx = x + w - q, pd = 14 * u;
-            g.fillStyle = '#FFFFFF'; k.rr(qx, y, q, q, 16 * u); g.fill();
-            if (!P.dark) { g.strokeStyle = P.line; g.lineWidth = 2 * u; k.rr(qx, y, q, q, 16 * u); g.stroke(); }
-            if (qrIm) { const s2 = Math.min((q - 2 * pd) / qrIm.width, (q - 2 * pd) / qrIm.height); g.drawImage(qrIm, qx + (q - qrIm.width * s2) / 2, y + (q - qrIm.height * s2) / 2, qrIm.width * s2, qrIm.height * s2); }
-            else { const cell = (q - 2 * pd) / qr.n; g.fillStyle = '#000'; for (let r = 0; r < qr.n; r++) for (let c = 0; c < qr.n; c++) if (qr.dark(r, c)) g.fillRect(qx + pd + c * cell, y + pd + r * cell, cell + .5, cell + .5); }
-            if (label) { k.font(600, 22 * u, PB_THAI); g.fillStyle = P.sub; g.textAlign = 'center'; g.fillText(k.wrap(label, q + 40 * u)[0] || '', qx + q / 2, y + q + 32 * u); g.textAlign = 'left'; }
-          }
-        },
-      });
+  const cardH = (s, w) => { const { L, p } = cardItems(s, w - 2 * 34 * u * s); if (!L.length) return 0; return L.reduce((a, it) => a + it[1](false, 0, 0) + 24 * u * s, -24 * u * s) + 2 * p; };
+  const cardDraw = (s, x, y, w) => {
+    const { L, p } = cardItems(s, w - 2 * 34 * u * s); if (!L.length) return;
+    const h = cardH(s, w); g.fillStyle = P.card; k.shadow(P.cardShadow, 40 * u, 14 * u, .2); k.rr(x, y, w, h, 28 * u); g.fill(); k.shadow(false);
+    let yy = y + p; L.forEach(it => { yy += it[1](true, x + p, yy) + 24 * u * s; });
+  };
+  /* bottom: QR + caption box, or a CTA pill; fine print */
+  const tail = (s, draw, x, yTop) => {
+    let h = 0; const q = hasQr ? Math.max(150, 190 * s) * u : 0;
+    if (hasQr) {
+      if (draw) {
+        const y = yTop; g.fillStyle = '#FFFFFF'; k.shadow(!P.dark, 20 * u, 6 * u, .12); k.rr(x, y, q, q, 14 * u); g.fill(); k.shadow(false);
+        const pd = 12 * u;
+        if (qrIm) { const s2 = Math.min((q - 2 * pd) / qrIm.width, (q - 2 * pd) / qrIm.height); g.drawImage(qrIm, x + (q - qrIm.width * s2) / 2, y + (q - qrIm.height * s2) / 2, qrIm.width * s2, qrIm.height * s2); }
+        else { const cell = (q - 2 * pd) / qr.n; g.fillStyle = '#000'; for (let r = 0; r < qr.n; r++) for (let c = 0; c < qr.n; c++) if (qr.dark(r, c)) g.fillRect(x + pd + c * cell, y + pd + r * cell, cell + .5, cell + .5); }
+        const tx = x + q + 22 * u, tw = Math.min(bw - q - 22 * u, 640 * u), cap = [f.cta, st.qrLabel || (f.cta ? '' : 'สแกน QR Code')].filter(Boolean);
+        const th = cap.reduce((a, t, i) => a + pbText(k, t, { w: tw - 56 * u, size: (i ? 26 : 32) * u * Math.max(s, .8), weight: i ? 500 : 700, lh: 1.32 }), 0) + 40 * u;
+        const bh = Math.min(q, Math.max(th, q * .62)), by = y + (q - bh) / 2;
+        g.fillStyle = P.dark ? 'rgba(255,255,255,.14)' : P.c.primary; k.rr(tx, by, tw, bh, 18 * u); g.fill();
+        let cy = by + (bh - th) / 2 + 20 * u;
+        cap.forEach((t, i) => { cy += pbText(k, t, { x: tx + 28 * u, y: cy, w: tw - 56 * u, size: (i ? 26 : 32) * u * Math.max(s, .8), weight: i ? 500 : 700, lh: 1.32, color: '#FFFFFF', draw: 1 }); });
+      }
+      h += q + 22 * u;
+    } else if (f.cta) {
+      const ph = 80 * u * s;
+      if (draw) {
+        k.font(700, 32 * u * s, PB_THAI); const t = k.wrap(f.cta.trim(), bw - 120 * u * s)[0] || '', tw = g.measureText(t).width;
+        g.fillStyle = P.c.red; k.rr(x, yTop, tw + 116 * u * s, ph, ph / 2); g.fill(); g.fillStyle = '#FFFFFF'; g.fillText(t, x + 40 * u * s, yTop + ph * .64);
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 4 * u * s; g.lineCap = 'round'; g.beginPath(); const ax = x + tw + 70 * u * s, ay = yTop + ph / 2; g.moveTo(ax, ay); g.lineTo(ax + 22 * u * s, ay); g.moveTo(ax + 12 * u * s, ay - 10 * u * s); g.lineTo(ax + 22 * u * s, ay); g.lineTo(ax + 12 * u * s, ay + 10 * u * s); g.stroke();
+      }
+      h += ph + 22 * u;
     }
-    if (f.note) L.push({ gap: 0, h: () => pbText(k, f.note, { w, size: 22 * u * Math.max(s, .85), weight: 500, fam: PB_THAI, lh: 1.4 }), d: (x, y) => pbText(k, f.note, { x, y, w, size: 22 * u * Math.max(s, .85), weight: 500, fam: PB_THAI, lh: 1.4, color: P.mute, draw: 1 }) });
-    return L;
+    const fine = [f.note, B.footer].filter(Boolean).join('\n');
+    if (fine) h += pbText(k, fine, { x, y: yTop + h, w: bw, size: 20 * u, weight: 500, lh: 1.4, color: P.mute, draw });
+    else if (h) h -= 22 * u;
+    return h;
   };
-  const sum = L => L.reduce((a, b, i) => a + b.h() + (i < L.length - 1 ? b.gap * u : 0), 0);
-  const fit = R0 => {   // largest type scale that fits the text area
-    for (let s = story ? 1.45 : 1.15; s >= .4; s -= .025) { const A = blocks(s, R0.T.w), Z = tail(s, R0.T.w); if (sum(A) + sum(Z) + (Z.length ? 40 * u : 0) <= R0.T.h) return { S: s, A, Z }; }
-    return { S: .4, A: blocks(.4, R0.T.w), Z: tail(.4, R0.T.w) };
+
+  /* fit: largest type scale; the illustration gives up space before the text gets small */
+  const hasVisual = st.visual !== 'none' && !(photoBg && story);
+  const base = !hasVisual ? 0 : story ? .3 : land ? .36 : .34;
+  const plan = (frac, s) => {
+    const hh = head(s, false, 0, 0), th = tail(s, false, 0, 0), bodyTop = top0 + Math.max(hh, lh) + 40 * u, bodyBot = bottom - (th ? th + 36 * u : 0), bodyH = bodyBot - bodyTop;
+    if (story) { const ch = cardH(s, bw), vh = frac ? Math.max(bodyH * frac, Math.min(bodyH - ch - 30 * u, bodyH * .5)) : 0; return { ok: ch <= bodyH - (vh ? vh + 30 * u : 0), bodyTop, bodyH, th, V: vh ? { x: M, y: bodyTop, w: bw, h: vh } : null, C: { x: M, y: bodyTop + (vh ? vh + 30 * u : 0), w: bw } }; }
+    const vw = frac ? bw * frac : 0, cw = bw - (vw ? vw + 36 * u : 0), ch = cardH(s, cw);
+    return { ok: ch <= bodyH, bodyTop, bodyH, th, ch, V: vw ? { x: W - M - vw, y: bodyTop, w: vw, h: bodyH } : null, C: { x: M, y: bodyTop, w: cw } };
   };
-  /* dense copy: the visual gives up space (down to a slim band) before the text gets small */
-  let R = region(base), F = fit(R);
-  for (const m of [.75, .55, .4, 0]) { if (!base || F.S >= .78) break; const R2 = region(base * m), F2 = fit(R2); if (F2.S > F.S + (m ? 0 : .1)) { R = R2; F = F2; } }
-  const { T, Vr } = R, { S, A, Z } = F;
-  if (Vr) pbVisual(k, st, P, Vr.x, Vr.y, Vr.w, Vr.h);
-  /* text sits next to the visual: vertically centred in landscape, top-aligned otherwise */
-  const free = T.h - sum(A) - sum(Z) - (Z.length ? 40 * u : 0);
-  let y = T.y + (land ? Math.max(0, free) * (Z.length ? .3 : .5) : (Vr ? 0 : Math.max(0, free) * .25));
-  A.forEach(b => { b.d(T.x, y); y += b.h() + b.gap * u; });
-  let yb = T.y + T.h - sum(Z);
-  Z.forEach(b => { b.d(T.x, yb); yb += b.h() + b.gap * u; });
-  return { scale: S, overflow: S === .4 && free < 0, dense: S < .6 };
+  const fit = frac => { for (let s = story ? 1.7 : 1.3; s >= .4; s -= .025) { const L = plan(frac, s); if (L.ok) return { s, L }; } return { s: .4, L: plan(frac, .4), over: true }; };
+  let F = fit(base);
+  for (const m of [.75, .5, 0]) { if (!base || F.s >= .78) break; const F2 = fit(base * m); if (F2.s > F.s + (m ? 0 : .1)) F = F2; }
+  const { s: S, L } = F;
+  if (L.V && !photoBg) pbScene(k, st, P, L.V.x, L.V.y, L.V.w, L.V.h);
+  head(S, true, M, top0);
+  const ch = cardH(S, L.C.w), free = story ? 0 : Math.max(0, L.bodyH - ch);
+  cardDraw(S, L.C.x, L.C.y + free * .3, L.C.w);
+  if (L.th) tail(S, true, M, bottom - L.th);
+  return { scale: S, overflow: !!F.over, dense: S < .6, scene: pbSceneOf(st) };
 }
 
 /* ============================================================
@@ -452,7 +508,7 @@ V.poster = (root, force) => {
   <div class="pb">
     <div class="pb-form">
       <section class="card pb-step"><h3><span class="pb-n">1</span>Template และขนาด</h3>
-        <div class="pb-tpls">${Object.entries(PB_TEMPLATES).map(([key, t]) => `<button type="button" class="pb-tpl ${key === st.template ? 'on' : ''}" data-act="pbTpl" data-id="${key}" aria-pressed="${key === st.template}"><span class="pb-tpl-ico">${pbIconSvg(t[2], 22)}</span><b>${t[0]}</b><small>${t[1]}</small></button>`).join('')}</div>
+        <div class="pb-tpls">${Object.entries(PB_TEMPLATES).map(([key, t]) => `<button type="button" class="pb-tpl ${key === st.template ? 'on' : ''}" data-act="pbTpl" data-id="${key}" aria-pressed="${key === st.template}"><span class="pb-tpl-ico">${pbIconSvg(PB_SCENES[t[2]][1], 22)}</span><b>${t[0]}</b><small>${t[1]}</small></button>`).join('')}</div>
         <div class="pb-sub">ขนาดภาพ <small class="muted">— เปลี่ยนได้ทุกเมื่อ ระบบจัดข้อความและภาพใหม่ให้</small></div>
         <div class="pb-fmts">${Object.entries(PB_FORMATS).map(([key, fm]) => `<button type="button" class="pb-fmt ${key === st.format ? 'on' : ''}" data-act="pbFmt" data-id="${key}" aria-pressed="${key === st.format}"><i style="aspect-ratio:${fm[2]}/${fm[3]}"></i><b>${fm[0]} ${fm[1]}</b><small>${fm[2]} × ${fm[3]} px · ${fm[4]}</small></button>`).join('')}</div>
       </section>
@@ -478,13 +534,14 @@ V.poster = (root, force) => {
           </div>
         </details>
       </section>
-      <section class="card pb-step"><h3><span class="pb-n">3</span>ให้ AI ช่วยเรียบเรียง</h3>
-        <p class="muted small">AI ปรับถ้อยคำให้อ่านง่าย จัดลำดับเนื้อหา และเลือกไอคอน กราฟิก และสีเน้นจาก CI — <b>ไม่เปลี่ยนข้อเท็จจริง</b> (ตัวเลข วันเวลา สถานที่ เงื่อนไข) ระบบตรวจตัวเลขซ้ำให้อีกชั้น</p>
-        <div class="btn-row mt"><button type="button" class="btn btn-primary" data-act="pbAI" id="pbAIBtn">${ico('sparkles', 15)} เรียบเรียงด้วย AI</button><button type="button" class="btn btn-ghost" data-act="pbAuto">จัดอัตโนมัติ (ไม่ใช้ AI)</button></div>
+      <section class="card pb-step"><h3><span class="pb-n">3</span>ให้ AI ช่วยเรียบเรียงและออกแบบ</h3>
+        <p class="muted small">ภาพประกอบเลือกให้อัตโนมัติจากคำในเนื้อหา (ไม่ใช้ AI) — ตอนนี้: <b id="pbSceneNow">${esc(PB_SCENES[pbSceneOf(st)][0])}</b>${st.scene === 'auto' ? '' : ' (เลือกเอง)'}</p>
+        <div class="btn-row mt"><button type="button" class="btn btn-primary" data-act="pbAI" id="pbAIBtn">${ico('sparkles', 15)} เรียบเรียงข้อความ + ออกแบบ</button><button type="button" class="btn btn-ghost" data-act="pbDesign" id="pbDesignBtn">${ico('image', 15)} ให้ AI ออกแบบภาพอย่างเดียว</button><button type="button" class="btn btn-ghost" data-act="pbAuto">จัดอัตโนมัติ (ไม่ใช้ AI)</button></div>
+        <p class="muted small mt">AI ปรับถ้อยคำและเลือกภาพ ไอคอน พื้นหลัง สีจาก CI — <b>ไม่เปลี่ยนข้อเท็จจริง</b> (ตัวเลข วันเวลา สถานที่ เงื่อนไข) ระบบตรวจตัวเลขซ้ำอีกชั้น · “ออกแบบภาพอย่างเดียว” ส่งแค่หัวข้อสั้น ๆ ใช้ token น้อย และจำผลไว้ ไม่เรียกซ้ำถ้าข้อความเดิม</p>
         ${ai ? `<div class="pb-ai ${ai.warn && ai.warn.length ? 'warn' : ''}">
-          <div><b>${ai.by === 'ai' ? 'AI เรียบเรียงแล้ว' : 'จัดเรียงอัตโนมัติแล้ว'}</b>${ai.note ? ` — ${esc(ai.note)}` : ''}</div>
-          ${ai.warn && ai.warn.length ? `<p class="pb-warn">${ico('alert', 15)} ตรวจข้อเท็จจริง: ${ai.warn.map(esc).join(' · ')} — กรุณาแก้ในช่องเนื้อหาหรือย้อนกลับ</p>` : `<p class="small muted">${ico('check', 14)} ตัวเลขและวันเวลาครบตามต้นฉบับ</p>`}
-          <button type="button" class="btn btn-sm btn-ghost" data-act="pbRevert">${ico('left', 13)} ย้อนกลับเป็นข้อความเดิม</button></div>` : ''}
+          <div><b>${ai.by === 'ai' ? 'AI เรียบเรียงแล้ว' : ai.by === 'design' ? 'AI ออกแบบภาพแล้ว' : 'จัดเรียงอัตโนมัติแล้ว'}</b>${ai.note ? ` — ${esc(ai.note)}` : ''}</div>
+          ${ai.by === 'design' ? '' : ai.warn && ai.warn.length ? `<p class="pb-warn">${ico('alert', 15)} ตรวจข้อเท็จจริง: ${ai.warn.map(esc).join(' · ')} — กรุณาแก้ในช่องเนื้อหาหรือย้อนกลับ</p>` : `<p class="small muted">${ico('check', 14)} ตัวเลขและวันเวลาครบตามต้นฉบับ</p>`}
+          ${ai.by === 'design' ? '' : `<button type="button" class="btn btn-sm btn-ghost" data-act="pbRevert">${ico('left', 13)} ย้อนกลับเป็นข้อความเดิม</button>`}</div>` : ''}
       </section>
     </div>
     <div class="pb-side">
@@ -493,12 +550,12 @@ V.poster = (root, force) => {
         <div class="pb-pv" id="pbPv" data-fmt="${st.format}"><canvas id="pbCv" role="img" aria-label="ตัวอย่างโปสเตอร์ ${esc(st.f.headline)}"></canvas></div>
         <p class="pb-fit" id="pbFit" hidden>${ico('alert', 14)} ข้อความยาวเกินพื้นที่ของขนาดนี้ — ลดเนื้อหา หรือซ่อนภาพประกอบ</p>
         <div class="pb-tune">
-          <div class="pb-row"><span>พื้นหลัง</span>${pbChips(PB_STYLES, st.style, 'pbStyle', (key, v) => `${dot({ royal: C.primary, navy: C.navy, paper: C.paper, white: '#fff' }[key])}${v[0]}`)}</div>
+          <div class="pb-row"><span>พื้นหลัง <small class="muted">(สีตาม CI)</small></span>${pbChips(Object.fromEntries(Object.entries(PB_STYLES).filter(([key]) => key !== 'photo' || st.photo)), st.style === 'photo' && !st.photo ? 'deep' : st.style, 'pbStyle', (key, v) => `${dot({ deep: C.primary, lavender: C.lavender, sky: C.paper, pink: C.pink, white: '#fff', photo: '#888' }[key])}${v[0]}`)}</div>
           <div class="pb-row"><span>สีเน้น</span>${pbChips(PB_ACCENTS, st.accent, 'pbAccent', (key, v) => `${dot(C[key])}${v}`)}</div>
-          <div class="pb-row"><span>ภาพประกอบ</span>${pbChips({ auto: st.photo ? 'รูปที่อัปโหลด' : 'กราฟิก + ไอคอน', graphic: 'กราฟิกเท่านั้น', none: 'ไม่มี' }, st.photo ? st.visual : (st.visual === 'graphic' ? 'auto' : st.visual), 'pbVisual')}
+          <div class="pb-row"><span>รูปถ่าย <small class="muted">(คน / สถานที่ที่เกี่ยวกับเนื้อหา — แสดงเต็มพื้นหลังแบบโปสเตอร์ Health)</small></span>
             <div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-act="pbPhoto">${ico('image', 13)} ${st.photo ? 'เปลี่ยนรูป' : 'อัปโหลดรูป'}</button>${st.photo ? `<button type="button" class="btn btn-sm btn-danger-ghost" data-act="pbPhotoClear">${ico('trash', 13)} ลบรูป</button><label class="pb-range">ตำแหน่งภาพ<input type="range" id="pbPhotoY" min="0" max="1" step=".05" value="${st.photoY}"></label>` : ''}</div></div>
-          <div class="pb-row"><span>ลายกราฟิก</span>${pbChips(PB_MOTIFS, st.motif, 'pbMotif')}</div>
-          <div class="pb-row"><span>ไอคอน</span><div class="pb-icons">${Object.keys(PB_ICONS).map(key => `<button type="button" class="${key === st.icon ? 'on' : ''}" data-act="pbIcon" data-id="${key}" title="${key}" aria-label="ไอคอน ${key}" aria-pressed="${key === st.icon}">${pbIconSvg(key, 20)}</button>`).join('')}</div></div>
+          <div class="pb-row"><span>ภาพประกอบตามเนื้อหา</span>${pbChips({ auto: `อัตโนมัติ · ${PB_SCENES[pbAutoScene(st)][0]}`, ...Object.fromEntries(Object.entries(PB_SCENES).map(([key, v]) => [key, v[0]])), none: 'ไม่มีภาพ' }, st.visual === 'none' ? 'none' : st.scene, 'pbScene', (key, v) => `${PB_SCENES[key] ? pbIconSvg(PB_SCENES[key][1], 15) : ''}${esc(v)}`)}</div>
+          <div class="pb-row"><span>ไอคอนหลัก</span><div class="pb-icons"><button type="button" class="pb-icon-auto ${!st.icon ? 'on' : ''}" data-act="pbIcon" data-id="" aria-pressed="${!st.icon}">ตามภาพ</button>${Object.keys(PB_ICONS).map(key => `<button type="button" class="${key === st.icon ? 'on' : ''}" data-act="pbIcon" data-id="${key}" title="${key}" aria-label="ไอคอน ${key}" aria-pressed="${key === st.icon}">${pbIconSvg(key, 20)}</button>`).join('')}</div></div>
         </div>
       </section>
       <section class="card pb-step"><h3><span class="pb-n">5</span>Export</h3>
@@ -511,7 +568,7 @@ V.poster = (root, force) => {
   const R = $('#pbRoot', root);
   R.addEventListener('input', e => {
     const el = e.target;
-    if (el.dataset.pf) { PST.f[el.dataset.pf] = el.value; pbTouch(); pbSchedule(); return; }
+    if (el.dataset.pf) { PST.f[el.dataset.pf] = el.value; pbTouch(); pbSchedule(); const sn = $('#pbSceneNow'); if (sn) sn.textContent = PB_SCENES[pbSceneOf(PST)][0]; return; }
     if (el.id === 'pbQrUrl') { PST.qrUrl = el.value; pbTouch(); pbSchedule(); return; }
     if (el.id === 'pbQrLabel') { PST.qrLabel = el.value; pbTouch(); pbSchedule(); return; }
     if (el.id === 'pbPhotoY') { PST.photoY = +el.value; pbTouch(); pbSchedule(); }
@@ -525,22 +582,22 @@ const pbRender = () => { const v = $('#view'); if (v && route().name === 'poster
 /* ---------- choices ---------- */
 ACT.pbTpl = el => {
   const t = PB_TEMPLATES[el.dataset.id]; if (!t) return;
-  PST.template = el.dataset.id; [, , PST.icon, PST.motif, PST.style, PST.accent] = t; pbTouch(); pbRender();
+  PST.template = el.dataset.id; [, , , PST.style, PST.accent] = t; if (PST.style === 'photo' || PST.photo && PST.template !== 'recognition') PST.style = PST.photo ? 'photo' : PST.style; pbTouch(); pbRender();
 };
 ACT.pbFmt = el => { if (!PB_FORMATS[el.dataset.id]) return; PST.format = el.dataset.id; pbTouch(); pbRender(); };
 ACT.pbStyle = el => { PST.style = el.dataset.id; pbTouch(); pbRender(); };
 ACT.pbAccent = el => { PST.accent = el.dataset.id; pbTouch(); pbRender(); };
-ACT.pbMotif = el => { PST.motif = el.dataset.id; if (PST.visual === 'none') PST.visual = 'auto'; pbTouch(); pbRender(); };
-ACT.pbIcon = el => { PST.icon = el.dataset.id; if (PST.visual === 'none') PST.visual = 'auto'; pbTouch(); pbRender(); };
+ACT.pbScene = el => { const v = el.dataset.id; if (v === 'none') PST.visual = 'none'; else { PST.visual = 'auto'; PST.scene = v; PST.icon = null; PST.badges = null; } pbTouch(); pbRender(); };
+ACT.pbIcon = el => { PST.icon = el.dataset.id || null; if (PST.visual === 'none') PST.visual = 'auto'; pbTouch(); pbRender(); };
 ACT.pbVisual = el => { PST.visual = el.dataset.id; pbTouch(); pbRender(); };
-ACT.pbPhoto = async () => { const f = await pickFile(); if (!f) return; try { PST.photo = await pbLoadImage(f, 1600); PST.visual = 'auto'; pbTouch(); pbRender(); } catch (e) { toast(e.message, 'error'); } };
-ACT.pbPhotoClear = () => { PST.photo = null; pbTouch(); pbRender(); };
+ACT.pbPhoto = async () => { const f = await pickFile(); if (!f) return; try { PST.photo = await pbLoadImage(f, 1600); if (PST.template !== 'recognition') PST.style = 'photo'; pbTouch(); pbRender(); } catch (e) { toast(e.message, 'error'); } };
+ACT.pbPhotoClear = () => { PST.photo = null; if (PST.style === 'photo') PST.style = PB_TEMPLATES[PST.template][3]; pbTouch(); pbRender(); };
 ACT.pbQrImg = async () => { const f = await pickFile(); if (!f) return; try { PST.qrImg = await pbLoadImage(f, 800, true); pbTouch(); pbRender(); } catch (e) { toast(e.message, 'error'); } };
 ACT.pbQrClear = () => { PST.qrImg = null; pbTouch(); pbRender(); };
 ACT.pbNew = async () => {
   if ((PST.f.headline || PST.f.content) && !(await confirmBox('เริ่มโปสเตอร์ใหม่? งานที่ยังไม่บันทึกจะหายไป', 'เริ่มใหม่'))) return;
   const keep = { template: PST.template, format: PST.format }; PST = pbBlank(); Object.assign(PST, keep);
-  [, , PST.icon, PST.motif, PST.style, PST.accent] = PB_TEMPLATES[PST.template]; pbRender();
+  [, , , PST.style, PST.accent] = PB_TEMPLATES[PST.template]; pbRender();
 };
 
 /* ---------- AI + fact guard ---------- */
@@ -554,10 +611,6 @@ function pbFactCheck(before, after) {   // numbers in the user's draft must surv
   [...new Set(b)].forEach(x => { if (!srcN.includes(x)) warn.push(`มีตัวเลข “${x}” ที่ไม่อยู่ในต้นฉบับ`); });
   return warn;
 }
-const PB_ICON_WORDS = [[/ประชุม|สัมมนา|บรรยาย|webinar|talk/i, 'mic'], [/อบรม|เรียน|course|academy|ความรู้|คู่มือ/i, 'book'], [/รางวัล|award|ชนะ|แชมป์|trophy/i, 'trophy'], [/ยินดี|congrat|ชื่นชม/i, 'star'],
-  [/ยอด|เป้า|target|kpi/i, 'target'], [/โบนัส|เงิน|บาท|ค่าคอม|commission|incentive/i, 'coin'], [/ของขวัญ|ของรางวัล|gift|แจก/i, 'gift'], [/เติบโต|เพิ่มขึ้น|growth|สถิติ/i, 'chart'],
-  [/ปลอดภัย|ความเสี่ยง|security|ป้องกัน|compliance/i, 'shield'], [/เปิดตัว|launch|ใหม่|new/i, 'rocket'], [/สุขภาพ|ดูแล|ขอบคุณ|thank/i, 'heart'], [/ทีม|team|สมาชิก/i, 'users'],
-  [/เคล็ดลับ|tip|ไอเดีย|idea/i, 'bulb'], [/เวลา|ปรับเวลา|deadline|ภายใน/i, 'clock'], [/ประกาศ|แจ้ง/i, 'megaphone']];
 function pbAutoArrange() {
   const f = PST.f, before = { ...f };
   const tidy = s => String(s || '').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').trim();
@@ -566,10 +619,9 @@ function pbAutoArrange() {
   if (pts.length === 1 && pts[0].length > 70) pts = pts[0].split(/(?<=[.!?])\s+|\s{2,}/).map(x => x.trim()).filter(Boolean);
   f.content = pts.join('\n');
   if (!f.headline && pts.length) { f.headline = pts.shift(); f.content = pts.join('\n'); }
-  const all = [f.keyword, f.headline, f.sub, f.content].join(' '), hit = PB_ICON_WORDS.find(([re]) => re.test(all));
-  if (hit) PST.icon = hit[1];
+  PST.scene = 'auto'; PST.icon = null; PST.badges = null; if (PST.visual === 'none') PST.visual = 'auto';
   if (!f.keyword) f.keyword = { announce: 'ประกาศ', event: 'ขอเชิญร่วมงาน', campaign: 'Campaign', howto: 'How-to', recognition: 'Congratulations' }[PST.template];
-  PST.ai = { by: 'auto', orig: before, note: 'จัดช่องว่าง แยกเนื้อหาเป็นข้อ เลือกไอคอนตามคำสำคัญ', warn: pbFactCheck(before, f) };
+  PST.ai = { by: 'auto', orig: before, note: `จัดช่องว่าง แยกเนื้อหาเป็นข้อ เลือกภาพประกอบจากคำในเนื้อหา (${PB_SCENES[pbAutoScene(PST)][0]})`, warn: pbFactCheck(before, f) };
 }
 ACT.pbAuto = () => { pbAutoArrange(); pbTouch(); pbRender(); toast('จัดเรียงแล้ว — ตรวจ Preview ก่อน Export'); };
 ACT.pbAI = async () => {
@@ -584,8 +636,7 @@ ACT.pbAI = async () => {
     if (!r.ok) throw new Error(j.error || 'AI ขัดข้อง');
     const x = j.result || {};
     Object.assign(f, { keyword: x.keyword || '', headline: x.headline || f.headline, sub: x.sub || '', content: (x.points || []).join('\n'), cta: x.cta || '' });
-    if (PB_ICONS[x.icon]) PST.icon = x.icon; if (PB_MOTIFS[x.motif]) PST.motif = x.motif; if (PB_ACCENTS[x.accent]) PST.accent = x.accent;
-    if (PST.visual === 'none') PST.visual = 'auto';
+    pbApplyDesign(x);
     PST.ai = { by: 'ai', orig: before, note: x.note || '', warn: pbFactCheck(before, f) };
     toast(PST.ai.warn.length ? 'AI เรียบเรียงแล้ว — มีจุดที่ต้องตรวจตัวเลข' : 'AI เรียบเรียงแล้ว — ตรวจ Preview ก่อน Export', PST.ai.warn.length ? 'error' : 'ok');
   } catch (e) {
@@ -593,6 +644,29 @@ ACT.pbAI = async () => {
     pbAutoArrange(); toast(Store.mode === 'server' ? 'ยังไม่ได้เปิดใช้ AI — ใช้การจัดอัตโนมัติแทน' : 'โหมดสาธิต (ไม่มีเซิร์ฟเวอร์) — ใช้การจัดอัตโนมัติแทน AI');
   }
   pbTouch(); pbRender();
+};
+function pbApplyDesign(x) {   // scene / badges / background / accent chosen by AI — always from the CI lists
+  if (PB_SCENES[x.scene]) { PST.scene = x.scene; PST.icon = null; }
+  PST.badges = Array.isArray(x.badges) && x.badges.length === 3 && x.badges.every(b => PB_ICONS[b]) ? x.badges : null;
+  if (PB_STYLES[x.style] && x.style !== 'photo' && PST.style !== 'photo') PST.style = x.style;
+  if (PB_ACCENTS[x.accent]) PST.accent = x.accent;
+  if (PST.visual === 'none') PST.visual = 'auto';
+}
+const PB_DESIGN_CACHE = new Map();   // same text → same design, no second AI call
+ACT.pbDesign = async () => {
+  const f = PST.f, text = [f.keyword, f.headline, f.sub, f.highlight, f.content].filter(Boolean).join('\n').slice(0, 600).trim();
+  if (!text) return toast('กรอก Headline หรือ Content ก่อน', 'error');
+  const key = PST.template + '|' + text, done = (x, cached) => { pbApplyDesign(x); PST.ai = { by: 'design', note: `ภาพ: ${PB_SCENES[PST.scene]?.[0] || '-'} · พื้นหลัง: ${PB_STYLES[PST.style][0]}${cached ? ' (ใช้ผลเดิม ไม่เรียก AI ซ้ำ)' : ''}` }; pbTouch(); pbRender(); };
+  if (PB_DESIGN_CACHE.has(key)) return done(PB_DESIGN_CACHE.get(key), true);
+  if (Store.mode !== 'server') { PST.scene = 'auto'; pbRender(); return toast('โหมดสาธิต — ใช้การเลือกภาพจากคำในเนื้อหาแทน AI'); }
+  const btn = $('#pbDesignBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังออกแบบ…'; }
+  try {
+    const r = await fetch('api/ai-design', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ template: PB_TEMPLATES[PST.template][0], text }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 501) { PST.scene = 'auto'; pbRender(); return toast('ยังไม่ได้เปิดใช้ AI — ใช้การเลือกภาพจากคำในเนื้อหาแทน'); }
+    if (!r.ok) throw new Error(j.error || 'AI ขัดข้อง');
+    PB_DESIGN_CACHE.set(key, j.result || {}); done(j.result || {});
+  } catch (e) { toast(e.message, 'error'); if (btn) { btn.disabled = false; btn.innerHTML = `${ico('image', 15)} ให้ AI ออกแบบภาพอย่างเดียว`; } }
 };
 ACT.pbRevert = () => { if (!PST.ai) return; Object.assign(PST.f, PST.ai.orig); PST.ai = null; pbTouch(); pbRender(); toast('ย้อนกลับเป็นข้อความเดิมแล้ว'); };
 
@@ -652,20 +726,21 @@ ACT.pbDrafts = () => {
 /* ---------- CI Control (Admin edits · everyone else sees what is locked) ---------- */
 ACT.pbBrand = () => {
   const B = pbBrand(), can = isAdmin(), draft = JSON.parse(JSON.stringify(B));
-  const logoBox = key => `<div class="pb-logo ${key === 'logoDark' ? 'dark' : ''}" id="pbL_${key}">${draft[key] ? `<img src="${draft[key]}" alt="">` : '<span class="muted small">ใช้ชื่อองค์กรแทนโลโก้</span>'}</div>`;
+  const logoBox = key => `<div class="pb-logo" id="pbL_${key}">${draft[key] ? `<img src="${draft[key]}" alt="">` : '<span class="muted small">ใช้ชื่อองค์กรแทนโลโก้</span>'}</div>`;
   modal({
     title: 'CI Control · มาตรฐานภาพลักษณ์', wide: true, cls: 'pb-brand',
     body: `<p class="muted small">${can ? 'กำหนดสี โลโก้ และข้อความท้ายโปสเตอร์ตามที่ทีม Brand อนุมัติ — ทุกคนในทีมใช้ชุดเดียวกัน ผู้ใช้เลือกได้เฉพาะจากชุดนี้' : 'ล็อกโดย Admin / ทีม Brand — ผู้ใช้เลือกได้เฉพาะสีและองค์ประกอบในชุดนี้'}</p>
       <div class="form-grid mt">
         <label class="field"><span>ชื่อองค์กร / ทีม</span><input id="pbBOrg" value="${esc(draft.org)}" ${can ? '' : 'disabled'}></label>
-        <label class="field"><span>ข้อความท้ายโปสเตอร์</span><input id="pbBFoot" value="${esc(draft.footer)}" ${can ? '' : 'disabled'}></label>
-        <div class="field"><span>โลโก้ (สำหรับพื้นสว่าง)</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
-        <div class="field"><span>โลโก้สีขาว (สำหรับพื้นเข้ม) <small>— ถ้าไม่มี ระบบวางโลโก้หลักบนป้ายสีขาว</small></span>${logoBox('logoDark')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logoDark">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logoDark">ลบ</button></div>` : ''}</div>
+        <label class="field"><span>ข้อความกำกับท้ายโปสเตอร์ <small>(ไม่บังคับ)</small></span><input id="pbBFoot" value="${esc(draft.footer)}" ${can ? '' : 'disabled'}></label>
+        <p class="full small muted">โลโก้วางคู่กันมุมขวาบนของทุกโปสเตอร์ (ตามแนวทาง Health Content) — อัปโหลดไฟล์ทางการจากทีม Brand เป็น PNG แบบ tile สี่เหลี่ยม ห้ามแก้สีหรือสัดส่วน</p>
+        <div class="field"><span>โลโก้ 1 (ซ้าย) — เช่น Krungthai</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
+        <div class="field"><span>โลโก้ 2 (ขวา) — เช่น AXA</span>${logoBox('logo2')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo2">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo2">ลบ</button></div>` : ''}</div>
       </div>
       <h4 class="mt">สีที่อนุมัติ</h4>
       <div class="pb-colors">${Object.keys(PB_BRAND_DEFAULT.colors).map(key => `<label class="pb-color"><input type="color" data-col="${key}" value="${draft.colors[key]}" ${can ? '' : 'disabled'}><span><b>${PB_COLOR_LABEL[key]}</b><small>${draft.colors[key].toUpperCase()}</small></span></label>`).join('')}</div>
       <h4 class="mt">ฟอนต์</h4>
-      <p class="small muted">Headline: <b>Publico</b> (เมื่อติดตั้งในเครื่อง) / Source Serif 4 · ตัวอักษรอังกฤษ: <b>Source Sans Pro</b> · ภาษาไทย: <b>IBM Plex Sans Thai</b> — ล็อกในระบบ</p>`,
+      <p class="small muted">Headline และเนื้อหาภาษาไทย: <b>IBM Plex Sans Thai</b> (ตัวหนา) · ตัวเลข/อังกฤษ: <b>Source Sans Pro</b> — ล็อกในระบบ · พื้นหลังที่อนุญาต: Deep Blue, Lavender, Light Blue, Soft Pink, White และรูปถ่าย</p>`,
     actions: can ? [
       { label: 'คืนค่าเริ่มต้น', cls: 'btn-ghost', left: true, onClick: async () => { if (!(await confirmBox('คืนค่า CI เป็นค่าเริ่มต้น?', 'คืนค่า'))) return false; delete S().settings.brand; commit(); pbRender(); toast('คืนค่า CI แล้ว'); } },
       { label: 'ยกเลิก' },
