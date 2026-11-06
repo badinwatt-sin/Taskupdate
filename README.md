@@ -1,7 +1,7 @@
 # Agency Experience Team Hub
 
 ระบบกลางสำหรับวางแผนและติดตามงานของทีม Agency Experience — **บันทึกงานครั้งเดียว ดูได้หลายมุม**
-(Home · My Plan · Projects · Calendar · Board (Gantt/Kanban) · Offsite · Team · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
+(Home · My Plan · Projects · Calendar · Board (Gantt/Kanban) · Offsite · Poster · Team · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
 
 ## เริ่มใช้งาน
 ```bash
@@ -35,3 +35,17 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 - Export: Excel = ไฟล์ CSV, PDF = ปุ่ม “พิมพ์ / PDF”
 - ไฟล์แนบเก็บในข้อมูลโดยตรง (≤ 1 MB/ไฟล์) — ไฟล์ใหญ่ให้ใส่เป็น Link
 - วันหยุดบริษัทตัวอย่างปรับได้ที่ ทีมและการตั้งค่า (Admin)
+
+## Poster — CI Poster Builder
+สร้าง Communications Poster เองได้เร็ว บน Template มาตรฐานและ CI องค์กร (เมนู **Poster**) — ภาษาภาพตามแนวทาง Health Content Education 2026
+1. เลือก Template — Announcement · Event & Invitation · Campaign · How-to & Tips · Recognition — และขนาด Square 1:1 (1080×1080) · Portrait 4:5 (1080×1350) · Story 9:16 (1080×1920, เว้นขอบบน/ล่างให้ UI ของแอป) · Landscape 16:9 (1920×1080)
+2. กรอก Keyword, Headline (บรรทัดแรก = แถบเน้น · Enter = บรรทัดตัวใหญ่ต่อ), Content (ขึ้นบรรทัดใหม่ = 1 ข้อ / 1 ขั้นตอน), Call to action และรายละเอียดเพิ่มเติม: วัน เวลา สถานที่ QR Code (จากลิงก์ หรืออัปโหลดรูป QR) เงื่อนไข
+3. ภาพประกอบตามเนื้อหา: ระบบเลือก “ฉาก” (สุขภาพ วัคซีน โรงพยาบาล/เคลม ปรึกษาแพทย์ แอป ยา ความคุ้มครอง ครอบครัว ค่าใช้จ่าย ระยะเวลา ขั้นตอน งาน รางวัล แคมเปญ เดินทาง หน้าฝน PM 2.5 ประกาศ) จากคำในเนื้อหาให้อัตโนมัติ **โดยไม่ใช้ AI** · อัปโหลดรูปคน/สถานที่ → แสดงเต็มพื้นหลังพร้อมเงาสีน้ำเงินด้านข้อความ
+   - **เรียบเรียงข้อความ + ออกแบบ** (`POST /api/ai-poster`) — ปรับถ้อยคำ จัดลำดับ และเลือกฉาก ไอคอน 3 ตัว พื้นหลัง สีเน้น; วัน เวลา สถานที่ เงื่อนไขไม่ถูกแก้ และตรวจตัวเลขซ้ำ (หาย / เพิ่ม → แจ้งเตือน + ย้อนกลับ)
+   - **ให้ AI ออกแบบภาพอย่างเดียว** (`POST /api/ai-design`) — ส่งแค่ข้อความสั้น ≤ 600 ตัวอักษร ใช้ Claude Haiku 5.5 (effort low) ตอบเป็นตัวเลือกจากรายการ CI และจำผลไว้ ข้อความเดิมไม่เรียกซ้ำ
+   - ใช้ `ANTHROPIC_API_KEY` เดียวกับ AI Import · ไม่มี Key หรือโหมดสาธิต → ใช้การเลือกอัตโนมัติแทน
+4. Preview สด ปรับพื้นหลัง (Deep Blue · Lavender · Light Blue · Soft Pink · White · Photo) สีเน้น ภาพประกอบ ไอคอนหลัก · เปลี่ยนขนาดจากงานเดิมได้ทันที ระบบจัดใหม่และย่อตัวอักษรให้พอดีเอง (ภาพประกอบหดก่อนตัวอักษร)
+5. Export PNG / JPG หรือครบ 4 ขนาด — ต้องติ๊ก “ตรวจสอบแล้ว” ใหม่ทุกครั้งที่แก้ไข
+- **CI Control** (Admin): โลโก้คู่ Krungthai-AXA มุมซ้ายบน (ไฟล์สีสำหรับพื้นสว่าง + ไฟล์ขาว/ขอบขาวสำหรับพื้นเข้มและรูป รับ SVG/PNG — อัปโหลดไฟล์ทางการจากทีม Brand; repo นี้ไม่เก็บไฟล์โลโก้) สีที่อนุมัติ (ค่าเริ่มต้นตามไฟล์ Logo_Font_CI_Guidelines: AXA Blue #00008F · AXA Red #FF1721 · Blue Tint 1/2/3 #E2EFFF/#6574F8/#0C0E45 · Red Tint 1 #FFEAEA) ชื่อองค์กร และข้อความกำกับท้าย — เก็บใน `settings.brand` ใช้ร่วมกันทั้งทีม
+- ฉบับร่างเก็บในเบราว์เซอร์ของแต่ละคน (ล่าสุด 20 งาน)
+- QR Code: `js/vendor/qrcode.min.js` — qrcode-generator โดย Kazuhiko Arase (MIT)
