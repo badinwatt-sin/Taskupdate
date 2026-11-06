@@ -9,6 +9,8 @@
 
 /* ---------- vocabulary ---------- */
 const PB_TEMPLATES = {   // key: [English name, Thai, default scene, default style, default accent]
+  info: ['Infographic', 'การ์ดอธิบาย + ตัวละคร', 'checklist', 'white', 'primary'],
+  notes: ['Checklist Notes', 'โน้ตกระดาษแปะ + เช็กลิสต์', 'checklist', 'pink', 'primary'],
   announce: ['Announcement', 'ข่าวประกาศ', 'announce', 'deep', 'sky'],
   event: ['Event & Invitation', 'เชิญร่วมกิจกรรม', 'event', 'sky', 'red'],
   campaign: ['Campaign', 'แคมเปญ / กระตุ้นยอด', 'campaign', 'lavender', 'red'],
@@ -22,6 +24,8 @@ const PB_FORMATS = {   // key: [label, ratio, W, H, use]
   landscape: ['Landscape', '16:9', 1920, 1080, 'จอ · พรีเซนต์'],
 };
 const PB_FIELD_HINT = {
+  notes: { headline: 'เช่น 3 เรื่องต้องเช็ก (Enter) ก่อนซื้อประกันสุขภาพ (Enter) เพื่อความมั่นใจมากขึ้น', content: '' },
+  info: { headline: 'เช่น อยากซื้อประกันต้องรู้! (Enter) OPD, IPD และ Day Surgery (Enter) ต่างกันยังไง?', content: '' },
   announce: { headline: 'บรรทัดแรก = แถบเน้น · ขึ้นบรรทัดใหม่ = ข้อความตัวใหญ่ต่อ', content: 'รายละเอียด — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
   event: { headline: 'เช่น ขอเชิญร่วมงาน (Enter) Agency Kick-off 2027', content: 'ไฮไลต์ของงาน / Agenda — ขึ้นบรรทัดใหม่ = 1 ข้อ' },
   campaign: { headline: 'เช่น ปิดยอดปลายปี (Enter) รับรางวัลพิเศษ', content: 'กติกาหลัก / สิ่งที่ได้รับ — ขึ้นบรรทัดใหม่ = 1 ข้อ', highlight: ['ตัวเลขเด่น', 'เช่น รับเพิ่ม 2 เท่า หรือ 5,000 บาท'] },
@@ -122,7 +126,8 @@ const PB_THAI = '"DB HelvethaicaX", "DB Helvethaica X", "IBM Plex Sans Thai", "S
 
 /* ---------- working state ---------- */
 const pbBlank = () => ({
-  id: uid('pst'), template: 'announce', format: 'portrait', style: 'deep', accent: 'sky', visual: 'auto', scene: 'auto', icon: null, badges: null,
+  id: uid('pst'), template: 'info', format: 'portrait', style: 'white', accent: 'primary', visual: 'none', scene: 'auto', icon: null, badges: null,
+  secs: [{ title: '', body: '', tag: '', char: 'auto', color: '' }, { title: '', body: '', tag: '', char: 'auto', color: '' }, { title: '', body: '', tag: '', char: 'auto', color: '' }],
   photo: null, photoY: .5, qrUrl: '', qrImg: null, qrLabel: '',
   f: { keyword: '', headline: '', sub: '', content: '', highlight: '', date: '', dateEnd: '', time: '', venue: '', cta: '', note: '' },
   ai: null, reviewed: false, updated: 0,
@@ -311,8 +316,9 @@ function pbScene(k, st, P, x, y, w, h) {
   });
   g.restore();
 }
-function pbLogos(k, P, B, x, y, h) {   // official Krungthai-AXA logo pair, top-left (per CI guideline); returns width used
+function pbLogos(k, P, B, x, y, h, right) {   // official Krungthai-AXA logo pair; right = true → x is the RIGHT edge. Returns width used
   const { g } = k, src = P.dark ? (B.logoWhite || B.logo) : (B.logo || B.logoWhite), im = pbImg(src);
+  if (right) { k.font(700, h * .3, PB_BODY); const w0 = im ? im.width * h / im.height : g.measureText(B.org || 'LOGO').width + h * .6; x -= w0; }
   if (im) {
     const w = im.width * h / im.height;
     if (P.dark && !B.logoWhite) { g.fillStyle = '#FFFFFF'; k.rr(x - h * .08, y - h * .08, w + h * .16, h + h * .16, h * .1); g.fill(); }   // colour logo on a dark ground needs a white plate
@@ -326,6 +332,8 @@ function pbLogos(k, P, B, x, y, h) {   // official Krungthai-AXA logo pair, top-
 
 /* the poster — everything is relative to the canvas size */
 function pbDraw(cv, st, fmtKey) {
+  if (st.template === 'info') return pbDrawInfo(cv, st, fmtKey);
+  if (st.template === 'notes') return pbDrawNotes(cv, st, fmtKey);
   const fk = fmtKey || st.format, fm = PB_FORMATS[fk], W = fm[2], H = fm[3], B = pbBrand(), f = st.f, photo = pbImg(st.photo);
   const P = pbPalette(st, B, !!photo), photoBg = P.style === 'photo' && photo;
   cv.width = W; cv.height = H;
@@ -335,7 +343,7 @@ function pbDraw(cv, st, fmtKey) {
   if (photoBg) pbPhotoBg(k, P, photo, st, W, H, !story); else pbBackground(k, P, W, H, u);
 
   /* header: logo lockup (fixed size) */
-  const lh = 92 * u, top0 = M + safeT; pbLogos(k, P, B, M, top0, lh);
+  const lh = 92 * u, top0 = M + safeT; if (B.logoPos === 'left') pbLogos(k, P, B, M, top0, lh); else pbLogos(k, P, B, W - M, top0, lh, true);
   const bottom = H - M - safeB;
 
   /* content pieces (measured at scale s) */
@@ -513,20 +521,20 @@ V.poster = (root, force) => {
         <div class="pb-fmts">${Object.entries(PB_FORMATS).map(([key, fm]) => `<button type="button" class="pb-fmt ${key === st.format ? 'on' : ''}" data-act="pbFmt" data-id="${key}" aria-pressed="${key === st.format}"><i style="aspect-ratio:${fm[2]}/${fm[3]}"></i><b>${fm[0]} ${fm[1]}</b><small>${fm[2]} × ${fm[3]} px · ${fm[4]}</small></button>`).join('')}</div>
       </section>
       <section class="card pb-step"><h3><span class="pb-n">2</span>เนื้อหา <small class="muted">· ${T[0]}</small></h3>
-        <div class="form-grid">
+        ${st.template === 'info' || st.template === 'notes' ? pbInfoForm() : `        <div class="form-grid">
           ${pbField('keyword', 'Keyword <small>(คำนำ / หมวด)</small>', st.template === 'event' ? 'เช่น เชิญร่วมงาน' : st.template === 'recognition' ? 'เช่น Congratulations' : 'เช่น ประกาศ')}
           ${hint.highlight ? pbField('highlight', hint.highlight[0], hint.highlight[1]) : '<span class="pb-gap"></span>'}
           <label class="field full"><span>Headline <em>*</em> <small>(Enter = ขึ้นบรรทัดใหม่ · บรรทัดแรกอยู่บนแถบเน้น)</small></span><textarea data-pf="headline" class="pb-big" rows="2" maxlength="140" placeholder="${esc(hint.headline)}">${esc(st.f.headline)}</textarea></label>
           ${pbField('sub', st.template === 'recognition' ? 'คำโปรย <small>(เช่น ผลงาน / รางวัล)</small>' : 'Sub-headline', st.template === 'recognition' ? 'เช่น ยอดขายสูงสุดประจำไตรมาส 3' : 'ประโยคสนับสนุน 1 บรรทัด').replace('class="field ', 'class="field full ')}
           ${pbField('content', 'Content', hint.content, 'textarea')}
           ${pbField('cta', 'Call to action <small>(ปุ่ม / คำชวน)</small>', 'เช่น ลงทะเบียนเลย')}
-        </div>
+        </div>`}
         <details class="pb-more" id="pbMore" ${PB_MORE_OPEN || st.template === 'event' || st.f.date || st.f.time || st.f.venue || st.qrUrl || st.qrImg || st.f.note ? 'open' : ''}><summary>รายละเอียดเพิ่มเติม · วัน เวลา สถานที่ QR Code เงื่อนไข</summary>
           <div class="form-grid">
-            ${pbField('date', 'วันที่', '', 'input', 'type="date"')}
+            ${st.template === 'info' || st.template === 'notes' ? '' : `${pbField('date', 'วันที่', '', 'input', 'type="date"')}
             ${pbField('dateEnd', 'ถึงวันที่ <small>(ถ้ามีหลายวัน)</small>', '', 'input', 'type="date"')}
             ${pbField('time', 'เวลา', 'เช่น 09:00 – 12:00 น.')}
-            ${pbField('venue', 'สถานที่', 'เช่น ห้องประชุมใหญ่ ชั้น 12 / Zoom')}
+            ${pbField('venue', 'สถานที่', 'เช่น ห้องประชุมใหญ่ ชั้น 12 / Zoom')}`}
             <label class="field"><span>QR Code จากลิงก์</span><input id="pbQrUrl" value="${esc(st.qrUrl)}" placeholder="https://…" inputmode="url" ${st.qrImg ? 'disabled' : ''}></label>
             <div class="field"><span>หรือใช้รูป QR ที่มีอยู่</span><div class="btn-row">${st.qrImg ? `<span class="badge">ใช้รูป QR แล้ว</span><button type="button" class="btn btn-sm btn-ghost" data-act="pbQrClear">${ico('x', 13)} เอาออก</button>` : `<button type="button" class="btn btn-sm btn-ghost" data-act="pbQrImg">${ico('upload', 13)} อัปโหลดรูป QR</button>`}</div></div>
             <label class="field"><span>ข้อความใต้ QR</span><input id="pbQrLabel" value="${esc(st.qrLabel)}" placeholder="สแกน QR Code"></label>
@@ -568,11 +576,17 @@ V.poster = (root, force) => {
   const R = $('#pbRoot', root);
   R.addEventListener('input', e => {
     const el = e.target;
+    if (el.dataset.ps) { const [i, key] = el.dataset.ps.split('.'); if (PST.secs && PST.secs[+i]) { PST.secs[+i][key] = el.value; pbTouch(); pbSchedule(); } return; }
     if (el.dataset.pf) { PST.f[el.dataset.pf] = el.value; pbTouch(); pbSchedule(); const sn = $('#pbSceneNow'); if (sn) sn.textContent = PB_SCENES[pbSceneOf(PST)][0]; return; }
     if (el.id === 'pbQrUrl') { PST.qrUrl = el.value; pbTouch(); pbSchedule(); return; }
     if (el.id === 'pbQrLabel') { PST.qrLabel = el.value; pbTouch(); pbSchedule(); return; }
     if (el.id === 'pbPhotoY') { PST.photoY = +el.value; pbTouch(); pbSchedule(); }
   });
+  if (st.template === 'info' || st.template === 'notes') {   // the icon/scene/photo controls belong to the older templates
+    $$('.pb-row', R).forEach(row => { if (/ภาพประกอบตามเนื้อหา|ไอคอนหลัก|รูปถ่าย|สีเน้น/.test(row.textContent.slice(0, 60))) row.hidden = true; });
+    const ai3 = [...$$('.pb-step', R)].find(x => /ให้ AI ช่วย/.test($('h3', x)?.textContent || ''));
+    if (ai3) ai3.innerHTML = (st.template === 'notes' ? '<h3><span class="pb-n">3</span>สีโน้ต</h3><p class="muted small">เปลี่ยนสีกระดาษของแต่ละโน้ตได้ด้านบน · โลโก้กรุงไทย-แอกซ่าอยู่มุมขวาบน ตั้งไฟล์โลโก้ทางการที่ปุ่ม <b>CI Control</b></p>' : '<h3><span class="pb-n">3</span>ตัวละครและสี</h3><p class="muted small">ตัวละครเลือกให้อัตโนมัติจากคำในแต่ละหัวข้อ (ไม่ใช้ AI) — เปลี่ยนตัวละครและสีการ์ดได้ในแต่ละหัวข้อด้านบน · โลโก้กรุงไทย-แอกซ่าอยู่มุมขวาบน ตั้งไฟล์โลโก้ทางการที่ปุ่ม <b>CI Control</b></p>');
+  }
   $('#pbMore', R).ontoggle = e => { PB_MORE_OPEN = e.target.open; };
   $('#pbReviewed', R).onchange = e => { PST.reviewed = e.target.checked; pbExportState(); };
   pbExportState(); pbPaint(); pbFonts();
@@ -733,6 +747,7 @@ ACT.pbBrand = () => {
       <div class="form-grid mt">
         <label class="field"><span>ชื่อองค์กร / ทีม</span><input id="pbBOrg" value="${esc(draft.org)}" ${can ? '' : 'disabled'}></label>
         <label class="field"><span>ข้อความกำกับท้ายโปสเตอร์ <small>(ไม่บังคับ)</small></span><input id="pbBFoot" value="${esc(draft.footer)}" ${can ? '' : 'disabled'}></label>
+        <div class="field"><span>ตำแหน่งโลโก้</span><div class="seg-chips pb-logopos" id="pbBPos">${[['right', 'มุมขวาบน (ค่าเริ่มต้น)'], ['left', 'มุมซ้ายบน']].map(([k, l]) => `<button type="button" class="${(draft.logoPos || 'right') === k ? 'on' : ''}" data-pos="${k}" ${can ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>
         <p class="full small muted">โลโก้วางมุมซ้ายบนของทุกโปสเตอร์ตามแนวทาง CI — ใช้ไฟล์ทางการของทีม Brand (ชุดโลโก้คู่ Krungthai-AXA) ห้ามแก้สี สัดส่วน หรือเว้นพื้นที่ปลอดภัยให้น้อยกว่าที่กำหนด</p>
         <div class="field"><span>โลโก้คู่ Krungthai-AXA (สี) — พื้นสว่าง</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
         <div class="field"><span>โลโก้คู่แบบขาว / ขอบขาว — พื้นเข้มและรูปถ่าย <small>(ถ้าไม่มี ระบบวางโลโก้สีบนป้ายขาว)</small></span>${logoBox('logoWhite', 1)}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logoWhite">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logoWhite">ลบ</button></div>` : ''}</div>
@@ -750,6 +765,7 @@ ACT.pbBrand = () => {
       if (!can) return;
       $('#pbBOrg', md.el).oninput = e => { draft.org = e.target.value.trim() || PB_BRAND_DEFAULT.org; };
       $('#pbBFoot', md.el).oninput = e => { draft.footer = e.target.value.trim(); };
+      $('#pbBPos', md.el).onclick = e => { const b = e.target.closest('[data-pos]'); if (!b) return; draft.logoPos = b.dataset.pos; $$('#pbBPos button', md.el).forEach(x => x.classList.toggle('on', x === b)); };
       $$('[data-col]', md.el).forEach(i => { i.oninput = () => { draft.colors[i.dataset.col] = i.value; i.nextElementSibling.querySelector('small').textContent = i.value.toUpperCase(); }; });
       md.el.addEventListener('click', async e => {
         const up = e.target.closest('[data-logo]'), rm = e.target.closest('[data-logo-x]');

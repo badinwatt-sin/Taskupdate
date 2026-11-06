@@ -1,0 +1,11 @@
+/* Poster · Infographic editor */
+.pb-secs{display:flex;flex-direction:column;gap:12px;margin-bottom:6px}
+.pb-sec{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:16px;background:var(--fill2);border-left:6px solid var(--sc)}
+.pb-sec-h{display:flex;align-items:center;justify-content:space-between}.pb-sec-h b{font-size:14.5px}
+.pb-sec-acts{display:flex;gap:2px}
+.pb-sec-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.pb-sec-sel{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.pb-sec-sel select{width:auto;min-width:170px}
+.pb-sw{display:flex;gap:8px}
+.pb-sw button{width:30px;height:30px;border-radius:50%;border:2px solid rgba(0,0,0,.08);cursor:pointer;padding:0;flex:none}
+.pb-sw button.on{box-shadow:0 0 0 2px var(--bg,#fff),0 0 0 4px var(--accent)}
+.pb-logopos{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
