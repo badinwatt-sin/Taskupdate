@@ -140,3 +140,13 @@
 .sd-aiopt{border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin-bottom:10px}.sd-aiopt h4{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .sd-free{background:var(--green-l);color:var(--green)}
 .sd-keyrow{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.sd-keyrow input{flex:1;min-width:200px}
+.sd-quota{width:100%;margin-top:8px;border-top:1px solid var(--line);padding-top:10px}
+.sd-q-top{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin-bottom:6px}
+.sd-q-bar{height:10px;border-radius:99px;background:var(--surface2);overflow:hidden}.sd-q-bar i{display:block;height:100%;border-radius:99px;background:var(--green)}
+.sd-quota.warm .sd-q-bar i{background:var(--amber)}.sd-quota.hot .sd-q-bar i{background:var(--red)}
+.sd-quota p{margin-top:6px}.sd-q-set{display:inline-flex;align-items:center;gap:6px;margin-left:6px;white-space:nowrap}.sd-q-set input{width:80px;padding:4px 8px;min-height:30px}
+.sd-aipick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sd-aipick button{display:flex;align-items:flex-start;gap:8px;text-align:left;border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--surface);cursor:pointer;color:var(--text);min-height:56px}
+.sd-aipick button span{display:flex;flex-direction:column;gap:2px}.sd-aipick small{font-size:11.5px;color:var(--muted);line-height:1.35}
+.sd-aipick button.on{border-color:var(--accent);background:var(--accent-l);box-shadow:inset 0 0 0 1px var(--accent)}.sd-aipick button.on .ico{color:var(--accent)}
+.sd-aipick button:disabled{opacity:.55;cursor:not-allowed}

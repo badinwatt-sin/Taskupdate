@@ -8,7 +8,7 @@
       add characters, objects, shapes, text, QR, photo
    4) export PNG / JPG (review checkbox every time)
    ============================================================ */
-const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', prefDesign: 'auto', prefAccent: 'auto', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
+const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', useAI: true, prefDesign: 'auto', prefAccent: 'auto', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
 let SDOC = sdBlankDoc(), SD_SEL = null, SD_UNDO = [], SD_REDO = [], SD_ADD = 'kit', SD_KITG = 'people';
 ACT.sdToKit = el => { const L = sdSel(); if (!L) return; sdPush(); const k = el.dataset.id, K = SD_KIT[k]; L.t = 'art'; L.key = k; delete L.panel; delete L.tint; if (K[1] === 'people') { const h = L.h; L.w = h * K[2] / K[3]; } SDOC.edited = true; sdChanged(); sdProps(); };
 ACT.sdKitG = el => { SD_KITG = el.dataset.id; sdAddPanel(); };
@@ -80,10 +80,12 @@ ACT.sdRead = async () => {
   const text = SDOC.text.trim(); if (!text) { toast('พิมพ์หรือวางข้อความที่ต้องการสื่อสารก่อน', 'error'); $('#sdText')?.focus(); return; }
   const btn = $('#sdReadBtn'); if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> กำลังออกแบบโปสเตอร์… (ไม่เกิน ~30 วินาที)'; }
   let brief = null;
-  if (Store.mode === 'server') {
+  const wantAI = SDOC.useAI !== false && !(SD_AI && SD_AI.usage && SD_AI.usage.limited);
+  if (Store.mode === 'server' && wantAI) {
     try {   // the team's AI when an Admin connected it; any problem falls back quietly to the built-in layout engine
       const r = await fetch('api/ai-brief', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ text, format: SDOC.format, guide: SDOC.guide || '', design: SDOC.prefDesign, accent: SDOC.prefAccent, today: today() }) });
-      if (r.ok) { const j = await r.json(); brief = sdNormBrief(j.result); brief.by = 'ai'; }
+      if (r.ok) { const j = await r.json(); brief = sdNormBrief(j.result); brief.by = 'ai'; if (j.usage && SD_AI) SD_AI.usage = j.usage; }
+      else if (r.status === 429 && SD_AI && SD_AI.usage) SD_AI.usage.limited = true;
       else if (r.status !== 501) console.warn('ai-brief', r.status, (await r.json().catch(() => ({}))).error);
     } catch (e) { console.warn('ai-brief', e); }
   }
@@ -106,7 +108,16 @@ function sdTplThumbs(force) {   // real mini previews of every template, built f
 async function sdAiBox(md) {
   const box = $('#sdAiBox', md.el); if (!box) return; await sdAiState(true);
   const st = SD_AI || {}, g = st.gemini || {}, c = st.claude || {};
-  box.innerHTML = `<p class="small">${st.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> — ใช้ ${st.provider === 'gemini' ? '<b>Google Gemini (ฟรี)</b>' : '<b>Claude</b>'} เรียบเรียงข้อความและตีความบริบทให้อัตโนมัติ` : `<b>● ยังไม่ได้เชื่อมต่อ</b> — Poster ใช้ได้ปกติ (ระบบจัดให้เอง) เชื่อม Gemini ฟรีเพื่อให้หัวข้อสั้นคมและเข้าใจบริบทได้ดีขึ้น`}</p><button type="button" class="btn btn-sm ${st.on ? 'btn-ghost' : 'btn-primary'}" data-act="sdAiKey">${st.on ? 'ตั้งค่า AI' : 'เชื่อมต่อ Gemini (ฟรี)'}</button>`;
+  const u = st.usage, thTime = t => new Date(t).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Bangkok' });
+  const quotaHtml = u ? `<div class="sd-quota ${u.pct >= 90 ? 'hot' : u.pct >= 70 ? 'warm' : ''}">
+      <div class="sd-q-top"><b>โควตาฟรีวันนี้</b><span>${u.limited ? 'เต็มแล้ว' : `ใช้ไป ${u.used} / ${u.limit} ครั้ง (${u.pct}%)`}</span></div>
+      <div class="sd-q-bar"><i style="width:${u.pct}%"></i></div>
+      <p class="small">${u.limited ? `วันนี้ใช้ AI ครบโควตาแล้ว — โปสเตอร์ยังสร้างได้ตามปกติ (ระบบจัดให้เอง)` : `ทำโปสเตอร์ด้วย AI ได้อีกประมาณ <b>${u.left} ชิ้น</b>`} · รีเซ็ตเวลา ${thTime(u.resetAt)} น. (เวลาไทย)</p>
+      <p class="small muted">นับจากการใช้งานในแอปนี้ (1 โปสเตอร์ ≈ 1 ครั้ง) เทียบกับเพดาน ${u.limit} ครั้ง/วัน${u.auto ? ' — ปรับอัตโนมัติจากครั้งที่ Google แจ้งว่าเต็ม' : ''} · ดูเพดานจริงได้ที่ AI Studio → <b>Rate Limit</b> (ค่า RPD ของรุ่น Flash)
+        <span class="sd-q-set">เพดานต่อวัน <input id="sdQuotaIn" type="number" min="1" value="${u.limit}"> <button type="button" class="btn btn-sm btn-ghost" id="sdQuotaSave">บันทึก</button></span></p>
+    </div>` : '';
+  box.innerHTML = `<p class="small">${st.on ? `<b class="sd-ok">● เชื่อมต่อแล้ว</b> — ใช้ ${st.provider === 'gemini' ? '<b>Google Gemini (ฟรี)</b>' : '<b>Claude</b>'} เรียบเรียงข้อความและตีความบริบทให้อัตโนมัติ` : `<b>● ยังไม่ได้เชื่อมต่อ</b> — Poster ใช้ได้ปกติ (ระบบจัดให้เอง) เชื่อม Gemini ฟรีเพื่อให้หัวข้อสั้นคมและเข้าใจบริบทได้ดีขึ้น`}</p><button type="button" class="btn btn-sm ${st.on ? 'btn-ghost' : 'btn-primary'}" data-act="sdAiKey">${st.on ? 'ตั้งค่า AI' : 'เชื่อมต่อ Gemini (ฟรี)'}</button>${quotaHtml}`;
+  const qs = $('#sdQuotaSave', box); if (qs) qs.onclick = async () => { const n = +$('#sdQuotaIn', box).value; const r = await fetch('api/ai-quota', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ limit: n, reset: true }) }); const j = await r.json().catch(() => ({})); if (!r.ok) return toast(j.error || 'บันทึกไม่สำเร็จ', 'error'); toast('บันทึกเพดานโควตาแล้ว'); sdAiBox(md); };
 }
 let SD_AI = null;
 async function sdAiState(refresh) {
@@ -145,6 +156,18 @@ ACT.sdAiKey = async () => {
       del('sdGemDel', 'gemini'); del('sdClDel', 'claude');
     } });
 };
+function sdAiPick(refresh) {   // shown only when the team connected an AI
+  const paint = () => {
+    const el = $('#sdAiPick'); if (!el) return; const st = SD_AI || {};
+    if (!st.on) { el.innerHTML = ''; return; }
+    const u = st.usage, full = u && (u.limited || u.left <= 0), on = SDOC.useAI !== false && !full;
+    el.innerHTML = `<div class="sd-sub">วิธีสร้าง</div><div class="sd-aipick" role="radiogroup">
+      <button type="button" role="radio" aria-checked="${on}" class="${on ? 'on' : ''}" data-act="sdUseAI" data-id="1" ${full ? 'disabled' : ''}>${ico('sparkles', 15)} <span><b>ใช้ AI</b><small>${full ? 'วันนี้ครบโควตาแล้ว' : `เรียบเรียงข้อความให้ · ${u ? `เหลือ ~${u.left} ครั้งวันนี้` : '5–30 วินาที'}`}</small></span></button>
+      <button type="button" role="radio" aria-checked="${!on}" class="${!on ? 'on' : ''}" data-act="sdUseAI" data-id="0"><span><b>ไม่ใช้ AI</b><small>จัดจากข้อความที่พิมพ์ · เร็ว ไม่ใช้โควตา</small></span></button></div>`;
+  };
+  paint(); if (refresh !== false) sdAiState(true).then(paint);
+}
+ACT.sdUseAI = el => { SDOC.useAI = el.dataset.id === '1'; sdAiPick(false); };
 ACT.sdSample = () => { SDOC.text = SD_SAMPLE; const t = $('#sdText'); if (t) t.value = SD_SAMPLE; };
 ACT.sdDesign = el => { if (!SDOC.brief) return; const d = el.dataset.id; if (SDOC.edited && !confirm('เปลี่ยนดีไซน์จะจัดตำแหน่งใหม่ทั้งหมด (ข้อความที่แก้ไว้ยังอยู่ · ชิ้นที่เพิ่มเองยังอยู่) ต่อไหม?')) return; sdPush(); sdApply(d); sdChanged(true); sdFull(); };
 ACT.sdRelayout = () => { if (!SDOC.brief) return; sdPush(); sdApply(SDOC.design); sdChanged(true); sdFull(); toast('จัดวางใหม่ให้พอดีแล้ว'); };
@@ -416,6 +439,7 @@ V.poster = (root, force) => {
           <div class="sd-sub">แบบโปสเตอร์ <small class="muted">— เลือกเอง หรือให้ระบบเลือกตามเนื้อหา (เปลี่ยนได้ภายหลัง)</small></div>
           <div class="sd-tpls"><button type="button" class="sd-tpl ${SDOC.prefDesign === 'auto' ? 'on' : ''}" data-act="sdPrefDesign" data-id="auto"><span class="sd-tpl-auto">${ico('sparkles', 22)}</span><b>เลือกให้อัตโนมัติ</b></button>${SD_ORDER.map(d => `<button type="button" class="sd-tpl ${SDOC.prefDesign === d ? 'on' : ''}" data-act="sdPrefDesign" data-id="${d}" title="${esc(SD_DESIGNS[d][1])}"><canvas data-tpl="${d}" style="aspect-ratio:${fm[2]}/${fm[3]}"></canvas><b>${SD_DESIGNS[d][0]}</b></button>`).join('')}</div>
         </div>
+        <div id="sdAiPick"></div>
         <div class="btn-row mt"><button type="button" class="btn btn-primary sd-go" id="sdReadBtn" data-act="sdRead">${ico('sparkles', 16)} ${b ? 'สร้างใหม่จากข้อความนี้' : 'สร้างโปสเตอร์'}</button>${SDOC.text ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="sdSample">ลองข้อความตัวอย่าง</button>`}</div>
       </section>
       <div id="sdBrief"></div>
@@ -444,7 +468,7 @@ V.poster = (root, force) => {
   $('#sdRoot', root).addEventListener('focusin', e => { if (e.target.matches('[data-bf],[data-bp],[data-lp]')) { e.target._snap = sdSnap(); } });
   $('#sdRoot', root).addEventListener('input', sdInput);
   $('#sdRoot', root).addEventListener('change', e => { if (e.target.matches('select[data-bf],select[data-bp],select[data-lp]')) sdInput(e); });
-  sdLeft(); sdProps(); sdAddPanel(); sdStageEvents(); sdExportState(); sdPaint(); sdTplThumbs();
+  sdLeft(); sdProps(); sdAddPanel(); sdStageEvents(); sdExportState(); sdPaint(); sdTplThumbs(); sdAiPick();
   sdFonts();
 };
 function sdInput(e) {
