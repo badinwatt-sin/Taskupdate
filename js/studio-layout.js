@@ -105,7 +105,7 @@ function sdRank(b) {
   SD_ORDER.forEach(k => { if (!out.includes(k)) out.push(k); });
   return out;
 }
-const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'H02', kindText: '', props: ['H40', 'H20'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
+const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'H02', kindText: '', look: '', props: ['H40', 'H20'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
 function sdNormBrief(x) {
   const b = { ...sdEmptyBrief(), ...(x || {}) }, str = v => String(v == null ? '' : v).trim();
   if (x && x.kind_text && !x.kindText) b.kindText = x.kind_text; delete b.kind_text;
@@ -116,6 +116,7 @@ function sdNormBrief(x) {
   if (!SD_KIT[b.hero]) b.hero = SD_KIND_HERO[b.kind] || 'H02';
   b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SD_KIT[k] && SD_KIT[k][1] !== 'people').slice(0, 2); if (!b.props.length) b.props = (SD_KIND_DECOR[b.kind] || SD_KIND_DECOR.announce).slice();
   if (!SD_ACCENTS.includes(b.accent)) b.accent = 'blue';
+  if (!SD_LOOKS[b.look]) b.look = '';
   if (!SD_KINDS[b.kind]) b.kind = 'announce';
   if (!b.kindText) b.kindText = SD_KINDS[b.kind][0];
   const ds = (Array.isArray(b.designs) ? b.designs : []).filter(k => SD_DESIGNS[k]); SD_ORDER.forEach(k => { if (!ds.includes(k)) ds.push(k); }); b.designs = ds;
@@ -353,13 +354,60 @@ function sdList(c, x, y, w, o = {}) {   // points as compact white rows with a n
   pts.forEach((p, i) => { const L = c.add(sdM({ t: 'card', role: 'p' + i, title: p.title, body: p.body, size: (o.size || 32) * c.u * c.s, num: o.num ? String(i + 1) : '', icon: o.num ? '' : 'check', numFill: c.C.primary, fill: o.fill || '#FFFFFF', shadow: o.shadow !== false, x, y, w, r: .16 })); y += L.h + (o.gap || 16) * c.u; });
   return y - (o.gap || 16) * c.u;
 }
-function sdDecor(c, x, y, w, h) {   // the object props + sparkles scattered around a hero area
-  const P = c.b.props, u = c.u, sz = Math.min(w, h) * .2;
+/* ---------- backdrops: each look is a different composition, never the same circle ---------- */
+const SD_LOOKS = { arch: 'ซุ้มโค้ง', slab: 'แถบเฉียง', mosaic: 'โมเสก', frame: 'กรอบเหลื่อม', wave: 'คลื่น', corner: 'มุมโค้ง', clean: 'โล่ง' };
+const SD_LOOK_ORDER = Object.keys(SD_LOOKS);
+const SD_LOOK_BY_KIND = { event: ['slab', 'arch', 'frame'], recognition: ['arch', 'mosaic', 'corner'], campaign: ['slab', 'wave', 'mosaic'], knowledge: ['frame', 'mosaic', 'arch'], change: ['slab', 'frame', 'corner'], reminder: ['corner', 'wave', 'frame'], announce: ['arch', 'slab', 'frame'], recruit: ['mosaic', 'slab', 'arch'] };
+function sdLookOf(b) {
+  if (SD_LOOKS[b.look]) return b.look;
+  const h = [...String(b.headline.join('')) || 'x'].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7), l = SD_LOOK_BY_KIND[b.kind] || SD_LOOK_ORDER;
+  return l[h % l.length];
+}
+function sdStage(c, x, y, w, h, o = {}) {   // draws the shapes behind a hero picture standing in the box (x, y, w, h); bottom edge of the box = feet
+  const look = o.look || sdLookOf(c.b), u = c.u, C = c.C, acc = c.acc, soft = c.soft, prim = C.primary, sky = C.sky || '#6574F8', white = '#FFFFFF';
+  const add = L => c.add({ t: 'shape', role: 'deco', ...L });
+  if (look === 'arch') {
+    const aw = Math.min(w * .84, h * .82), ax = x + (w - aw) / 2 + w * .05, ay = y + h * .05;
+    add({ kind: 'arch', outline: true, lw: 5 * u, fill: sky, alpha: .55, x: ax - 20 * u, y: ay - 20 * u, w: aw, h: h * .95 });
+    add({ kind: 'arch', fill: soft, x: ax, y: ay, w: aw, h: h * .95 });
+    add({ kind: 'dots', fill: sky, alpha: .4, x: ax + aw - aw * .12, y: y + h * .58, w: aw * .3, h: aw * .3 });
+  } else if (look === 'slab') {
+    const sx = x + w * .2, sw = Math.min(w * .92, c.W - sx);
+    add({ kind: 'slab', fill: prim, x: sx - w * .075, y: y + h * .05, w: w * .06, h: h * .95, skew: .2 });
+    add({ kind: 'slab', fill: acc, alpha: .9, x: sx, y: y + h * .05, w: sw, h: h * .95, skew: .2 });
+    add({ kind: 'stripes', fill: white, alpha: .35, x: sx + sw * .52, y: y + h * .1, w: sw * .4, h: h * .16, r: .25 });
+  } else if (look === 'mosaic') {
+    const i0 = Math.max(0, SD_ACCENTS.indexOf(c.b.accent)), col = k => sdPastel(SD_ACCENTS[(i0 + k) % 5]);
+    add({ kind: 'tiles', fill: col(0), fill2: pbMix(col(1), white, .35), fill3: pbMix(col(2), white, .35), fill4: pbMix(col(3), white, .2), r: .14, x: x + w * .06, y: y + h * .1, w: w * .9, h: h * .9 });
+  } else if (look === 'frame') {
+    const fx = x + w * .1, fy = y + h * .2, fw = w * .82, fh = h * .8;
+    add({ kind: 'rect', r: .05, fill: soft, x: fx, y: fy, w: fw, h: fh });
+    add({ kind: 'frame', lw: 5 * u, fill: prim, alpha: .6, r: .05, x: fx + 18 * u, y: fy + 18 * u, w: fw, h: fh - 18 * u });
+    add({ kind: 'plus', fill: sky, alpha: .7, x: fx - 6 * u, y: y + h * .02, w: w * .18, h: w * .18 });
+  } else if (look === 'wave') {
+    add({ kind: 'wave', fill: soft, x, y: y + h * .38, w: c.W - x, h: h * .62 });
+    add({ kind: 'wave', fill: acc, alpha: .55, x, y: y + h * .56, w: c.W - x, h: h * .44 });
+    add({ kind: 'stripes', fill: sky, alpha: .22, x: x + w * .5, y: y + h * .04, w: w * .46, h: h * .2, r: .2 });
+  } else if (look === 'corner') {
+    add({ kind: 'quarter', corner: 'tr', fill: acc, alpha: .75, x: x + w * .02, y, w: Math.min(w * .96, c.W - x), h: w * .96 });
+    add({ kind: 'quarter', corner: 'tr', fill: pbMix(sky, white, .35), alpha: .7, x: x + w * .42, y, w: w * .56, h: w * .56 });
+    add({ kind: 'plus', fill: sky, alpha: .6, x: x + w * .02, y: y + h * .62, w: w * .2, h: w * .2 });
+  } else {   // clean: a soft floor + marks, lots of air
+    add({ kind: 'rect', r: .06, fill: soft, alpha: .55, x: x + w * .04, y: y + h * .44, w: w * .92, h: h * .56 });
+    add({ kind: 'plus', fill: sky, alpha: .55, x: x + w * .72, y: y + h * .08, w: w * .22, h: w * .22 });
+    add({ kind: 'rect', r: .5, fill: prim, x: x + w * .08, y: y + h * .38, w: w * .22, h: 8 * u });
+  }
+}
+function sdDecor(c, x, y, w, h) {   // object props sit on small shadowed tiles at the outer edges of the picture area, never over the text or the person
+  const P = c.b.props || [], u = c.u, sz = Math.max(64 * u, Math.min(w * .22, h * .17, 150 * u));
   const art = k => SD_KIT[k] && SD_KIT[k][1] !== 'people' ? k : null;
-  if (art(P[0])) c.add({ t: 'art', role: 'deco', key: P[0], x: x - sz * .3, y: y + h * .06, w: sz * 1.1, h: sz * 1.1 });
-  if (art(P[1])) c.add({ t: 'art', role: 'deco', key: P[1], x: x + w - sz * .85, y: y, w: sz, h: sz });
-  c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: '#F6C873', x: x + w * .12, y: y - 6 * u, w: 34 * u, h: 34 * u });
-  c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: c.C.sky || '#6574F8', x: x + w * .86, y: y + h * .36, w: 24 * u, h: 24 * u });
+  const spots = [[.02, .04, -6], [.98 - sz / w, .5, 5]];
+  P.slice(0, 2).forEach((k, i) => {
+    if (!art(k)) return; const [fx, fy, rot] = spots[i], tx = x + fx * w, ty = y + fy * h;
+    c.add({ t: 'shape', role: 'deco', kind: 'tile', fill: '#FFFFFF', shadow: true, rot, x: tx, y: ty, w: sz, h: sz });
+    c.add({ t: 'art', role: 'deco', key: k, rot, x: tx + sz * .15, y: ty + sz * .15, w: sz * .7, h: sz * .7 });
+  });
+  c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: '#F6C873', x: x + w * .8, y: y + h * .05, w: 30 * u, h: 30 * u });
 }
 function sdHero(c, key, x, y, w, h, o = {}) {   // kit piece (assets/kit) or a drawn character
   key = key || c.b.hero;
@@ -388,16 +436,16 @@ const SD_GEN = {
       const ft = sdFoot(c, M, tw); y = sdFacts(c, M, y, tw) + 18 * u;
       if (b.points.length) { const bub = c.add(sdM({ t: 'list', role: 'pts', items: b.points.map(p => ({ title: p.title, body: p.body })), size: 32 * u * c.s, fill: C.sky || '#6574F8', x: M, y, w: tw, r: .1, shadow: true })); y += bub.h; }
       if (y > ft) c.over = true;
-      const ph = H * 1.02, pw = W - M - tw - 40 * u; c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: '#FFFFFF', alpha: .45, x: W - pw * .95 - M, y: H * .2, w: pw * .95, h: pw * .95 }); sdHero(c, null, M + tw + 40 * u, H * .14, pw, ph);
+      const ph = H * 1.02, pw = W - M - tw - 40 * u; sdStage(c, M + tw + 40 * u, H * .1, pw + M, H * .9); sdHero(c, null, M + tw + 40 * u, H * .14, pw, ph); sdDecor(c, M + tw + 40 * u, H * .12, pw, H * .8);
       return { bg, layers: c.L, over: c.over };
     }
     let y = c.top + lg.h + 26 * u * (c.story ? 1 : .6); const k = sdKicker(c, { x: M, y: c.top + (lg.h - 44 * u * c.s) / 2 });
     const tw = bw * (c.square ? .74 : .82), hd = sdHead(c, { x: M, y, w: tw, size: (c.story ? 92 : c.square ? 72 : 82) * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 26 * u;
-    const ft = sdFoot(c, M, bw * .6), colW = bw * (c.square ? .6 : .6);
-    const heroTop = y + (b.sub ? 60 * u : 0), ah = (H - heroTop) * 1.06;   // person runs off the bottom edge like a photo
-    c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: '#FFFFFF', alpha: .5, x: W - bw * .55, y: heroTop + ah * .08, w: bw * .62, h: bw * .62 });
-    sdHero(c, null, M + bw * .44, heroTop, bw * .6, ah); sdDecor(c, M + bw * .52, heroTop, bw * .48, ah * .5);
-    if (b.sub) { const s1 = c.add(sdM({ t: 'card', role: 'sub', title: '', body: b.sub, size: 34 * u * c.s, fill: C.primary, ink: '#FFFFFF', x: M, y, w: bw * (c.square ? .68 : .74), r: .12, bullets: false, shadow: true })); y += s1.h + 24 * u; }
+    const ft = sdFoot(c, M, bw * .47), colW = bw * .5;
+    const heroTop = y + 10 * u, ah = (H - heroTop) * 1.04;   // person runs off the bottom edge like a photo
+    sdStage(c, M + bw * .52, heroTop + 40 * u, W - (M + bw * .52), H - heroTop - 40 * u);
+    sdHero(c, null, M + bw * .5, heroTop + 20 * u, bw * .56, ah - 20 * u); sdDecor(c, M + bw * .56, heroTop + 50 * u, bw * .46, (H - heroTop) * .8);
+    if (b.sub) { const s1 = c.add(sdM({ t: 'card', role: 'sub', title: '', body: b.sub, size: 34 * u * c.s, fill: C.primary, ink: '#FFFFFF', x: M, y, w: colW, r: .1, bullets: false, shadow: true })); y += s1.h + 24 * u; }
     y = sdFacts(c, M, y, colW, { stack: true }); if (y > heroTop) y += 18 * u;
     if (b.points.length) {
       const bub = c.add(sdM({ t: 'list', role: 'pts', items: b.points.map(p => ({ title: p.title, body: p.body })), size: (c.square ? 28 : 31) * u * c.s, fill: C.sky || '#6574F8', x: M, y, w: colW, r: .09, tail: 'br', shadow: true }));
@@ -446,9 +494,8 @@ const SD_GEN = {
       const sb = sdSub(c, { x: M, y, w: tw }); if (sb) y += sb.h + 26 * u;
       y = sdFacts(c, M, y, tw) + 26 * u; const ft = sdFoot(c, M, tw); y = sdList(c, M, y, tw, { size: 28 }); if (y > ft) c.over = true;
       const px = M + tw + 50 * u, pw = W - M - px, ph = Math.min(H - c.top - lg.h - 70 * u, pw * 1.05), py = H - M - ph;
-      c.add({ t: 'shape', role: 'deco', kind: 'rect', r: .14, fill: c.soft, x: px, y: py, w: pw, h: ph });
-      c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.acc, alpha: .55, x: px + pw * .18, y: py + ph * .1, w: pw * .64, h: pw * .64 });
-      sdHero(c, null, px + pw * .06, py + ph * .14, pw * .88, ph * .86); sdDecor(c, px, py, pw, ph);
+      sdStage(c, px, py, pw + M, ph);
+      sdHero(c, null, px + pw * .06, py + ph * .14, pw * .88, ph * .86); sdDecor(c, px, py + ph * .06, pw, ph * .86);
       return { bg, layers: c.L, over: c.over };
     }
     let y = c.top; const k = sdKicker(c, { x: M, y: y + (lg.h - 44 * u * c.s) / 2 }); y += lg.h + 34 * u;
@@ -457,7 +504,7 @@ const SD_GEN = {
     const ft = sdFoot(c, M, bw), avail = ft - y - 10 * u, has = c.b.points.length || c.b.date || c.b.time || c.b.venue;
     if (!has) {
       const ph = Math.min(avail, bw * .9), pw = Math.min(bw, ph * 1.15), px = M + (bw - pw) / 2, py = y + (avail - ph) / 2;
-      c.add({ t: 'shape', role: 'deco', kind: 'blob', fill: c.soft, x: px, y: py + ph * .06, w: pw, h: ph * .94 });
+      sdStage(c, px, py, pw, ph);
       sdHero(c, null, px + pw * .1, py, pw * .8, ph); sdDecor(c, px, py, pw, ph);
       if (ph < 240 * u) c.over = true;
       return { bg, layers: c.L, over: c.over };
@@ -465,18 +512,17 @@ const SD_GEN = {
     const lw = bw * (c.square ? .56 : .54); let ly = sdFacts(c, M, y, lw, { stack: true }); if (ly > y) ly += 20 * u;
     ly = sdList(c, M, ly, lw, { size: c.square ? 27 : 29 }); if (ly > ft) c.over = true;
     const px = M + lw + 24 * u, pw = W - M - px, ph = Math.min(avail, pw * 1.35), py = ft - 10 * u - ph;
-    c.add({ t: 'shape', role: 'deco', kind: 'rect', r: .16, fill: c.soft, x: px, y: py + ph * .18, w: pw, h: ph * .82 });
-    c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.acc, alpha: .5, x: px + pw * .12, y: py + ph * .22, w: pw * .76, h: pw * .76 });
-    sdHero(c, null, px, py + ph * .2, pw, ph * .8); sdDecor(c, px, py + ph * .18, pw, ph * .8);
+    sdStage(c, px, py + ph * .1, pw + M, ph * .9);
+    sdHero(c, null, px, py + ph * .2, pw, ph * .8); sdDecor(c, px, py + ph * .14, pw, ph * .8);
     if (ph < 220 * u) c.over = true;
     return { bg, layers: c.L, over: c.over };
   },
   banner(c) {
     const { W, H, u, M, C, b } = c, bw = W - 2 * M, white = '#FFFFFF';
     const band = c.add({ t: 'shape', role: 'band', kind: 'rect', r: 0, fill: C.primary, x: 0, y: 0, w: W, h: H * .45 });
-    const glow = c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: C.sky || '#6574F8', alpha: .28, x: W * .55, y: -H * .12, w: W * .7, h: W * .7 });
+    const glow = c.add({ t: 'shape', role: 'deco', kind: 'slab', fill: C.sky || '#6574F8', alpha: .3, skew: .3, x: W * .58, y: 0, w: W * .5, h: H * .34 });
     if (c.land) {
-      band.w = W * .5; band.h = H; glow.x = -W * .15; glow.y = H * .5; glow.w = glow.h = W * .4;
+      band.w = W * .5; band.h = H; glow.x = band.w * .5; glow.y = 0; glow.w = band.w * .6; glow.h = H;
       const tw = band.w - 2 * M; let y = c.top + 100 * u; const kk = sdKicker(c, { x: M, y, pill: white, color: C.primary }); if (kk) y += kk.h + 24 * u;
       const hd = sdHead(c, { x: M, y, w: tw, size: 70 * u * c.s, color: white, barFill: white, barInk: C.primary }); y += hd.h + 20 * u;
       const sb = sdSub(c, { x: M, y, w: tw, color: 'rgba(255,255,255,.9)' }); if (sb) y += sb.h + 20 * u;
@@ -490,12 +536,12 @@ const SD_GEN = {
     const wide = !(c.square && sdHeadText(b).length <= 24 && !c.b.points.length);   // text across the band; picture beside the list below   // long headline: text uses the full band, picture moves beside the list
     const tw = bw * (wide ? .94 : c.square ? .62 : .58), hd = sdHead(c, { x: M, y, w: tw, size: (c.story ? 86 : c.square ? 62 : 72) * u * c.s, color: white, barFill: white, barInk: C.primary }); y += hd.h + 20 * u;
     const sb = sdSub(c, { x: M, y, w: tw, color: 'rgba(255,255,255,.9)' }); if (sb) y += sb.h + 20 * u;
-    band.h = Math.max(y + 46 * u, H * (wide ? .34 : c.square ? .5 : .42));
+    band.h = Math.max(y + 46 * u, H * (wide ? .34 : c.square ? .5 : .42)); glow.h = band.h; glow.x = W * .56; glow.w = W * .5;
     if (!wide) { const chH = Math.min(band.h - c.top - lgH - 30 * u, bw * .4); sdHero(c, null, W - M - chH, band.h - chH, chH, chH, { flip: true }); }
     let ry = band.h + 44 * u; ry = sdFacts(c, M, ry, wide ? bw * .6 : bw, { fill: C.paper, ...(c.b.points.length ? {} : { stack: true, size: 40 }) }); if (ry > band.h + 44 * u) ry += 26 * u;
     const ft = sdFoot(c, M, bw), lw = wide ? bw * .6 : bw, top = band.h + 30 * u;
     ry = sdList(c, M, ry, lw, { num: true, size: c.square ? 27 : 30, fill: C.paper, shadow: false }); if (ry > ft) c.over = true;
-    if (wide) { const ah = ft - top - 10 * u, aw = bw - lw - 24 * u; if (ah < 200 * u) c.over = true; else { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.soft, x: M + lw + 24 * u, y: ft - aw * 1.05, w: aw, h: aw }); sdHero(c, null, M + lw + 24 * u, top, aw, ah); } }
+    if (wide) { const ah = ft - top - 10 * u, aw = bw - lw - 24 * u; if (ah < 200 * u) c.over = true; else { sdStage(c, M + lw + 24 * u, top, aw + M, ah + 10 * u); sdHero(c, null, M + lw + 24 * u, top, aw, ah); sdDecor(c, M + lw + 24 * u, top + 10 * u, aw, ah * .8); } }
     return { bg: { c1: '#FFFFFF' }, layers: c.L, over: c.over };
   },
   cards(c) {
@@ -552,7 +598,7 @@ const SD_GEN = {
     const { W, H, u, M, C, b } = c;
     let x0, y0, tw;
     const scene = (x, y, w, h) => { c.add({ t: 'shape', role: 'deco', kind: 'rect', r: 0, fill: c.soft, x, y, w, h });
-      if (sdIsKit(b.hero)) { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.acc, alpha: .45, x: x + w / 2 - h * .42, y: y + h * .12, w: h * .84, h: h * .84 }); const ah = h * (h > w ? .7 : .9); sdHero(c, null, x + w * .1, y + h - ah, w * .8, ah); sdDecor(c, x + w * .14, y + h * .16, w * .72, h * .66); return; }
+      if (sdIsKit(b.hero)) { const ah = h * (h > w ? .8 : .92), hw = Math.min(w * .62, ah * .62); sdStage(c, x + w * .02, y + h * .06, w * .8, h * .94); sdHero(c, null, x + w * .06, y + h - ah, hw, ah); sdDecor(c, x + w * .06, y + h * .14, w * .74, h * .74); return; }
       const ch = h * (h > w ? .62 : .8), cw = Math.min(w, ch * 1.3); sdHero(c, null, x + (w - cw) / 2, y + h - ch, cw, ch, { panel: true, r: 0 }); };
     if (c.land || c.square) { const pw = W * (c.land ? .46 : .44); scene(0, 0, pw, H); x0 = pw + M; y0 = c.top; tw = W - x0 - M; sdLogo(c, false); y0 += (c.land ? 78 : 84) * u + 34 * u; }
     else { const ph = H * (c.story ? .38 : b.points.length > 2 ? .34 : .4); scene(0, 0, W, ph); sdLogo(c, false); x0 = M; y0 = ph + 46 * u; tw = W - 2 * M; }
@@ -574,7 +620,7 @@ const SD_GEN = {
       ty = Math.max(ty, dp ? y + bs * 1.08 + 30 * u : ty); ty = sdFacts(c, M, ty, W * .6 - M, { stack: false, fill: C.paper }) + 24 * u;
       const ft = sdFoot(c, M, W * .6 - M); ty = sdList(c, M, ty, W * .6 - M, { size: 27, fill: C.paper, shadow: false }); if (ty > ft) c.over = true;
       const px = W * .62, pw = W - M - px, ph = H - c.top - lg.h * 1.8 - 70 * u;
-      c.add({ t: 'shape', role: 'deco', kind: 'blob', fill: c.soft, x: px, y: H - M - ph * .9, w: pw, h: ph * .9 }); sdHero(c, null, px + pw * .05, H - M - ph, pw * .9, ph); sdDecor(c, px, H - M - ph, pw, ph);
+      sdStage(c, px, H - M - ph * .94, pw + M, ph * .94); sdHero(c, null, px + pw * .05, H - M - ph, pw * .9, ph); sdDecor(c, px, H - M - ph, pw, ph);
       return { bg: { c1: '#FFFFFF', c2: C.paper }, layers: c.L, over: c.over };
     }
     if (dp) {
@@ -586,7 +632,7 @@ const SD_GEN = {
     if (!dp) { y = sdFacts(c, M, y, bw, { fill: C.paper }) + 24 * u; }
     const ft = sdFoot(c, M, bw * .6), lw = c.b.points.length ? bw * .58 : 0; y = sdList(c, M, y, lw || bw, { size: c.square ? 26 : 29, fill: C.paper, shadow: false }); if (y > ft) c.over = true;
     const top = c.b.points.length ? Math.max(y - 200 * u, hd.y + hd.h + 20 * u) : y, ph = Math.min(c.bot - top, bw * .5), pw = ph * 1.0;
-    if (ph > 160 * u) { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.soft, x: W - M - pw, y: c.bot - ph * .95, w: pw, h: pw }); sdHero(c, null, W - M - pw, c.bot - ph, pw, ph); }
+    if (ph > 160 * u) { sdStage(c, W - M - pw * 1.1, c.bot - ph, pw * 1.1 + M, ph); sdHero(c, null, W - M - pw, c.bot - ph, pw, ph); }
     return { bg: { c1: '#FFFFFF', c2: C.paper }, layers: c.L, over: c.over };
   },
   minimal(c) {
@@ -601,7 +647,7 @@ const SD_GEN = {
     y = sdFacts(c, M, y, bw, { align: 'center', fill: '#FFFFFF' }) + 20 * u;
     if (c.b.points.length) { y = sdList(c, M + bw * .1, y, bw * .8, { size: 27, shadow: false, fill: '#FFFFFF' }) + 20 * u; }
     const room = ft - y; if (room < 120 * u && c.b.points.length) c.over = true;
-    const h2 = Math.min(hs, room); if (h2 > 110 * u) { c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: c.soft, x: W / 2 - h2 * .6, y: ft - h2 * 1.1, w: h2 * 1.2, h: h2 * 1.2 }); sdHero(c, null, W / 2 - h2 * .55, ft - h2 - 10 * u, h2 * 1.1, h2); }
+    const h2 = Math.min(hs, room); if (h2 > 110 * u) { sdStage(c, W / 2 - h2 * .6, ft - h2 * 1.1, h2 * 1.2, h2 * 1.1, { look: 'clean' }); sdHero(c, null, W / 2 - h2 * .55, ft - h2 - 10 * u, h2 * 1.1, h2); }
     return { bg: { c1: C.paper, c2: '#FFFFFF' }, layers: c.L, over: c.over };
   },
 };
@@ -609,6 +655,6 @@ function sdBuild(b, design, fk) {
   let r = null;
   for (const s of [1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits: fills the poster instead of leaving empty space
   r.layers.forEach(L => { L.id = L.id || sdId(); });
-  const top = L => (L.role === 'cta' || L.role === 'note' ? 1 : 0); r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
+  const top = L => (L.role === 'logo' ? 2 : L.role === 'cta' || L.role === 'note' ? 1 : 0); r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
   return r;
 }

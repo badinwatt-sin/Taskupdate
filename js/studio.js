@@ -182,6 +182,10 @@ ACT.sdFmt = el => {
   if (SDOC.brief) { sdApply(SDOC.design || SDOC.brief.designs[0], false); SDOC.layers.push(...user); } else SDOC.layers = user;
   sdChanged(true); sdFull();
 };
+ACT.sdLook = el => {
+  if (!SDOC.brief) return; if (SDOC.edited && !confirm('เปลี่ยนลุคฉากหลังจะจัดตำแหน่งใหม่ทั้งหมด (ข้อความที่แก้ไว้ยังอยู่) ต่อไหม?')) return;
+  sdPush(); SDOC.brief.look = el.dataset.id === 'auto' ? '' : el.dataset.id; sdApply(SDOC.design || SDOC.brief.designs[0]); sdChanged(true); sdFull();
+};
 ACT.sdKind = el => { if (!SDOC.brief) return; sdPush(); const b = SDOC.brief; b.kind = el.dataset.id; if (!b.kicker || Object.values(SD_KINDS).some(k => k[1] === b.kicker)) b.kicker = SD_KINDS[b.kind][1]; b.designs = sdRank(b); sdBriefChanged(true); sdLeft(); };
 ACT.sdAccent = el => { if (!SDOC.brief) return; sdPush(); SDOC.brief.accent = el.dataset.id; sdBriefChanged(true); sdLeft(); };
 ACT.sdPtAdd = () => { const b = SDOC.brief; if (!b || b.points.length >= 4) return; sdPush(); b.points.push({ title: 'หัวข้อใหม่', body: '', visual: 'check' }); sdBriefChanged(true); sdLeft(); };
@@ -381,7 +385,9 @@ function sdLeft() {
   const el = $('#sdBrief'); if (!el) return; const b = SDOC.brief;
   if (!b) { el.innerHTML = ''; return; }
   const inp = (k, label, ph = '') => `<label class="field"><span>${label}</span><input data-bf="${k}" value="${esc(b[k])}" placeholder="${esc(ph)}"></label>`;
-  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>เลือกแบบที่ชอบ <small class="muted">— แตะเพื่อเปลี่ยนได้ทันที</small></h3><div class="sd-gallery" id="sdGallery"></div></section>
+  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>เลือกแบบที่ชอบ <small class="muted">— แตะเพื่อเปลี่ยนได้ทันที</small></h3><div class="sd-gallery" id="sdGallery"></div>
+    <div class="sd-sub">ลุคฉากหลังภาพคน <small class="muted">— ${b.look ? SD_LOOKS[b.look] : 'อัตโนมัติ: ' + SD_LOOKS[sdLookOf(b)]}</small></div>
+    <div class="seg-chips sd-looks"><button type="button" class="${!b.look ? 'on' : ''}" data-act="sdLook" data-id="auto">อัตโนมัติ</button>${SD_LOOK_ORDER.map(k => `<button type="button" class="${b.look === k ? 'on' : ''}" data-act="sdLook" data-id="${k}">${SD_LOOKS[k]}</button>`).join('')}</div></section>
   <section class="card sd-step"><h3><span class="pb-n">3</span>ตรวจข้อความ</h3>
     ${b.by === 'ai' && b.summary ? `<p class="sd-summary">${esc(b.summary)}</p>` : ''}
     <div id="sdWarn"></div>

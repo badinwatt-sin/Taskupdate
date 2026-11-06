@@ -75,7 +75,7 @@ function saProp(g, key, x, y, w, h) {
   g.save(); g.translate(x + w / 2 - (x0 + x1) / 2 * s, y + h / 2 - (y0 + y1) / 2 * s); g.scale(s, s); P[2](g); g.restore();
 }
 /* decor shapes (drawn into the layer box) */
-const SA_SHAPES = { rect: 'สี่เหลี่ยม', circle: 'วงกลม', blob: 'รูปทรงอิสระ', sparkle: 'ประกาย', dots: 'จุด', ring: 'วงแหวน', line: 'เส้น' };
+const SA_SHAPES = { rect: 'สี่เหลี่ยม', arch: 'ซุ้มโค้ง', slab: 'แถบเฉียง', frame: 'กรอบ', tiles: 'โมเสก', wave: 'คลื่น', stripes: 'ลายเส้นเฉียง', quarter: 'มุมโค้ง', plus: 'กากบาท', tile: 'การ์ดมีเงา', circle: 'วงกลม', blob: 'รูปทรงอิสระ', sparkle: 'ประกาย', dots: 'จุด', ring: 'วงแหวน', line: 'เส้น' };
 function saShape(g, L) {
   const { x, y, w, h } = L, c = L.fill || '#E2EFFF';
   g.save(); g.globalAlpha = L.alpha == null ? 1 : L.alpha; g.fillStyle = c; g.strokeStyle = c;
@@ -91,6 +91,31 @@ function saShape(g, L) {
     const cx = x + w / 2, cy = y + h / 2; g.beginPath(); g.moveTo(cx, y); g.quadraticCurveTo(cx, cy, x + w, cy); g.quadraticCurveTo(cx, cy, cx, y + h); g.quadraticCurveTo(cx, cy, x, cy); g.quadraticCurveTo(cx, cy, cx, y); g.fill();
   } else if (L.kind === 'dots') {
     const n = 5, s = Math.min(w, h) / n, r = s * .16; for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { g.beginPath(); g.arc(x + s * (i + .5), y + s * (j + .5), r, 0, 6.3); g.fill(); }
+  } else if (L.kind === 'arch') {
+    g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w / 2); g.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath();
+    if (L.outline) { g.lineWidth = L.lw || Math.max(3, w * .012); g.stroke(); } else g.fill();
+  } else if (L.kind === 'slab') {
+    const sk = (L.skew == null ? .18 : L.skew) * h; g.beginPath(); g.moveTo(x + sk, y); g.lineTo(x + w, y); g.lineTo(x + w - sk, y + h); g.lineTo(x, y + h); g.closePath();
+    if (L.outline) { g.lineWidth = L.lw || Math.max(3, w * .012); g.stroke(); } else g.fill();
+  } else if (L.kind === 'frame') {
+    g.lineWidth = L.lw || Math.max(3, Math.min(w, h) * .012); const r = Math.min(w, h) * (L.r == null ? .06 : L.r); g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); g.stroke();
+  } else if (L.kind === 'tiles') {
+    const gap = Math.min(w, h) * .035, tw = (w - gap) / 2, th = (h - gap) / 2, r = Math.min(tw, th) * (L.r == null ? .14 : L.r), cs = [L.fill, L.fill2, L.fill3, L.fill4];
+    cs.forEach((col, i) => { g.fillStyle = col || c; const tx = x + (i % 2) * (tw + gap), ty = y + Math.floor(i / 2) * (th + gap); g.beginPath(); if (g.roundRect) g.roundRect(tx, ty, tw, th, r); else g.rect(tx, ty, tw, th); g.fill(); });
+  } else if (L.kind === 'stripes') {
+    g.beginPath(); const r = Math.min(w, h) * (L.r == null ? .12 : L.r); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); g.clip();
+    const step = Math.max(10, Math.min(w, h) * .14); g.lineWidth = step * .4; for (let d = -h; d < w; d += step) { g.beginPath(); g.moveTo(x + d, y + h); g.lineTo(x + d + h, y); g.stroke(); }
+  } else if (L.kind === 'wave') {
+    g.beginPath(); g.moveTo(x, y + h * .2); g.bezierCurveTo(x + w * .2, y - h * .08, x + w * .32, y + h * .5, x + w * .52, y + h * .2); g.bezierCurveTo(x + w * .72, y - h * .1, x + w * .86, y + h * .38, x + w, y + h * .1); g.lineTo(x + w, y + h); g.lineTo(x, y + h); g.closePath(); g.fill();
+  } else if (L.kind === 'quarter') {
+    const k = L.corner || 'tr', cx = k[1] === 'r' ? x + w : x, cy = k[0] === 't' ? y : y + h, a0 = { tr: Math.PI / 2, br: Math.PI, bl: Math.PI * 1.5, tl: 0 }[k];
+    g.beginPath(); g.moveTo(cx, cy); g.arc(cx, cy, w, a0, a0 + Math.PI / 2); g.closePath(); g.fill();
+  } else if (L.kind === 'plus') {
+    const n = 3, s2 = Math.min(w, h) / n; g.lineWidth = Math.max(2, s2 * .1); g.lineCap = 'round';
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { const cx = x + s2 * (i + .5), cy = y + s2 * (j + .5); g.beginPath(); g.moveTo(cx - s2 * .16, cy); g.lineTo(cx + s2 * .16, cy); g.moveTo(cx, cy - s2 * .16); g.lineTo(cx, cy + s2 * .16); g.stroke(); }
+  } else if (L.kind === 'tile') {
+    const m = Math.min(w, h), r = m * (L.r == null ? .2 : L.r); if (L.shadow) { g.shadowColor = 'rgba(0,0,60,.22)'; g.shadowBlur = m * .22; g.shadowOffsetY = m * .07; }
+    g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); g.fill();
   } else if (L.kind === 'line') { g.fillRect(x, y + h / 2 - Math.max(2, h * .5) / 2, w, Math.max(2, h * .5)); }
   else { g.beginPath(); const r = Math.min(w, h) * (L.r == null ? .12 : L.r); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); g.fill(); }
   g.restore();
