@@ -17,7 +17,7 @@ function boardTasks(f, fixedProject) {
 }
 function filterBar(key, fixedProject, extra = '') {
   const f = ST[key];
-  const projOpts = opt('', 'ทุก Project', f.project) + visibleProjects().map(p => opt(p.id, p.name, f.project)).join('') + opt('__postit', 'Post-it ของทีม (งานส่วนตัวที่ Submit)', f.project);
+  const projOpts = opt('', 'ทุก Project', f.project) + visibleProjects().map(p => opt(p.id, p.name, f.project)).join('') + opt('__postit', 'Post-it ของทีม (งานส่วนตัว)', f.project);
   return `<div class="filters">
     ${fixedProject ? '' : `<select data-f="${key}.project" aria-label="Project">${projOpts}</select>`}
     <select data-f="${key}.group" aria-label="Squad">${groupOptions(f.group, 'ทุก Squad / หน้าที่')}</select>
