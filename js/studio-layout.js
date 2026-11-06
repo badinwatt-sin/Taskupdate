@@ -35,7 +35,7 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   if (lines.length <= 2) lines = lines.flatMap(l => l.split(/\s+(?=(?:ใน)?วันที่\s|วัน(?:จันทร์|อังคาร|พุธ|พฤหัส|ศุกร์|เสาร์|อาทิตย์)|เวลา\s|ณ\s|ห้อง|สถานที่|ผ่าน\s*(?:zoom|teams)|ลงทะเบียน|สมัคร(?:ได้)?ที่|สอบถาม|\*)/i)).map(s => s.trim()).filter(Boolean);   // one-sentence prompt → one fact per line
   const src = lines.join('\n');
   const b = sdEmptyBrief(); b.by = 'auto';
-  const take = re => { for (const l of lines) { const m = l.match(re); if (m) return m[0].trim(); } return ''; };
+  const take = re => { for (const l of lines) { if (l.length > 80 || /เบี้ย|ภายใน|อนุมัติ|ก่อน|หลัง|ตั้งแต่.*ถึง|ระหว่าง/.test(l) && l.length > 40) continue; const m = l.match(re); if (m) return m[0].trim(); } return ''; };   // facts only from short fact lines, not from conditions
   b.date = take(SD_RE_DATE); b.time = take(SD_RE_TIME);
   const vl = lines.find(l => /^(?:สถานที่|ณ|venue|ที่\s|ห้อง|ผ่าน\s*(?:zoom|teams)|zoom|online)/i.test(l)); b.venue = vl ? vl.replace(/^(?:สถานที่|venue)\s*[:：]?\s*/i, '') : '';
   const used = new Set([vl]);
@@ -49,7 +49,7 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   b.kind = sdGuessKind(head + ' ' + (rest[0] || ''), lines.join(' '));
   const all = lines.join(' ');
   b.kicker = SD_KINDS[b.kind][1]; b.kindText = SD_KINDS[b.kind][0];
-  b.hero = sdKitPick(head + ' ' + all, 'people') || SD_KIND_HERO[b.kind];
+  b.hero = sdKitPick(head, 'people') || sdKitPick(all, 'people') || SD_KIND_HERO[b.kind];   // the headline decides first
   const usedK = [];
   b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || sdKitFallback(i, usedK); usedK.push(p.visual); });
   b.props = SD_KIND_DECOR[b.kind];
@@ -65,7 +65,8 @@ function sdGuessKind(head, all) {   // kind from free text (headline first, then
   const t = [head, all || head];
   for (const x of t) {
     if (/ขอเชิญ|เชิญ|อบรม|สัมมนา|ประชุม|workshop|training|กิจกรรม|งานเลี้ยง|event/i.test(x)) return 'event';
-    if (/ยินดี|congrat|รางวัล|ชื่นชม/i.test(x)) return 'recognition';
+    if (/ยินดี|congrat|ชื่นชม/i.test(x) && x === t[0] || /^ขอแสดงความยินดี/.test(x)) return 'recognition';
+    if (/เบี้ย|ผลิตภัณฑ์|แบบประกัน|บำนาญ|ลดหย่อน|ความคุ้มครอง|คุ้มค่า|ออมทรัพย์|smart|plan\b|ประกันชีวิต|ประกันสุขภาพ/i.test(x)) return 'campaign';
     if (/เปลี่ยนแปลง|ปรับ|ยกเลิก|นโยบาย|ระบบใหม่|แจ้งเปลี่ยน/i.test(x)) return 'change';
     if (/ภายใน|กำหนดส่ง|อย่าลืม|เตือน|deadline|ครบกำหนด/i.test(x)) return 'reminder';
     if (/แคมเปญ|แข่งขัน|โปรโมชัน|ยอดขาย|campaign|contest/i.test(x)) return 'campaign';
