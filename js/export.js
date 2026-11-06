@@ -13,21 +13,21 @@ const EXP_ST = { confirmed: ['#0a84ff', 'ยืนยันแล้ว'], plann
 const BRAND_HEAD = '"Brand Serif", "Source Serif 4", "IBM Plex Sans Thai", Georgia, serif';   // Publico when installed on this computer
 const BRAND_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
 const BRAND_W = { 400: 600, 500: 600, 600: 600, 700: 600, 800: 900, 900: 900 };   // Source Sans Semibold / Black · Publico Roman / Black
+/* Art direction (Krungthai-AXA CI): AXA Blue carries the page, white space does the rest.
+   AXA Red is a signal only (today, this month, holidays) — never a fill for content. Colours come from
+   the CI core + tints and one approved gradient; type is Publico / Source Sans Pro / DB Helvethaica X.
+   Status: confirmed = AXA Blue (solid) · planning = Blue Tint 2 · done = grey (quiet, already past). */
 const EXP_THEMES = {
-  bauhaus: { label: 'Bauhaus', bg: '#F3EFE6', ink: '#111318', sub: '#4E5260', mute: '#9A9585', card: '#FFFFFF', edge: '#111318', line: '#E6DFD0', chip: '#EFE9DD', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
-    blobs: [], wm: 0, clean: true, art: 'bauhaus', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
-    hues: ['#0026E1', '#FF5A36', '#111318', '#3979FF', '#F2B705', '#0929A6'], st: { confirmed: '#0026E1', planning: '#FF5A36', done: '#111318' } },
-  neon: { label: 'Deep Blue', bg: '#040A1C', ink: '#F5F6FA', sub: '#AEB4C6', mute: '#646B82', card: 'rgba(255,255,255,.055)', edge: 'rgba(255,255,255,.14)', line: 'rgba(255,255,255,.09)', chip: 'rgba(255,255,255,.08)', accent: '#5B8CFF', shadow: 'rgba(0,0,0,0)',
-    blobs: [], wm: 0, clean: true, art: 'neon', solidBars: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W,
-    hues: ['#3979FF', '#6FA8FF', '#7FD8FF', '#B5D2FF'], st: { confirmed: '#3979FF', planning: '#7FD8FF', done: '#5D6B8A' } },   // blue shades only
-  clean: { label: 'Clean', bg: '#FFFFFF', ink: '#0B1220', sub: '#5A6375', mute: '#9AA2B1', card: '#FFFFFF', edge: '#E3E8EF', line: '#ECEFF4', chip: '#F4F6F9', accent: '#0026E1', shadow: 'rgba(0,0,0,0)',
-    blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#0026E1'], st: { confirmed: '#0026E1', planning: '#8C97AD', done: '#C9CFD9' } },
-  cleanDark: { label: 'Clean Dark', bg: '#0E121A', ink: '#F4F6FA', sub: '#A8B0C0', mute: '#69728A', card: '#141925', edge: '#252C3B', line: '#20273A', chip: '#1A2030', accent: '#3979FF', shadow: 'rgba(0,0,0,0)',
-    blobs: [], wm: 0, clean: true, fh: BRAND_HEAD, fb: BRAND_BODY, wmap: BRAND_W, hues: ['#3979FF'], st: { confirmed: '#3979FF', planning: '#8C97AD', done: '#4B5468' } },
-  aurora: { label: 'Aurora', bg: '#f3f4fa', ink: '#15151a', sub: '#5b5b66', mute: '#a3a3ae', card: 'rgba(255,255,255,.93)', edge: 'rgba(20,20,60,.06)', line: '#e8e8f0', chip: '#f0f0f6', accent: '#0a84ff', shadow: 'rgba(30,30,80,.09)', blobs: [['#0a84ff', .22], ['#bf5af2', .17], ['#30d158', .13]], wm: .045 },
-  midnight: { label: 'Midnight', bg: '#090d1c', ink: '#f5f5f7', sub: '#b6bacb', mute: '#666d85', card: 'rgba(255,255,255,.065)', edge: 'rgba(255,255,255,.09)', line: 'rgba(255,255,255,.1)', chip: 'rgba(255,255,255,.08)', accent: '#64d2ff', shadow: 'rgba(0,0,0,.35)', blobs: [['#0a84ff', .42], ['#bf5af2', .34], ['#ff375f', .2]], wm: .06 },
-  paper: { label: 'Minimal', bg: '#fbf9f5', ink: '#141414', sub: '#57534c', mute: '#aaa59b', card: '#ffffff', edge: 'rgba(60,40,20,.08)', line: '#ece7de', chip: '#f4f0e9', accent: '#d4572a', shadow: 'rgba(60,40,20,.06)', blobs: [['#f4a261', .14], ['#e76f51', .08]], wm: .05 },
+  ciBand: { label: 'CI Corporate', bg: '#FFFFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#999999', card: '#FFFFFF', edge: '#E6E6E6', line: '#EDEEF3', chip: '#E2EFFF', accent: '#00008F', ci: 'band', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
+  ciTint: { label: 'CI Soft', bg: '#E2EFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#8A8FA8', card: '#FFFFFF', edge: '#FFFFFF', line: '#E9EDF7', chip: '#E2EFFF', accent: '#00008F', ci: 'tint', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
+  ciDeep: { label: 'CI Deep', bg: '#00008F', bg2: '#0C0E45', ink: '#FFFFFF', sub: '#E2EFFF', mute: '#8F93C8', card: 'rgba(255,255,255,.06)', edge: 'rgba(226,239,255,.16)', line: 'rgba(226,239,255,.12)', chip: 'rgba(226,239,255,.12)', accent: '#E2EFFF', ci: 'deep', dark: true, clean: true, solidBars: true, hues: ['#E2EFFF'], st: { confirmed: '#FFFFFF', planning: '#6574F8', done: '#5A5E99' } },
+  ciWhite: { label: 'CI Minimal', bg: '#FFFFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#999999', card: '#FFFFFF', edge: '#E6E6E6', line: '#EDEEF3', chip: '#F3F4F8', accent: '#00008F', ci: 'white', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
 };
+const EXP_RED = '#FF1721';   // AXA Red — signal only
+let EXP_LOGO = {};           // decoded logo images (colour / white) for the current export
+async function expLoadLogos() {
+  await Promise.all([['color', 'color'], ['white', 'bordered']].map(async ([k, v]) => { if (EXP_LOGO[k]) return; try { const im = new Image(); im.src = typeof sdLogoSrc === 'function' ? sdLogoSrc({ variant: v }) : `assets/brand/ktaxa-logo${v === 'color' ? '' : '-' + v}.png`; await im.decode(); EXP_LOGO[k] = im; } catch (e) { } }));
+}
 const EXP_LAYOUTS = {
   'year-l': { label: 'รายปี · แนวนอน 16:9', W: 1920, H: 1080, page: 'A4 landscape' },
   'year-p': { label: 'รายปี · แนวตั้ง A4', W: 1240, H: 1754, page: 'A4 portrait' },
@@ -60,7 +60,7 @@ function expKit(cv, W, H, th) {
   const g = cv.getContext('2d'); g.setTransform(S2, 0, 0, S2, 0, 0); g.textBaseline = 'alphabetic';
   const k = {
     g, W, H, th,
-    font: (w, px) => { const fam = w >= 800 ? (th.fh || EXP_FONT) : (th.fb || EXP_FONT); g.font = `${th.wmap ? th.wmap[w] || w : w} ${Math.round(px * 10) / 10}px ${fam}`; },
+    font: (w, px) => { const ci = th.ci && typeof sdStack === 'function', fam = w >= 800 ? (ci ? sdStack('head') : th.fh || EXP_FONT) : (ci ? sdStack('body') : th.fb || EXP_FONT); g.font = `${ci ? Math.min(w, 700) : th.wmap ? th.wmap[w] || w : w} ${Math.round(px * 10) / 10}px ${fam}`; },
     rr: (x, y, w, h, r) => { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); },
     fit: (t, max) => { if (g.measureText(t).width <= max) return t; while (t.length > 1 && g.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; },
     segs: t => {   // word segments; brackets/punctuation stick to their word, spaces stay with the previous word
@@ -112,6 +112,11 @@ function expKit(cv, W, H, th) {
 function expBackdrop(k, mark, hue) {
   const { g, W, H, th } = k;
   g.fillStyle = th.bg; g.fillRect(0, 0, W, H);
+  if (th.ci) {   // CI: flat colour or the approved AXA Blue → Blue Tint 3 gradient; a blue band holds the header
+    if (th.bg2) { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, th.bg); gr.addColorStop(1, th.bg2); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
+    if (th.ci === 'band') { const bh = H > W ? 236 : 248; g.fillStyle = '#00008F'; g.fillRect(0, 0, W, bh); }
+    return;
+  }
   if (th.art) return artBackdrop(k, mark, hue);
   if (th.clean) {   // editorial minimal: hairline arcs, one accent dot, a small dot grid — lots of white space
     g.save(); g.strokeStyle = th.line; g.lineWidth = 1.2;
@@ -204,6 +209,7 @@ function hexA(hex, a) {
 function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   const { g, W, th } = k, X = compact ? 60 : 72, R = W - X;
   g.textAlign = 'left';
+  if (th.ci) return ciHeader(k, { kicker, title, small, sub, evs, compact, X, R });
   if (th.clean) return cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R });
   if (th.metal) { const mg = g.createLinearGradient(X, 0, X + 34, 0); mg.addColorStop(0, th.accent); mg.addColorStop(1, '#B5D2FF'); g.fillStyle = mg; } else g.fillStyle = hue || th.accent;
   k.rr(X, compact ? 66 : 70, 34, 6, 3); g.fill();
@@ -229,6 +235,32 @@ function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   });
   g.textAlign = 'left';
   return compact ? 230 : 240;
+}
+function ciHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
+  const { g, W, H, th } = k, onBlue = th.ci === 'band' || th.dark, ink = onBlue ? '#FFFFFF' : '#00008F', soft = onBlue ? '#E2EFFF' : th.sub, y0 = compact ? 70 : 74;
+  // logo, top right — white version on blue, colour version on light
+  const lg = onBlue ? (EXP_LOGO.white || EXP_LOGO.color) : EXP_LOGO.color, lh = compact ? 64 : 70;
+  let lw = 0; if (lg) { lw = lg.width * lh / lg.height; g.drawImage(lg, R - lw, y0 - 30, lw, lh); }
+  // kicker: short AXA Red rule + small label
+  g.fillStyle = onBlue ? '#FFFFFF' : EXP_RED; g.fillRect(X, y0 - 7, 28, 3);
+  k.font(600, 15); g.fillStyle = soft; g.textAlign = 'left'; if ('letterSpacing' in g) g.letterSpacing = '2px'; g.fillText(k.fit(kicker, R - lw - X - 80), X + 40, y0); if ('letterSpacing' in g) g.letterSpacing = '0px';
+  const ty = compact ? 146 : 156; k.font(800, compact ? 58 : 64); g.fillStyle = ink; g.fillText(title, X - 2, ty);
+  const tw = g.measureText(title).width;
+  if (small) { k.font(500, 22); g.fillStyle = soft; g.fillText(small, X + tw + 18, ty - 4); }
+  // sub line + status counts, one quiet row
+  k.font(500, 18); g.fillStyle = soft; g.fillText(sub, X, ty + 40);
+  let ix = R; g.textAlign = 'right'; k.font(600, 16);
+  [['done'], ['planning'], ['confirmed']].forEach(([st]) => {
+    const n = evs.filter(e => e.status === st).length, t = `${n} ${EXP_ST[st][1]}`, w = g.measureText(t).width;
+    g.fillStyle = onBlue ? '#FFFFFF' : th.ink; g.fillText(t, ix, ty + 40);
+    const c = onBlue && st === 'confirmed' ? '#FFFFFF' : onBlue && st === 'done' ? '#999999' : stc(th, st);
+    g.fillStyle = c; g.beginPath(); g.arc(ix - w - 11, ty + 34, 5, 0, Math.PI * 2); g.fill(); if (onBlue && st === 'confirmed') { g.strokeStyle = '#6574F8'; g.lineWidth = 1; g.stroke(); }
+    ix -= w + 40;
+  });
+  g.textAlign = 'left';
+  const bottom = th.ci === 'band' ? (H > W ? 236 : 248) : (compact ? 214 : 226);
+  if (th.ci === 'white') { g.strokeStyle = '#00008F'; g.lineWidth = 2; g.beginPath(); g.moveTo(X, bottom); g.lineTo(R, bottom); g.stroke(); }
+  return bottom + (compact ? 26 : 30);
 }
 function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
   const { g, th } = k, y0 = compact ? 74 : 78;
@@ -275,9 +307,10 @@ function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
 }
 function expFooter(k, X) {
   const { g, W, H, th } = k, fy = H - 34;
+  if (th.ci) { g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X, fy - 30); g.lineTo(W - X, fy - 30); g.stroke(); }
   let lx = X; k.font(500, 16);
   Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = stc(th, st); if (th.clean) { g.beginPath(); g.arc(lx + 6, fy - 5, 5, 0, Math.PI * 2); } else k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
-  g.textAlign = 'right'; g.fillStyle = th.mute; g.fillText(`TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, W - X, fy); g.textAlign = 'left';
+  g.textAlign = 'right'; g.fillStyle = th.mute; g.fillText(th.ci ? `Krungthai-AXA Life Insurance · Agency Experience · Version ${expVersion()}` : `TEAM Hub · Agency Experience · อัปเดตล่าสุด ${expVersion()}`, W - X, fy); g.textAlign = 'left';
 }
 
 /* ---------- year: 12 month cards, names wrap in full, type auto-fits ---------- */
@@ -332,9 +365,10 @@ function drawYear(cv, { year, theme, portrait }) {
     g.fillStyle = th.mute; k.font(600, 13); g.fillText(EXP_MON_EN[m].toUpperCase(), cx + padX + 61, cy + 63);
     if (list.length) {
       k.font(700, 15); const t = `${list.length} งาน`, bw = g.measureText(t).width + 20;
-      g.fillStyle = isNow ? hue : th.chip; if (!th.clean || isNow) { k.rr(cx + cw - padX - bw, cy + 28, bw, 28, 14); g.fill(); }
-      g.fillStyle = isNow ? '#fff' : th.sub; g.textAlign = 'center'; g.fillText(t, cx + cw - padX - bw / 2, cy + 47); g.textAlign = 'left';
+      g.fillStyle = isNow ? (th.dark ? '#FFFFFF' : '#00008F') : th.chip; if (!th.clean || isNow || th.ci) { k.rr(cx + cw - padX - bw, cy + 28, bw, 28, 14); g.fill(); }
+      g.fillStyle = isNow ? (th.dark ? '#00008F' : '#fff') : th.ci ? (th.dark ? '#FFFFFF' : '#00008F') : th.sub; g.textAlign = 'center'; g.fillText(t, cx + cw - padX - bw / 2, cy + 47); g.textAlign = 'left';
     }
+    if (isNow && th.ci) { g.save(); k.rr(cx, cy, cw, ch, 14); g.clip(); g.fillStyle = EXP_RED; g.fillRect(cx, cy, cw, 4); g.restore(); }
     if (isNow && !th.clean) { g.strokeStyle = hue; g.lineWidth = 2.5; k.rr(cx + 1, cy + 1, cw - 2, ch - 2, 21); g.stroke(); }
     g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + padX, cy + headH); g.lineTo(cx + cw - padX, cy + headH); g.stroke();
     if (!list.length) { g.fillStyle = th.mute; k.font(500, 16); g.fillText('— ไม่มีงาน —', cx + padX, cy + headH + 34); return; }
@@ -385,10 +419,10 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
     g.strokeStyle = th.line; g.lineWidth = 1; g.strokeRect(Math.round(x) + .5, Math.round(y) + .5, cw, chh);
     if (dn < 1 || dn > days) { g.fillStyle = hexA(th.ink, .025); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); continue; }
     const iso_ = `${year}-${pad2(month + 1)}-${pad2(dn)}`, hol = holidayOf(iso_), wk = c === 0 || c === 6;
-    if (hol || wk) { g.fillStyle = th.clean && !hol ? hexA(th.ink, .025) : hexA(hol ? '#ff3b30' : hue, .05); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); }
-    if (iso_ === t0) { g.fillStyle = hue; g.beginPath(); g.arc(x + 22, y + 21, 15, 0, Math.PI * 2); g.fill(); }
-    k.font(700, 16); g.fillStyle = iso_ === t0 ? '#fff' : hol ? '#ff3b30' : wk ? hexA(th.ink, .55) : th.ink; g.textAlign = 'center'; g.fillText(String(dn), x + 22, y + 27); g.textAlign = 'left';
-    if (hol) { k.font(500, 11); g.fillStyle = '#ff3b30'; g.fillText(k.fit(hol.name, cw - 46), x + 40, y + 25); }
+    if (hol || wk) { g.fillStyle = th.clean && !hol ? hexA(th.ink, .025) : hexA(hol ? (th.ci ? EXP_RED : '#ff3b30') : hue, .05); g.fillRect(x + 1, y + 1, cw - 1, chh - 1); }
+    if (iso_ === t0) { g.fillStyle = th.ci ? EXP_RED : hue; g.beginPath(); g.arc(x + 22, y + 21, 15, 0, Math.PI * 2); g.fill(); }
+    k.font(700, 16); g.fillStyle = iso_ === t0 ? '#fff' : hol ? (th.ci ? EXP_RED : '#ff3b30') : wk ? hexA(th.ink, .55) : th.ink; g.textAlign = 'center'; g.fillText(String(dn), x + 22, y + 27); g.textAlign = 'left';
+    if (hol) { k.font(500, 11); g.fillStyle = th.ci ? EXP_RED : '#ff3b30'; g.fillText(k.fit(hol.name, cw - 46), x + 40, y + 25); }
   }
   // event bars, lane by lane per week
   const barH = 22, lanesMax = Math.max(1, Math.floor((chh - 40) / (barH + 4)));
@@ -460,7 +494,9 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 async function openCalExport() {
   const now = new Date();
   EXP_CATS = [...(ST.cal.cats || [])];
-  const st = { layout: 'year-l', theme: 'bauhaus', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  const st = { layout: 'year-l', theme: 'ciBand', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  try { if (typeof sdFontFiles === 'function') await sdFontFiles(); } catch (e) { }
+  await expLoadLogos();
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
   const years = [...new Set([st.year - 1, st.year, st.year + 1, ...S().events.map(e => +e.start.slice(0, 4))])].sort();
   const posters = new Map();
