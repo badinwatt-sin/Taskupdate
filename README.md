@@ -1,7 +1,7 @@
 # Agency Experience Team Hub
 
 ระบบกลางสำหรับวางแผนและติดตามงานของทีม Agency Experience — **บันทึกงานครั้งเดียว ดูได้หลายมุม**
-(Home · My Plan · Projects · Calendar · Board (Gantt/Kanban) · Offsite · Team · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
+(Home · My Plan · Projects · Calendar · Board (Gantt/Kanban) · Offsite · Poster · Team · AI Meeting Hub (ปิดไว้ชั่วคราว — เปิดได้ที่ `FEATURES.meetings` ใน js/app.js) · ทีมและสิทธิ์)
 
 ## เริ่มใช้งาน
 ```bash
@@ -35,3 +35,14 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 - Export: Excel = ไฟล์ CSV, PDF = ปุ่ม “พิมพ์ / PDF”
 - ไฟล์แนบเก็บในข้อมูลโดยตรง (≤ 1 MB/ไฟล์) — ไฟล์ใหญ่ให้ใส่เป็น Link
 - วันหยุดบริษัทตัวอย่างปรับได้ที่ ทีมและการตั้งค่า (Admin)
+
+## Poster — CI Poster Builder
+สร้าง Communications Poster เองได้เร็ว บน Template มาตรฐานและ CI องค์กร (เมนู **Poster**)
+1. เลือก Template — Announcement · Event & Invitation · Campaign · How-to & Tips · Recognition — และขนาด Square 1:1 (1080×1080) · Portrait 4:5 (1080×1350) · Story 9:16 (1080×1920, เว้นขอบบน/ล่างให้ UI ของแอป) · Landscape 16:9 (1920×1080)
+2. กรอก Keyword, Headline, Content (ขึ้นบรรทัดใหม่ = 1 ข้อ / 1 ขั้นตอน), Call to action และรายละเอียดเพิ่มเติม: วัน เวลา สถานที่ QR Code (จากลิงก์ หรืออัปโหลดรูป QR) เงื่อนไข
+3. **เรียบเรียงด้วย AI** (`POST /api/ai-poster`, ใช้ `ANTHROPIC_API_KEY` เดียวกับ AI Import) — ปรับถ้อยคำ จัดลำดับ เลือกไอคอน ลายกราฟิก และสีเน้นจาก CI; วัน เวลา สถานที่ และเงื่อนไขไม่ถูกส่งให้แก้ และระบบตรวจตัวเลขซ้ำ (ตัวเลขหาย / มีตัวเลขใหม่ → แจ้งเตือน + ปุ่มย้อนกลับ) · ไม่มี Key หรือโหมดสาธิต → ใช้ “จัดอัตโนมัติ” แทน
+4. Preview สด ปรับพื้นหลัง สีเน้น รูปประกอบ ลายกราฟิก ไอคอนได้ · เปลี่ยนขนาดจากงานเดิมได้ทันที ระบบจัดข้อความ/ภาพใหม่และย่อขนาดตัวอักษรให้พอดีเอง
+5. Export PNG / JPG หรือครบ 4 ขนาด — ต้องติ๊ก “ตรวจสอบแล้ว” ใหม่ทุกครั้งที่แก้ไข
+- **CI Control** (Admin): ชื่อองค์กร ข้อความท้ายโปสเตอร์ โลโก้ (พื้นสว่าง/พื้นเข้ม) และสีที่อนุมัติ — เก็บใน `settings.brand` ใช้ร่วมกันทั้งทีม · ฟอนต์ล็อก: Publico (ถ้าติดตั้ง) / Source Serif 4 · Source Sans Pro · IBM Plex Sans Thai
+- ฉบับร่างเก็บในเบราว์เซอร์ของแต่ละคน (ล่าสุด 20 งาน)
+- QR Code: `js/vendor/qrcode.min.js` — qrcode-generator โดย Kazuhiko Arase (MIT)
