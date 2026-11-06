@@ -114,7 +114,7 @@ function sdNormBrief(x) {
   b.emph = Number.isInteger(+b.emph) ? Math.max(-1, Math.min(b.headline.length - 1, +b.emph)) : 0;
   b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: p && SD_KIT[p.visual] ? p.visual : (sdKitPick(str(p && p.title) + ' ' + str(p && p.body), ['objects', 'money', 'info']) || sdKitFallback(i)) })).filter(p => p.title || p.body);
   if (!SD_KIT[b.hero]) b.hero = SD_KIND_HERO[b.kind] || 'H02';
-  b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SD_KIT[k] && SD_KIT[k][1] !== 'people').slice(0, 2); if (!b.props.length) b.props = (SD_KIND_DECOR[b.kind] || SD_KIND_DECOR.announce).slice();
+  b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SD_KIT[k] && !sdIsPerson(k)).slice(0, 2); if (!b.props.length) b.props = (SD_KIND_DECOR[b.kind] || SD_KIND_DECOR.announce).slice();
   if (!SD_ACCENTS.includes(b.accent)) b.accent = 'blue';
   if (!SD_LOOKS[b.look]) b.look = '';
   if (!SD_KINDS[b.kind]) b.kind = 'announce';
@@ -409,7 +409,7 @@ function sdStage(c, x, y, w, h, o = {}) {   // draws the shapes behind a hero pi
 }
 function sdDecor(c, x, y, w, h) {   // object props sit on small shadowed tiles at the outer edges of the picture area, never over the text or the person
   const P = c.b.props || [], u = c.u, sz = Math.max(64 * u, Math.min(w * .22, h * .17, 150 * u));
-  const art = k => SD_KIT[k] && SD_KIT[k][1] !== 'people' ? k : null;
+  const art = k => SD_KIT[k] && !sdIsPerson(k) ? k : null;
   const spots = [[.02, .04, -6], [.98 - sz / w, .5, 5]];
   P.slice(0, 2).forEach((k, i) => {
     if (!art(k)) return; const [fx, fy, rot] = spots[i], tx = x + fx * w, ty = y + fy * h;
@@ -423,7 +423,7 @@ function sdHero(c, key, x, y, w, h, o = {}) {   // kit piece (assets/kit) or a d
   if (sdIsKit(key)) {
     if (!o.panel) return c.add({ t: 'art', role: 'hero', key, x, y, w, h, flip: !!o.flip });
     c.add({ t: 'shape', role: 'deco', kind: 'rect', r: o.r == null ? .08 : o.r, fill: pbMix(o.tint || c.acc, '#FFFFFF', .55), x, y, w, h });
-    const p = Math.min(w, h) * .08; return c.add({ t: 'art', role: 'hero', key, x: x + p, y: y + p, w: w - 2 * p, h: h - p * (SD_KIT[key][1] === 'people' ? 1 : 2), flip: !!o.flip });
+    const p = Math.min(w, h) * .08; return c.add({ t: 'art', role: 'hero', key, x: x + p, y: y + p, w: w - 2 * p, h: h - p * (sdIsPerson(key) ? 1 : 2), flip: !!o.flip });
   }
   return c.add({ t: 'char', role: 'hero', key, tint: o.tint || c.acc, panel: !!o.panel, r: o.r, x, y, w, h, flip: !!o.flip });
 }

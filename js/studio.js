@@ -255,7 +255,7 @@ function sdAddLayer(L) {
 ACT.sdAddTab = el => { SD_ADD = el.dataset.id; sdAddPanel(); };
 ACT.sdAdd = async el => {
   const [t, key] = el.dataset.id.split(':'), u = Math.min(sdFmt()[2], sdFmt()[3]) / 1080, C = pbBrand().colors, acc = sdPastel(SDOC.brief?.accent || 'blue');
-  if (t === 'art') { const K = SD_KIT[key], h = (K[1] === 'people' ? 620 : 300) * u; sdAddLayer({ t: 'art', key, h, w: h * K[2] / K[3] }); }
+  if (t === 'art') { const K = SD_KIT[key], h = (sdIsPerson(key) ? 620 : 300) * u; sdAddLayer({ t: 'art', key, h, w: h * K[2] / K[3] }); }
   else if (t === 'char') sdAddLayer({ t: 'char', key, tint: acc, w: 380 * u, h: 400 * u });
   else if (t === 'scene') sdAddLayer({ t: 'char', key, tint: acc, panel: true, r: .08, w: 420 * u, h: 380 * u });
   else if (t === 'prop') sdAddLayer({ t: 'prop', key, w: 150 * u, h: 150 * u });

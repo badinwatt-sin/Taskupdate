@@ -21,7 +21,7 @@ const PRO = {   // per-format grid (fractions of W / H; px values are for the 10
   story:     { M: 70, gap: 34, head: 100, headW: .82, col: .6, hx: .8,  hy: .33, maxW: .52, foot: .6,  cta: 38, body: 36 },
   landscape: { M: 90, gap: 26, head: 96, headW: .6,  col: .6,  hx: .82, hy: .09, maxW: .34, foot: .56, cta: 36, body: 36 },
 };
-const proPeople = (c, key) => { key = key || c.b.hero; return SD_KIT[key] && SD_KIT[key][1] === 'people' ? key : (SD_KIND_HERO[c.b.kind] || 'H02'); };
+const proPeople = (c, key) => { key = key || c.b.hero; return sdIsPerson(key) ? key : (SD_KIND_HERO[c.b.kind] || 'H02'); };
 function proSetup(c) {   // margins + safe areas for the format
   const g = PRO[c.fk] || PRO.portrait, u = c.u;
   c.M = g.M * u; c.top = c.M + (c.story ? 150 * u : 0); c.bot = c.H - c.M - (c.story ? 190 * u : 0);

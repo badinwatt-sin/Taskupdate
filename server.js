@@ -6,7 +6,7 @@ const http = require('http'), fs = require('fs'), path = require('path');
 const { createHub } = require('./lib/hub');
 const PORT = +(process.argv[2] || process.env.PORT || 3000), ROOT = __dirname, DIR = path.join(ROOT, 'data');
 const DATA = path.join(DIR, 'state.json'), AUTH = path.join(DIR, 'auth.json');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 const read = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const write = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify(o)); fs.renameSync(f + '.tmp', f); };
 let db = read(DATA) || { rev: 0, state: null };
