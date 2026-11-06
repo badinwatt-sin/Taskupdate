@@ -8,7 +8,7 @@
       add characters, objects, shapes, text, QR, photo
    4) export PNG / JPG (review checkbox every time)
    ============================================================ */
-const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', useAI: true, prefDesign: 'auto', prefAccent: 'auto', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
+const sdBlankDoc = () => ({ id: uid('sd'), format: 'portrait', text: '', guide: '', qr: '', useAI: true, prefDesign: 'auto', prefAccent: 'auto', brief: null, design: '', bg: { c1: '#FFFFFF' }, layers: [], edited: false, over: false, fit: 1, warn: [], reviewed: false, updated: 0 });
 let SDOC = sdBlankDoc(), SD_SEL = null, SD_UNDO = [], SD_REDO = [], SD_ADD = 'kit', SD_KITG = 'people';
 ACT.sdToKit = el => { const L = sdSel(); if (!L) return; sdPush(); const k = el.dataset.id, K = SD_KIT[k]; L.t = 'art'; L.key = k; delete L.panel; delete L.tint; if (K[1] === 'people') { const h = L.h; L.w = h * K[2] / K[3]; } SDOC.edited = true; sdChanged(); sdProps(); };
 ACT.sdKitG = el => { SD_KITG = el.dataset.id; sdAddPanel(); };
@@ -56,6 +56,9 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
     else if (SD_ROLE_FIELD[L.role]) { if (L.t === 'card') L.body = b[SD_ROLE_FIELD[L.role]]; else L.text = b[SD_ROLE_FIELD[L.role]]; }
     else if (/^p\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.title = p.title; L.body = p.body; } }
     else if (/^v\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.key = p.visual; L.t = sdIsKit(L.key) ? 'art' : 'char'; } }
+    else if (L.role === 'pts') { L.items = b.points.map(p => ({ title: p.title, body: p.body })); }
+    else if (L.role === 'sub' && L.t === 'card') { L.body = b.sub; }
+    else if (L.role === 'qr') { L.url = b.qr || L.url; }
     else if (L.role === 'hero') { L.key = b.hero; L.t = sdIsKit(L.key) ? 'art' : 'char'; }
     else if (L.role === 'dateblock') Object.assign(L, sdDateParts(b.date) || {});
   });
@@ -90,6 +93,7 @@ ACT.sdRead = async () => {
     } catch (e) { console.warn('ai-brief', e); }
   }
   if (!brief) { brief = sdNormBrief(sdLocalBrief(text)); brief.by = 'auto'; }
+  brief.qr = (SDOC.qr || '').trim();
   sdPush(); SDOC.brief = brief; SDOC.warn = sdFactWarn(text, brief); SD_SEL = null;
   if (SDOC.prefAccent && SDOC.prefAccent !== 'auto') brief.accent = SDOC.prefAccent;
   sdApply(SDOC.prefDesign && SDOC.prefDesign !== 'auto' ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
@@ -430,6 +434,7 @@ V.poster = (root, force) => {
       <section class="card sd-step" id="sdStep1"><h3><span class="pb-n">1</span>อยากสื่อสารอะไร</h3>
         <p class="muted small">วางข้อความที่มีอยู่ (อีเมล / LINE / บันทึก) หรือพิมพ์บอกสั้น ๆ ก็ได้ เช่น “เชิญตัวแทนใหม่อบรม Fast Start 20 ม.ค. 2570 เวลา 09.00 น. ห้อง 12A ลงทะเบียนผ่าน QR” — ระบบเรียบเรียงและจัดหน้าให้ ตัวเลข วันที่ สถานที่ คงตามที่พิมพ์</p>
         <textarea id="sdText" rows="7" maxlength="8000" placeholder="ข้อความประกาศ หรือคำอธิบายโปสเตอร์ที่ต้องการ…">${esc(SDOC.text)}</textarea>
+        <label class="field mt"><span>ลิงก์สำหรับ QR Code <small>(ไม่บังคับ · เช่น ลิงก์ลงทะเบียน / รายละเอียดผลิตภัณฑ์)</small></span><input id="sdQrIn" inputmode="url" value="${esc(SDOC.qr || '')}" placeholder="https://…"></label>
         <details class="sd-more" ${SDOC.guide ? 'open' : ''}><summary>เพิ่มคำแนะนำ (ไม่บังคับ)</summary><label class="field"><span>บอกโทน กลุ่มเป้าหมาย หรือสิ่งที่อยากเน้น <small>(ไม่แสดงบนโปสเตอร์)</small></span><textarea id="sdGuide" rows="2" maxlength="1500" placeholder="เช่น กลุ่มเป้าหมายคือตัวแทนใหม่ · โทนสนุก เป็นกันเอง · เน้นว่าที่นั่งจำกัด · ไม่ต้องใส่รายละเอียดอาหาร">${esc(SDOC.guide || '')}</textarea></label></details>
         <div class="sd-pre">
           <div class="sd-sub">ขนาดภาพ</div>
@@ -462,6 +467,7 @@ V.poster = (root, force) => {
     </div>
     <div class="sd-right"><section class="card sd-panel" id="sdProps"></section><section class="card sd-panel" id="sdAdd"></section></div>
   </div></div>`;
+  $('#sdQrIn', root).addEventListener('input', e => { SDOC.qr = e.target.value.trim(); if (SDOC.brief) { SDOC.brief.qr = SDOC.qr; sdBriefChanged(true); } });
   $('#sdGuide', root).addEventListener('input', e => { SDOC.guide = e.target.value; clearTimeout(sdSaveT); sdSaveT = setTimeout(() => sdLS.set('cur', SDOC), 600); });
   $('#sdText', root).addEventListener('input', e => { SDOC.text = e.target.value; clearTimeout(sdSaveT); sdSaveT = setTimeout(() => sdLS.set('cur', SDOC), 600); });
   $('#sdReviewed', root).addEventListener('change', e => { SDOC.reviewed = e.target.checked; sdExportState(); });

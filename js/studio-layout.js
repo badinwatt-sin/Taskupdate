@@ -11,6 +11,8 @@ const SD_KINDS = {
   knowledge: ['ให้ความรู้ / How-to', 'รู้ไว้ใช่ว่า'], recruit: ['รับสมัคร', 'เปิดรับสมัคร'],
 };
 const SD_DESIGNS = {   // key: [name, use]
+  feature: ['คนเด่น + กล่องข้อมูล', 'แบบหลักของทีม: หัวข้อซ้าย คนขวา'],
+  circles: ['วงกลมประเด็น', '“3 เรื่องควรรู้” รอบตัวคน'],
   hero: ['ประกาศเด่น', 'ข้อความหลัก + ตัวละครใหญ่'],
   banner: ['แถบน้ำเงิน', 'ประกาศทางการ'],
   cards: ['การ์ดอธิบาย', 'หลายประเด็น ตัวละครต่อข้อ'],
@@ -99,7 +101,7 @@ function sdSplitHead(t) {   // long single line → 2 balanced lines (prefer the
 function sdRank(b) {
   const n = b.points.length, has = !!b.date;
   const pref = { event: ['date', 'hero', 'banner', 'split'], reminder: ['date', 'notes', 'hero'], change: ['banner', 'cards', 'notes'], knowledge: ['cards', 'notes', 'split'], recognition: ['hero', 'minimal', 'split'], campaign: ['hero', 'cards', 'banner'], recruit: ['banner', 'hero', 'notes'], announce: ['hero', 'banner', 'minimal'] }[b.kind] || ['hero'];
-  const out = [...pref]; if (n >= 2 && !out.slice(0, 2).includes('cards')) out.splice(1, 0, 'cards'); if (!has) { const i = out.indexOf('date'); if (i >= 0) out.splice(i, 1); }
+  const out = [...(n >= 2 && n <= 3 && (b.sub || '').length < 60 && ['knowledge', 'change', 'campaign', 'reminder'].includes(b.kind) ? ['circles', 'feature'] : ['feature']), ...pref.filter(k => k !== 'feature')]; if (n >= 2 && !out.slice(0, 2).includes('cards')) out.splice(1, 0, 'cards'); if (!has) { const i = out.indexOf('date'); if (i >= 0) out.splice(i, 1); }
   SD_ORDER.forEach(k => { if (!out.includes(k)) out.push(k); });
   return out;
 }
@@ -169,6 +171,7 @@ function sdDrawCard(k, L, draw) {
   const m = sdCardLayout(k, L), g = k.g; L.h = Math.ceil(m.h); if (!draw) return;
   const r = Math.min(L.w, L.h) * (L.r == null ? .09 : L.r);
   g.save(); if (L.shadow) k.shadow(true, 26 * L.size / 30, 8 * L.size / 30, .12); g.fillStyle = L.fill || '#FFFFFF'; k.rr(L.x, L.y, L.w, L.h, r); g.fill(); g.restore();
+  if (L.tail) { const tx = L.tail === 'br' ? L.x + L.w * .78 : L.x + L.w * .16, s2 = L.size * .9; g.fillStyle = L.fill || '#FFFFFF'; g.beginPath(); g.moveTo(tx - s2 * .6, L.y + L.h - 2); g.lineTo(tx + s2 * .6, L.y + L.h - 2); g.lineTo(tx + (L.tail === 'br' ? s2 * .9 : -s2 * .5), L.y + L.h + s2 * 1.1); g.closePath(); g.fill(); }
   if (L.deco === 'tape') { g.save(); g.translate(L.x + L.w / 2, L.y); g.rotate(-.05); g.fillStyle = 'rgba(255,255,255,.62)'; g.fillRect(-L.size * 2.2, -L.size * .45, L.size * 4.4, L.size * .9); g.restore(); }
   if (L.deco === 'pin') { paCircle(g, L.x + L.w / 2, L.y + L.size * .55, L.size * .38, '#FF1721'); paCircle(g, L.x + L.w / 2 - L.size * .1, L.y + L.size * .46, L.size * .12, 'rgba(255,255,255,.7)'); }
   const x0 = L.x + m.pad + m.iL, y0 = L.y + m.pad + m.iT, ink = L.ink || '#1A1A3A';
@@ -180,6 +183,37 @@ function sdDrawCard(k, L, draw) {
   k.font(400, m.s * .8, sdStack('body')); const lh = m.s * .8 * 1.38;
   m.bl.forEach(lines => { lines.forEach((t, i) => { if (m.bul && i === 0) { g.strokeStyle = L.titleInk || '#00008F'; g.lineWidth = m.s * .09; g.beginPath(); g.arc(tx + m.s * .3, y + lh * .55, m.s * .17, 0, 6.3); g.stroke(); } g.fillStyle = ink; g.fillText(t, tx + (m.bul ? m.s * .9 : 0), y + lh * .56); y += lh; }); y += m.s * .18; });
   g.textBaseline = 'alphabetic';
+}
+function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
+  const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
+  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('head')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh }; });
+  return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3) };
+}
+function sdDrawList(k, L, draw) {
+  const m = sdListLayout(k, L), g = k.g; L.h = Math.ceil(m.h); if (!draw) return;
+  const r = Math.min(L.w, L.h) * (L.r == null ? .08 : L.r);
+  g.save(); if (L.shadow) k.shadow(true, m.s * .9, m.s * .3, .16); g.fillStyle = L.fill || '#6574F8'; k.rr(L.x, L.y, L.w, L.h, r); g.fill();
+  if (L.tail) { const tx = L.tail === 'br' ? L.x + L.w * .8 : L.x + L.w * .16, s2 = m.s * 1.1; g.beginPath(); g.moveTo(tx - s2 * .6, L.y + L.h - 2); g.lineTo(tx + s2 * .6, L.y + L.h - 2); g.lineTo(tx + (L.tail === 'br' ? s2 * .9 : -s2 * .5), L.y + L.h + s2 * 1.1); g.closePath(); g.fill(); }
+  g.restore();
+  let y = L.y + m.pad; const x0 = L.x + m.pad, tx = x0 + m.ic + m.s * .5; g.textBaseline = 'middle';
+  m.rows.forEach(row => {
+    const cy = y + m.s * .6; paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke();
+    k.font(700, m.s, sdStack('head')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
+    if (row.bb.length) { y += m.s * .12; k.font(400, m.s * .8, sdStack('body')); g.fillStyle = L.ink || 'rgba(255,255,255,.92)'; row.bb.forEach(t => { g.fillText(t, tx, y + m.s * .8 * .62); y += m.s * .8 * 1.34; }); }
+    y += m.s * .55;
+  });
+  g.textBaseline = 'alphabetic';
+}
+function sdDrawCirc(k, L, draw) {   // round info badge: title + short body centred in a circle
+  L.h = L.w; if (!draw) return; const g = k.g, r = L.w / 2, cx = L.x + r, cy = L.y + r, s = L.size, tw = L.w * .7;
+  g.save(); k.shadow(true, s * .8, s * .25, .14); g.fillStyle = L.fill || '#F25C5C'; g.beginPath(); g.arc(cx, cy, r, 0, 6.3); g.fill(); g.restore();
+  k.font(700, s, sdStack('head')); const tl = L.title ? k.wrap(L.title, tw) : []; k.font(400, s * .78, sdStack('body')); const bl = String(L.body || '').split('\n').filter(Boolean).flatMap(t => k.wrap(t, tw * .96));
+  const th = tl.length * s * 1.15, bh = bl.length * s * .78 * 1.32, tot = th + (bh ? s * .35 + bh : 0); let y = cy - tot / 2;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (L.icon) { saProp(g, L.icon, cx - s * .7, y - s * 1.9, s * 1.4, s * 1.4); }
+  k.font(700, s, sdStack('head')); g.fillStyle = L.titleInk || '#0B0B45'; tl.forEach(t => { g.fillText(t, cx, y + s * .6); y += s * 1.15; }); y += s * .35;
+  k.font(400, s * .78, sdStack('body')); g.fillStyle = L.ink || '#1A1A3A'; bl.forEach(t => { g.fillText(t, cx, y + s * .78 * .7); y += s * .78 * 1.32; });
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
 function sdChipLayout(k, L) { const s = L.size, ic = L.icon ? s * 1.5 : 0; k.font(L.weight || 600, s, sdStack('body')); const tw = k.g.measureText(L.text || ' ').width; return { s, ic, tw, w: tw + s * 1.4 + ic + (ic ? s * .35 : 0), h: s * 2.1 }; }
 function sdDrawChip(k, L, draw) {
@@ -242,7 +276,7 @@ function sdDrawChar(k, L, draw) {
   PA_NOBG = !L.panel; try { C[2](g, { x: L.x, y: L.y, w: L.w, h: L.h }, L.tint || '#8DB8EA'); } finally { PA_NOBG = false; }
   g.restore();
 }
-const SD_DRAW = { art: sdDrawArt, text: sdDrawText, card: sdDrawCard, chip: sdDrawChip, date: sdDrawDate, logo: sdDrawLogo, qr: sdDrawQr, img: sdDrawImg, char: sdDrawChar,
+const SD_DRAW = { list: sdDrawList, circ: sdDrawCirc, art: sdDrawArt, text: sdDrawText, card: sdDrawCard, chip: sdDrawChip, date: sdDrawDate, logo: sdDrawLogo, qr: sdDrawQr, img: sdDrawImg, char: sdDrawChar,
   prop: (k, L, d) => { if (d) saProp(k.g, L.key, L.x, L.y, L.w, L.h); }, shape: (k, L, d) => { if (d) saShape(k.g, L); } };
 const sdM = L => { (SD_DRAW[L.t] || (() => {}))(SD_MK, L, false); return L; };   // measure: fills auto w / h
 function sdRender(cv, doc, opt = {}) {
@@ -306,6 +340,11 @@ function sdFacts(c, x, y, w, o = {}) {   // date / time / venue chips, flowing i
 function sdFoot(c, x, w, o = {}) {   // note (fine print) at the bottom, CTA above it; returns top of the footer
   let y = c.bot;
   if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.max(c.s, .8), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#55557A', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
+  if (c.b.qr && !o.noQr) {   // QR code with the call to action beside it
+    const qs = Math.min(170 * c.u * Math.max(c.s, .8), w * .34), qy = y - qs; c.add({ t: 'qr', role: 'qr', url: c.b.qr, x: o.align === 'center' ? x + (w - qs) / 2 : x, y: qy, w: qs, h: qs, shadow: true });
+    if (o.align !== 'center') { const tx = x + qs + 22 * c.u, tw = w - qs - 22 * c.u, t = sdT({ role: 'cta', text: c.b.cta || 'สแกนเพื่อดูรายละเอียด', size: 32 * c.u * c.s, weight: 700, font: 'head', color: o.qrInk || c.C.primary, lh: 1.25, x: tx, y: 0, w: tw }); for (let n = 0; n < 8 && t.h > qs * 1.02; n++) { t.size *= .9; sdM(t); } t.y = qy + (qs - t.h) / 2; c.add(t); }
+    return qy - 28 * c.u;
+  }
   if (c.b.cta) { const L = sdM({ t: 'chip', role: 'cta', text: c.b.cta, icon: o.ctaIcon || '', size: 32 * c.u * c.s, weight: 700, fill: o.ctaFill || c.C.primary, ink: o.ctaInk || '#FFFFFF', x, y: 0 }); if (L.w > w) L.size *= w / L.w, sdM(L); L.y = y - L.h; L.x = o.align === 'center' ? x + (w - L.w) / 2 : x; y = L.y - 26 * c.u; c.add(L); }
   return y;
 }
@@ -339,6 +378,65 @@ function sdDateParts(t) {
 }
 
 const SD_GEN = {
+  feature(c) {   // house pattern: headline top-left (one line boxed), big person on the right, info boxes on the left, QR + CTA bottom-left
+    const { W, H, u, M, C, b } = c, bw = W - 2 * M, lg = sdLogo(c, false), light = pbMix(C.sky || '#6574F8', '#FFFFFF', .72);
+    const bg = { c1: pbMix(C.paper, '#FFFFFF', .2), c2: light };
+    if (c.land) {
+      const tw = W * .54; let y = c.top + lg.h * .2; const k = sdKicker(c, { x: M, y }); if (k) y += k.h + 22 * u;
+      const hd = sdHead(c, { x: M, y, w: tw, size: 70 * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 22 * u;
+      if (b.sub) { const s1 = c.add(sdM({ t: 'card', role: 'sub', title: '', body: b.sub, size: 34 * u * c.s, fill: C.primary, ink: '#FFFFFF', x: M, y, w: tw, r: .14, bullets: false })); y += s1.h + 22 * u; }
+      const ft = sdFoot(c, M, tw); y = sdFacts(c, M, y, tw) + 18 * u;
+      if (b.points.length) { const bub = c.add(sdM({ t: 'list', role: 'pts', items: b.points.map(p => ({ title: p.title, body: p.body })), size: 32 * u * c.s, fill: C.sky || '#6574F8', x: M, y, w: tw, r: .1, shadow: true })); y += bub.h; }
+      if (y > ft) c.over = true;
+      const ph = H * 1.02, pw = W - M - tw - 40 * u; c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: '#FFFFFF', alpha: .45, x: W - pw * .95 - M, y: H * .2, w: pw * .95, h: pw * .95 }); sdHero(c, null, M + tw + 40 * u, H * .14, pw, ph);
+      return { bg, layers: c.L, over: c.over };
+    }
+    let y = c.top + lg.h + 26 * u * (c.story ? 1 : .6); const k = sdKicker(c, { x: M, y: c.top + (lg.h - 44 * u * c.s) / 2 });
+    const tw = bw * (c.square ? .74 : .82), hd = sdHead(c, { x: M, y, w: tw, size: (c.story ? 92 : c.square ? 72 : 82) * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 26 * u;
+    const ft = sdFoot(c, M, bw * .6), colW = bw * (c.square ? .6 : .6);
+    const heroTop = y + (b.sub ? 60 * u : 0), ah = (H - heroTop) * 1.06;   // person runs off the bottom edge like a photo
+    c.add({ t: 'shape', role: 'deco', kind: 'circle', fill: '#FFFFFF', alpha: .5, x: W - bw * .55, y: heroTop + ah * .08, w: bw * .62, h: bw * .62 });
+    sdHero(c, null, M + bw * .44, heroTop, bw * .6, ah); sdDecor(c, M + bw * .52, heroTop, bw * .48, ah * .5);
+    if (b.sub) { const s1 = c.add(sdM({ t: 'card', role: 'sub', title: '', body: b.sub, size: 34 * u * c.s, fill: C.primary, ink: '#FFFFFF', x: M, y, w: bw * (c.square ? .68 : .74), r: .12, bullets: false, shadow: true })); y += s1.h + 24 * u; }
+    y = sdFacts(c, M, y, colW, { stack: true }); if (y > heroTop) y += 18 * u;
+    if (b.points.length) {
+      const bub = c.add(sdM({ t: 'list', role: 'pts', items: b.points.map(p => ({ title: p.title, body: p.body })), size: (c.square ? 28 : 31) * u * c.s, fill: C.sky || '#6574F8', x: M, y, w: colW, r: .09, tail: 'br', shadow: true }));
+      y += bub.h + 30 * u;
+    }
+    if (y > ft) c.over = true;
+    return { bg, layers: c.L, over: c.over };
+  },
+  circles(c) {   // “n things to know”: person in the middle, each point in a bold colour circle around them
+    const { W, H, u, M, C, b } = c, bw = W - 2 * M, lg = sdLogo(c, false);
+    const pts = (b.points.length ? b.points : [['date', 'วันที่'], ['time', 'เวลา'], ['venue', 'สถานที่']].filter(([k2]) => b[k2]).map(([k2, t]) => ({ title: t, body: sdFactBody(b[k2]) }))).slice(0, 4);
+    const cols0 = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0B0B45', '#1A1A3A'], ['#FFE27A', '#0B0B45', '#1A1A3A'], ['#B9B7F0', '#0B0B45', '#1A1A3A']];
+    if (c.land) {   // text on the left half, person + circles on the right half
+      const tw = W * .44; let y = c.top + lg.h * .3; const k = sdKicker(c, { x: M, y }); if (k) y += k.h + 20 * u;
+      const hd = sdHead(c, { x: M, y, w: tw, size: 68 * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 20 * u;
+      if (b.sub) { const sb = sdSub(c, { x: M, y, w: tw }); y += sb.h + 16 * u; }
+      const ft = sdFoot(c, M, tw); if (y > ft) c.over = true;
+      const ax = W * .5, aw = W - M - ax, ay = c.top + lg.h + 20 * u, ah = H - M - ay, n = pts.length, d = Math.min(aw * .4, ah * (n > 2 ? .5 : .62));
+      sdHero(c, null, ax + aw * .3, ay, aw * .4, H - ay);
+      const sp = [[0, 0], [1, .12], [0, 1], [1, 1]];
+      pts.forEach((p, i) => { const [fx, fy] = sp[i], [fill, ti, ink] = cols0[i % 4]; c.add(sdM({ t: 'circ', role: 'p' + i, title: p.title, body: p.body, size: d * .105, fill, titleInk: ti, ink, x: fx ? ax + aw - d : ax, y: ay + fy * (ah - d), w: d, h: d })); });
+      return { bg: { c1: pbMix(C.paper, '#FFFFFF', .1), c2: pbMix(C.sky || '#6574F8', '#FFFFFF', .7) }, layers: c.L, over: c.over };
+    }
+    let y = c.top + lg.h + 20 * u * (c.story ? 1 : .5); const k = sdKicker(c, { x: M, y: c.top + (lg.h - 44 * u * c.s) / 2 });
+    const hd = sdHead(c, { x: M, y, w: bw * .8, size: (c.land ? 64 : c.story ? 90 : c.square ? 70 : 80) * u * c.s, emph: b.emph < 0 ? 0 : b.emph }); y += hd.h + 20 * u;
+    if (b.sub) { const sb = sdSub(c, { x: M, y, w: bw * .7 }); y += sb.h + 16 * u; }
+    const ft = sdFoot(c, M, bw * .7), area = { x: M, y, w: bw, h: ft - y };
+    if (area.h < 300 * u) c.over = true;
+    const cols = [['#F25C5C', '#FFFFFF', '#FFFFFF'], ['#8EE3B5', '#0B0B45', '#1A1A3A'], ['#FFE27A', '#0B0B45', '#1A1A3A'], ['#B9B7F0', '#0B0B45', '#1A1A3A']];
+    const n = pts.length, d = c.land ? Math.min(area.w * .22, area.h * (n > 2 ? .48 : .8)) : Math.min(bw * .5, area.h * (n > 3 ? .34 : n > 2 ? .46 : .56));
+    const ph = area.h * (c.land ? 1 : .96); sdHero(c, null, M + bw * (c.land ? .34 : .22), ft - ph, bw * (c.land ? .32 : .56), ph);   // person behind the circles, standing on the footer line
+    const spots = c.land ? [[0, 0], [1, 0], [0, 1], [1, 1]] : n > 3 ? [[1, 0], [0, .26], [1, .52], [0, .78]] : n > 2 ? [[1, 0], [0, .42], [1, .84]] : [[1, .05], [0, .6]];
+    pts.forEach((p, i) => {
+      const [fx, fy] = spots[i], [fill, ti, ink] = cols[i % 4];
+      const x = c.land ? (fx ? M + bw - d - (i > 1 ? d * .35 : 0) : M + (i > 1 ? d * .35 : 0)) : fx ? M + bw - d : M;
+      c.add(sdM({ t: 'circ', role: 'p' + i, title: p.title, body: p.body, size: d * .105, fill, titleInk: ti, ink, x, y: area.y + fy * Math.max(0, area.h - d), w: d, h: d }));
+    });
+    return { bg: { c1: pbMix(C.paper, '#FFFFFF', .1), c2: pbMix(C.sky || '#6574F8', '#FFFFFF', .7) }, layers: c.L, over: c.over };
+  },
   hero(c) {
     const { W, H, u, M, C, b } = c, bw = W - 2 * M, lg = sdLogo(c, false);
     const bg = { c1: '#FFFFFF', c2: C.paper };
