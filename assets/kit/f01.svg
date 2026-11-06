@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="415" height="558" viewBox="112 37 415 558" id="e01-01-shape-0-1">
+  <title>Planning calculator</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e01-calculator-1" transform="rotate(-8 320 320)">
+    <g id="e01-body-1">
+      <rect x="155" y="75" width="330" height="490" rx="34" fill="#071C74" id="e01-01-shape-5-1" />
+      <rect x="155" y="65" width="316" height="483" rx="32" fill="#3979FF" id="e01-01-shape-6-1" />
+      <rect x="172" y="82" width="282" height="450" rx="23" fill="#0026E1" id="e01-01-shape-7-1" />
+    </g>
+    <g id="e01-display-1">
+      <rect x="195" y="109" width="236" height="110" rx="14" fill="#071C74" id="e01-01-shape-9-1" />
+      <rect x="207" y="121" width="212" height="84" rx="8" fill="#B5D2FF" id="e01-01-shape-10-1" />
+      <rect x="232" y="176" width="24" height="8" rx="4" fill="#3979FF" id="e01-01-shape-11-1" />
+      <rect x="268" y="176" width="24" height="8" rx="4" fill="#3979FF" id="e01-01-shape-12-1" />
+      <rect x="304" y="176" width="24" height="8" rx="4" fill="#3979FF" id="e01-01-shape-13-1" />
+      <path d="M370 145h23v33h-23z" fill="none" stroke="#071C74" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" id="e01-01-shape-14-1" />
+    </g>
+    <g id="e01-keypad-1">
+      <rect x="195" y="249" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-16-1" />
+      <rect x="195" y="244" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-17-1" />
+      <circle cx="227" cy="273" r="5" fill="#3979FF" id="e01-01-shape-18-1" />
+      <rect x="277" y="249" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-19-1" />
+      <rect x="277" y="244" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-20-1" />
+      <circle cx="309" cy="273" r="5" fill="#3979FF" id="e01-01-shape-21-1" />
+      <rect x="359" y="249" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-22-1" />
+      <rect x="359" y="244" width="65" height="58" rx="11" fill="#B5D2FF" id="e01-01-shape-23-1" />
+      <path d="M381 273h22M392 262v22" fill="none" stroke="#071C74" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" id="e01-01-shape-24-1" />
+      <rect x="195" y="326" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-25-1" />
+      <rect x="195" y="321" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-26-1" />
+      <circle cx="227" cy="350" r="5" fill="#3979FF" id="e01-01-shape-27-1" />
+      <rect x="277" y="326" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-28-1" />
+      <rect x="277" y="321" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-29-1" />
+      <circle cx="309" cy="350" r="5" fill="#3979FF" id="e01-01-shape-30-1" />
+      <rect x="359" y="326" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-31-1" />
+      <rect x="359" y="321" width="65" height="58" rx="11" fill="#B5D2FF" id="e01-01-shape-32-1" />
+      <path d="M381 350h22" fill="none" stroke="#071C74" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" id="e01-01-shape-33-1" />
+      <rect x="195" y="403" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-34-1" />
+      <rect x="195" y="398" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-35-1" />
+      <circle cx="227" cy="427" r="5" fill="#3979FF" id="e01-01-shape-36-1" />
+      <rect x="277" y="403" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-37-1" />
+      <rect x="277" y="398" width="65" height="58" rx="11" fill="#F7FAFF" id="e01-01-shape-38-1" />
+      <circle cx="309" cy="427" r="5" fill="#3979FF" id="e01-01-shape-39-1" />
+      <rect x="359" y="403" width="65" height="58" rx="11" fill="#071C74" id="e01-01-shape-40-1" />
+      <rect x="359" y="398" width="65" height="58" rx="11" fill="#B5D2FF" id="e01-01-shape-41-1" />
+      <path d="M383 418l18 18m0 -18l-18 18" fill="none" stroke="#071C74" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" id="e01-01-shape-42-1" />
+      <rect x="195" y="480" width="147" height="42" rx="10" fill="#071C74" id="e01-01-shape-43-1" />
+      <rect x="195" y="475" width="147" height="42" rx="10" fill="#B5D2FF" id="e01-01-shape-44-1" />
+      <rect x="359" y="475" width="65" height="42" rx="10" fill="#9AE7C2" id="e01-01-shape-45-1" />
+      <path d="M380 491h22m-22 11h22" fill="none" stroke="#278B88" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" id="e01-01-shape-46-1" />
+    </g>
+  </g>
+</svg>

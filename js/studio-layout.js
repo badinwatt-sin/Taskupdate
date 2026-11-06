@@ -43,17 +43,32 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   b.headline = sdSplitHead(head); b.emph = b.headline.length > 1 ? 1 : 0;
   if (rest.length && rest[0].length < 90 && !/^[-•·*\d]/.test(rest[0])) b.sub = rest.shift();
   b.points = rest.map(l => l.replace(/^\s*(?:[-–•·*]|\d+[.)])\s*/, '')).filter(Boolean).slice(0, 4).map(l => { const m = l.match(/^(.{2,40}?)\s*[:：]\s*(.+)$/); return m ? { title: m[1], body: m[2], visual: '' } : { title: l, body: '', visual: '' }; });
+  b.kind = sdGuessKind(head + ' ' + (rest[0] || ''), lines.join(' '));
   const all = lines.join(' ');
-  const h0 = head + ' ' + (rest[0] || '');
-  b.kind = /ขอเชิญ|เชิญ|อบรม|สัมมนา|ประชุม|workshop|training/i.test(h0) ? 'event' : /ยินดี|congrat/i.test(h0) ? 'recognition' : /ขอเชิญ|เชิญ|อบรม|สัมมนา|ประชุม|workshop|training/i.test(all) ? 'event' : /ยินดี|รางวัล|congrat/i.test(all) ? 'recognition' : /เปลี่ยนแปลง|ปรับ|ยกเลิก|นโยบาย|ใหม่/i.test(all) ? 'change' : /ภายใน|กำหนดส่ง|อย่าลืม|เตือน|deadline/i.test(all) ? 'reminder' : /แคมเปญ|แข่งขัน|รางวัลพิเศษ|โปรโมชัน|ยอด/i.test(all) ? 'campaign' : /รับสมัคร|เปิดรับ/i.test(all) ? 'recruit' : /วิธี|ขั้นตอน|เคล็ดลับ|รู้ไหม|ต้องรู้|tips/i.test(all) ? 'knowledge' : 'announce';
-  b.kicker = SD_KINDS[b.kind][1];
-  b.hero = paPick({ title: head, body: all, tag: '' }, 0);
-  b.points.forEach((p, i) => { p.visual = paPick({ title: p.title, body: p.body, tag: '' }, i + 1); });
+  b.kicker = SD_KINDS[b.kind][1]; b.kindText = SD_KINDS[b.kind][0];
+  b.hero = sdKitPick(head + ' ' + all, 'people') || SD_KIND_HERO[b.kind];
+  const usedK = [];
+  b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || paPick({ title: p.title, body: p.body, tag: '' }, i + 1); });
   b.props = { event: ['mega', 'cal', 'star'], change: ['doc', 'bulb', 'check'], reminder: ['clock', 'cal', 'check'], recognition: ['trophy', 'star', 'gift'], campaign: ['coins', 'trophy', 'star'], recruit: ['doc', 'star', 'chat'], knowledge: ['bulb', 'check', 'doc'], announce: ['mega', 'chat', 'star'] }[b.kind];
   b.accent = { recognition: 'pink', campaign: 'amber', reminder: 'amber', knowledge: 'mint', change: 'lavender' }[b.kind] || 'blue';
   b.designs = sdRank(b);
   b.summary = `อ่านเป็น “${SD_KINDS[b.kind][0]}”${b.points.length ? ` มี ${b.points.length} ประเด็น` : ''}${b.date ? ` · วันที่ ${b.date}` : ''} (จัดอัตโนมัติโดยไม่ใช้ AI — ตรวจและแก้ได้ด้านล่าง)`;
   return b;
+}
+const SD_KIND_HERO = { event: 'H36', change: 'H02', reminder: 'H37', recognition: 'H38', campaign: 'H35', recruit: 'H22', knowledge: 'H01', announce: 'H02' };
+function sdGuessKind(head, all) {   // kind from free text (headline first, then the whole message)
+  const t = [head, all || head];
+  for (const x of t) {
+    if (/ขอเชิญ|เชิญ|อบรม|สัมมนา|ประชุม|workshop|training|กิจกรรม|งานเลี้ยง|event/i.test(x)) return 'event';
+    if (/ยินดี|congrat|รางวัล|ชื่นชม/i.test(x)) return 'recognition';
+    if (/เปลี่ยนแปลง|ปรับ|ยกเลิก|นโยบาย|ระบบใหม่|แจ้งเปลี่ยน/i.test(x)) return 'change';
+    if (/ภายใน|กำหนดส่ง|อย่าลืม|เตือน|deadline|ครบกำหนด/i.test(x)) return 'reminder';
+    if (/แคมเปญ|แข่งขัน|โปรโมชัน|ยอดขาย|campaign|contest/i.test(x)) return 'campaign';
+    if (/รับสมัคร|เปิดรับ|recruit/i.test(x)) return 'recruit';
+    if (/วิธี|ขั้นตอน|เคล็ดลับ|รู้ไหม|ต้องรู้|tips|ความรู้|how/i.test(x)) return 'knowledge';
+    if (/ประกาศ|แจ้ง|ข่าว/i.test(x)) return 'announce';
+  }
+  return 'announce';
 }
 function sdSplitHead(t) {   // long single line → 2 balanced lines
   t = String(t || '').trim(); if (!t) return [];
@@ -69,17 +84,19 @@ function sdRank(b) {
   SD_ORDER.forEach(k => { if (!out.includes(k)) out.push(k); });
   return out;
 }
-const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'event', props: ['mega', 'star'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
+const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'H02', kindText: '', props: ['mega', 'star'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
 function sdNormBrief(x) {
   const b = { ...sdEmptyBrief(), ...(x || {}) }, str = v => String(v == null ? '' : v).trim();
-  ['kicker', 'sub', 'date', 'time', 'venue', 'cta', 'note', 'summary', 'audience', 'warn'].forEach(k => { b[k] = str(b[k]); });
+  if (x && x.kind_text && !x.kindText) b.kindText = x.kind_text; delete b.kind_text;
+  ['kicker', 'sub', 'date', 'time', 'venue', 'cta', 'note', 'summary', 'audience', 'warn', 'kindText'].forEach(k => { b[k] = str(b[k]); });
   b.headline = (Array.isArray(b.headline) ? b.headline : str(b.headline).split('\n')).map(str).filter(Boolean).slice(0, 3);
   b.emph = Number.isInteger(+b.emph) ? Math.max(-1, Math.min(b.headline.length - 1, +b.emph)) : 0;
-  b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: PA_CHARS[p && p.visual] ? p.visual : paPick({ title: str(p && p.title), body: str(p && p.body), tag: '' }, i + 1) })).filter(p => p.title || p.body);
-  if (!PA_CHARS[b.hero]) b.hero = 'event';
+  b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: p && (PA_CHARS[p.visual] || SD_KIT[p.visual]) ? p.visual : paPick({ title: str(p && p.title), body: str(p && p.body), tag: '' }, i + 1) })).filter(p => p.title || p.body);
+  if (!PA_CHARS[b.hero] && !SD_KIT[b.hero]) b.hero = 'H02';
   b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SA_PROPS[k]).slice(0, 3); if (!b.props.length) b.props = ['star', 'chat'];
   if (!SD_ACCENTS.includes(b.accent)) b.accent = 'blue';
   if (!SD_KINDS[b.kind]) b.kind = 'announce';
+  if (!b.kindText) b.kindText = SD_KINDS[b.kind][0];
   const ds = (Array.isArray(b.designs) ? b.designs : []).filter(k => SD_DESIGNS[k]); SD_ORDER.forEach(k => { if (!ds.includes(k)) ds.push(k); }); b.designs = ds;
   return b;
 }
@@ -90,7 +107,14 @@ function sdFactWarn(src, b) {   // numbers the poster shows must exist in the so
 
 /* ---------- measuring & drawing ---------- */
 const SD_MC = document.createElement('canvas'), SD_MK = pbKit(SD_MC.getContext('2d'));
-const sdFam = L => L.font === 'body' ? PB_THAI : PB_HEAD;
+const SD_FONTS = {   // [family, Thai label, source]
+  head: [['Publico', 'Publico (CI)'], ['Source Serif 4', 'Source Serif 4'], ['Source Sans Pro', 'Source Sans Pro']],
+  body: [['Source Sans Pro', 'Source Sans Pro (CI)'], ['Source Sans 3', 'Source Sans 3']],
+  thai: [['DB Helvethaica X', 'DB Helvethaica X (CI)'], ['IBM Plex Sans Thai', 'IBM Plex Sans Thai'], ['Sarabun', 'Sarabun'], ['Prompt', 'Prompt'], ['Kanit', 'Kanit'], ['Noto Sans Thai', 'Noto Sans Thai'], ['Anuphan', 'Anuphan']],
+};
+function sdFontCfg() { const f = pbBrand().fonts || {}; return { head: f.head || 'Publico', body: f.body || 'Source Sans Pro', thai: f.thai || 'DB Helvethaica X' }; }
+function sdStack(kind) { const c = sdFontCfg(), lat = kind === 'head' ? c.head : kind === 'body' ? c.body : null; return [...new Set([lat, c.thai, 'IBM Plex Sans Thai', 'Source Sans Pro'].filter(Boolean))].map(n => `"${n}"`).join(', ') + ', sans-serif'; }
+const sdFam = L => L.ff && L.ff !== 'head' && L.ff !== 'body' ? `"${L.ff}", ${sdStack('body')}` : sdStack(L.ff || (L.font === 'body' ? 'body' : 'head'));
 function sdTextLayout(k, L) {
   k.font(L.weight || 700, L.size, sdFam(L)); k.g.textBaseline = 'alphabetic';
   const anyBar = L.emph != null && L.emph >= 0 && !!L.barFill, padX = anyBar ? L.size * .3 : 0, pill = L.pill ? L.size * .62 : 0;
@@ -116,8 +140,8 @@ function sdDrawText(k, L, draw) {
 function sdCardLayout(k, L) {
   const s = L.size, pad = s * .85, lead = (L.num || L.icon) ? s * 2.1 : 0, iL = L.insetL || 0, iR = L.insetR || 0, iT = L.insetT || 0;
   const tw = Math.max(s * 2, L.w - 2 * pad - lead - iL - iR), bodyLines = String(L.body || '').split('\n').map(x => x.trim()).filter(Boolean), bul = L.bullets !== false && bodyLines.length > 1;
-  k.font(700, s, PB_HEAD); const tl = L.title ? k.wrap(L.title, tw) : [];
-  k.font(400, s * .8, PB_THAI); const bl = bodyLines.map(t => k.wrap(t, tw - (bul ? s * .9 : 0)));
+  k.font(700, s, sdStack('head')); const tl = L.title ? k.wrap(L.title, tw) : [];
+  k.font(400, s * .8, sdStack('body')); const bl = bodyLines.map(t => k.wrap(t, tw - (bul ? s * .9 : 0)));
   const th = tl.length * s * 1.2, bh = bl.reduce((a, x) => a + x.length * s * .8 * 1.38, 0) + Math.max(0, bl.length - 1) * s * .18;
   const h = Math.max(L.minH || 0, iT + pad + th + (th && bh ? s * .3 : 0) + bh + pad, lead ? iT + pad * 2 + s * 1.6 : 0);
   return { s, pad, lead, iL, iT, tw, tl, bl, bul, th, h };
@@ -129,37 +153,52 @@ function sdDrawCard(k, L, draw) {
   if (L.deco === 'tape') { g.save(); g.translate(L.x + L.w / 2, L.y); g.rotate(-.05); g.fillStyle = 'rgba(255,255,255,.62)'; g.fillRect(-L.size * 2.2, -L.size * .45, L.size * 4.4, L.size * .9); g.restore(); }
   if (L.deco === 'pin') { paCircle(g, L.x + L.w / 2, L.y + L.size * .55, L.size * .38, '#FF1721'); paCircle(g, L.x + L.w / 2 - L.size * .1, L.y + L.size * .46, L.size * .12, 'rgba(255,255,255,.7)'); }
   const x0 = L.x + m.pad + m.iL, y0 = L.y + m.pad + m.iT, ink = L.ink || '#1A1A3A';
-  if (L.num) { const c = L.size * .95; paCircle(g, x0 + c, y0 + c * .86, c, L.numFill || '#00008F'); k.font(700, L.size * .95, PB_BODY); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(L.num), x0 + c, y0 + c * .9); g.textAlign = 'left'; }
+  if (L.num) { const c = L.size * .95; paCircle(g, x0 + c, y0 + c * .86, c, L.numFill || '#00008F'); k.font(700, L.size * .95, sdStack('body')); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(L.num), x0 + c, y0 + c * .9); g.textAlign = 'left'; }
   else if (L.icon) { const c = L.size * .95; paCircle(g, x0 + c, y0 + c * .86, c, '#FFFFFF'); saProp(g, L.icon, x0 + c * .38, y0 + c * .24, c * 1.24, c * 1.24); }
   const tx = x0 + m.lead; let y = y0; g.textBaseline = 'middle';
-  k.font(700, m.s, PB_HEAD); g.fillStyle = L.titleInk || '#00008F'; m.tl.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.2; });
+  k.font(700, m.s, sdStack('head')); g.fillStyle = L.titleInk || '#00008F'; m.tl.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.2; });
   if (m.th && m.bl.length) y += m.s * .3;
-  k.font(400, m.s * .8, PB_THAI); const lh = m.s * .8 * 1.38;
+  k.font(400, m.s * .8, sdStack('body')); const lh = m.s * .8 * 1.38;
   m.bl.forEach(lines => { lines.forEach((t, i) => { if (m.bul && i === 0) { g.strokeStyle = L.titleInk || '#00008F'; g.lineWidth = m.s * .09; g.beginPath(); g.arc(tx + m.s * .3, y + lh * .55, m.s * .17, 0, 6.3); g.stroke(); } g.fillStyle = ink; g.fillText(t, tx + (m.bul ? m.s * .9 : 0), y + lh * .56); y += lh; }); y += m.s * .18; });
   g.textBaseline = 'alphabetic';
 }
-function sdChipLayout(k, L) { const s = L.size, ic = L.icon ? s * 1.5 : 0; k.font(L.weight || 600, s, PB_THAI); const tw = k.g.measureText(L.text || ' ').width; return { s, ic, tw, w: tw + s * 1.4 + ic + (ic ? s * .35 : 0), h: s * 2.1 }; }
+function sdChipLayout(k, L) { const s = L.size, ic = L.icon ? s * 1.5 : 0; k.font(L.weight || 600, s, sdStack('body')); const tw = k.g.measureText(L.text || ' ').width; return { s, ic, tw, w: tw + s * 1.4 + ic + (ic ? s * .35 : 0), h: s * 2.1 }; }
 function sdDrawChip(k, L, draw) {
   const m = sdChipLayout(k, L), g = k.g; L.w = Math.ceil(m.w); L.h = Math.ceil(m.h); if (!draw) return;
   g.fillStyle = L.fill || '#FFFFFF'; k.rr(L.x, L.y, L.w, L.h, L.h / 2); g.fill();
   if (L.stroke) { g.strokeStyle = L.stroke; g.lineWidth = Math.max(1.5, m.s * .07); g.stroke(); }
   if (L.icon) saProp(g, L.icon, L.x + m.s * .6, L.y + (L.h - m.ic) / 2, m.ic, m.ic);
-  k.font(L.weight || 600, m.s, PB_THAI); g.fillStyle = L.ink || '#00008F'; g.textBaseline = 'middle'; g.fillText(L.text || '', L.x + m.s * .7 + (m.ic ? m.ic + m.s * .35 : 0), L.y + L.h * .53); g.textBaseline = 'alphabetic';
+  k.font(L.weight || 600, m.s, sdStack('body')); g.fillStyle = L.ink || '#00008F'; g.textBaseline = 'middle'; g.fillText(L.text || '', L.x + m.s * .7 + (m.ic ? m.ic + m.s * .35 : 0), L.y + L.h * .53); g.textBaseline = 'alphabetic';
 }
-function sdDrawDate(k, L, draw) {   // big date block: day + month
-  if (!draw) return; const g = k.g, { x, y, w, h } = L;
-  g.fillStyle = L.fill || '#00008F'; k.rr(x, y, w, h, w * .12); g.fill();
-  g.fillStyle = '#FF1721'; k.rr(x, y, w, h * .2, w * .12); g.fill(); g.fillRect(x, y + h * .1, w, h * .1);
-  g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.textBaseline = 'middle';
-  k.font(700, h * .1, PB_THAI); g.fillText(L.top || '', x + w / 2, y + h * .105);
-  k.font(700, h * .42, PB_BODY); g.fillText(L.day || '', x + w / 2, y + h * .54);
-  k.font(600, h * .13, PB_THAI); g.fillText(L.mon || '', x + w / 2, y + h * .83);
+function sdDrawDate(k, L, draw) {   // calendar page: red header, white body, binder rings
+  if (!draw) return; const g = k.g, { x, y, w, h } = L, r = w * .1, hd = h * .27, ink = L.ink || '#00008F';
+  g.save(); k.shadow(true, w * .1, w * .035, .18); g.fillStyle = L.body || '#FFFFFF'; k.rr(x, y, w, h, r); g.fill(); g.restore();
+  g.save(); k.rr(x, y, w, h, r); g.clip(); g.fillStyle = L.fill || '#FF1721'; g.fillRect(x, y, w, hd); g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(x, y + hd - h * .012, w, h * .012); g.restore();
+  g.strokeStyle = '#E1E6F0'; g.lineWidth = Math.max(1, w * .006); k.rr(x, y, w, h, r); g.stroke();
+  [.28, .72].forEach(f => { paCircle(g, x + w * f, y + hd * .2, w * .04, 'rgba(0,0,0,.18)'); paRR(g, x + w * f - w * .02, y - h * .06, w * .04, hd * .34, w * .02, '#8E97AA'); });
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  k.font(700, h * .1, sdStack('body')); g.fillStyle = '#FFFFFF'; g.fillText(L.top || '', x + w / 2, y + hd * .6, w * .9);
+  k.font(700, h * .4, sdStack('body')); g.fillStyle = ink; g.fillText(L.day || '', x + w / 2, y + hd + (h - hd) * .43, w * .9);
+  k.font(600, h * .11, sdStack('body')); g.fillStyle = '#2A2A4A'; g.fillText(L.mon || '', x + w / 2, y + hd + (h - hd) * .82, w * .9);
   g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
+const SD_LOGOS = {   // official variants from the Logo/Font/CI guidelines
+  color: ['สีเต็ม (มาตรฐาน)', 'assets/brand/ktaxa-logo.png', 'พื้นขาว / สีอ่อน'],
+  bordered: ['AXA โปร่งใส ขอบขาว', 'assets/brand/ktaxa-logo-bordered.png', 'พื้นน้ำเงิน / สีเข้ม'],
+  outline: ['โปร่งใสทั้งคู่ ขอบขาว', 'assets/brand/ktaxa-logo-outline.png', 'พื้นเข้ม / รูปถ่าย'],
+  white: ['โมโนขาว', 'assets/brand/ktaxa-logo-mono-white.png', 'พื้นสีเทา / ขาวดำ'],
+  dark: ['โมโนเทาเข้ม', 'assets/brand/ktaxa-logo-mono-dark.png', 'งานขาวดำ'],
+};
+function sdLogoSrc(L) {
+  const B = pbBrand(), v = SD_LOGOS[L.variant] ? L.variant : (L.dark ? 'bordered' : 'color');
+  if (v === 'color' && /^data:/.test(B.logo || '')) return B.logo;          // Admin-uploaded override (CI Control)
+  if (v === 'bordered' && /^data:/.test(B.logoWhite || '')) return B.logoWhite;
+  return SD_LOGOS[v][1];
+}
 function sdDrawLogo(k, L, draw) {
-  const B = pbBrand(), src = L.dark ? (B.logoWhite || B.logo) : (B.logo || B.logoWhite), im = pbImg(src), g = k.g;
-  if (im) { const w = im.width * L.h / im.height; if (L.right != null) L.x = L.right - w; L.w = w; if (draw) { if (L.dark && !B.logoWhite) { g.fillStyle = '#FFFFFF'; k.rr(L.x - L.h * .08, L.y - L.h * .08, w + L.h * .16, L.h * 1.16, L.h * .1); g.fill(); } g.drawImage(im, L.x, L.y, w, L.h); } return; }
-  if (draw) { g.fillStyle = L.dark ? '#FFFFFF' : '#00008F'; k.rr(L.x, L.y, L.w, L.h, L.h * .1); g.fill(); k.font(700, L.h * .26, PB_BODY); g.fillStyle = L.dark ? '#00008F' : '#FFFFFF'; g.textAlign = 'center'; g.fillText(B.org || 'LOGO', L.x + L.w / 2, L.y + L.h * .6); g.textAlign = 'left'; }
+  const B = pbBrand(), im = pbImg(sdLogoSrc(L)), g = k.g;
+  if (im) { const w = im.width * L.h / im.height; if (L.right != null) L.x = L.right - w; L.w = w; if (draw) g.drawImage(im, L.x, L.y, w, L.h); return; }
+  if (draw) { g.fillStyle = L.dark ? '#FFFFFF' : '#00008F'; k.rr(L.x, L.y, L.w, L.h, L.h * .1); g.fill(); k.font(700, L.h * .26, sdStack('body')); g.fillStyle = L.dark ? '#00008F' : '#FFFFFF'; g.textAlign = 'center'; g.fillText(B.org || 'LOGO', L.x + L.w / 2, L.y + L.h * .6); g.textAlign = 'left'; }
 }
 function sdDrawQr(k, L, draw) {
   L.h = L.w; if (!draw) return; const g = k.g, q = pbQr(L.url || '');
@@ -167,7 +206,7 @@ function sdDrawQr(k, L, draw) {
   const pad = L.w * .08, cell = (L.w - 2 * pad) / (q ? q.n : 21);
   g.fillStyle = '#0B0B45';
   if (q) { for (let r = 0; r < q.n; r++) for (let c = 0; c < q.n; c++) if (q.dark(r, c)) g.fillRect(L.x + pad + c * cell, L.y + pad + r * cell, Math.ceil(cell), Math.ceil(cell)); }
-  else { g.globalAlpha = .25; [[0, 0], [14, 0], [0, 14]].forEach(([c, r]) => { g.fillRect(L.x + pad + c * cell, L.y + pad + r * cell, cell * 7, cell * 7); }); g.globalAlpha = 1; k.font(600, L.w * .1, PB_THAI); g.textAlign = 'center'; g.fillText('ใส่ลิงก์ QR', L.x + L.w / 2, L.y + L.h * .62); g.textAlign = 'left'; }
+  else { g.globalAlpha = .25; [[0, 0], [14, 0], [0, 14]].forEach(([c, r]) => { g.fillRect(L.x + pad + c * cell, L.y + pad + r * cell, cell * 7, cell * 7); }); g.globalAlpha = 1; k.font(600, L.w * .1, sdStack('body')); g.textAlign = 'center'; g.fillText('ใส่ลิงก์ QR', L.x + L.w / 2, L.y + L.h * .62); g.textAlign = 'left'; }
 }
 function sdDrawImg(k, L, draw) {
   if (!draw) return; const g = k.g, im = pbImg(L.src); g.save(); k.rr(L.x, L.y, L.w, L.h, Math.min(L.w, L.h) * (L.r || 0)); g.clip();
@@ -182,7 +221,7 @@ function sdDrawChar(k, L, draw) {
   PA_NOBG = !L.panel; try { C[2](g, { x: L.x, y: L.y, w: L.w, h: L.h }, L.tint || '#8DB8EA'); } finally { PA_NOBG = false; }
   g.restore();
 }
-const SD_DRAW = { text: sdDrawText, card: sdDrawCard, chip: sdDrawChip, date: sdDrawDate, logo: sdDrawLogo, qr: sdDrawQr, img: sdDrawImg, char: sdDrawChar,
+const SD_DRAW = { art: sdDrawArt, text: sdDrawText, card: sdDrawCard, chip: sdDrawChip, date: sdDrawDate, logo: sdDrawLogo, qr: sdDrawQr, img: sdDrawImg, char: sdDrawChar,
   prop: (k, L, d) => { if (d) saProp(k.g, L.key, L.x, L.y, L.w, L.h); }, shape: (k, L, d) => { if (d) saShape(k.g, L); } };
 const sdM = L => { (SD_DRAW[L.t] || (() => {}))(SD_MK, L, false); return L; };   // measure: fills auto w / h
 function sdRender(cv, doc, opt = {}) {
@@ -214,7 +253,7 @@ const sdT = o => sdM({ t: 'text', weight: 700, font: 'head', lh: 1.22, align: 'l
 const SD_DOT = '#1A1A3A';
 function sdLogo(c, dark) {
   const h = (c.land ? 78 : c.story ? 92 : 84) * c.u, est = h * 2.1, left = c.B.logoPos === 'left';
-  return c.add(sdM({ t: 'logo', role: 'logo', dark: !!dark, x: left ? c.M : c.W - c.M - est, y: c.top, w: est, h, right: left ? null : c.W - c.M }));
+  return c.add(sdM({ t: 'logo', role: 'logo', dark: !!dark, variant: dark ? 'bordered' : 'color', x: left ? c.M : c.W - c.M - est, y: c.top, w: est, h, right: left ? null : c.W - c.M }));
 }
 const sdHeadText = b => b.headline.length ? b.headline.join('\n') : 'พิมพ์หัวข้อหลักที่นี่';
 function sdHead(c, o) { return c.add(sdT({ role: 'headline', text: sdHeadText(c.b), emph: c.b.emph, barFill: c.C.primary, barInk: '#FFFFFF', lh: 1.2, ...o })); }
@@ -251,7 +290,15 @@ function sdDecor(c, x, y, w, h) {   // the object props + sparkles scattered aro
   c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: '#F6C873', x: x + w * .12, y: y - 6 * u, w: 34 * u, h: 34 * u });
   c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: c.C.sky || '#6574F8', x: x + w * .86, y: y + h * .36, w: 24 * u, h: 24 * u });
 }
-const sdHero = (c, key, x, y, w, h, o = {}) => c.add({ t: 'char', role: 'hero', key: key || c.b.hero, tint: o.tint || c.acc, panel: !!o.panel, r: o.r, x, y, w, h, flip: !!o.flip });
+function sdHero(c, key, x, y, w, h, o = {}) {   // kit piece (assets/kit) or a drawn character
+  key = key || c.b.hero;
+  if (sdIsKit(key)) {
+    if (!o.panel) return c.add({ t: 'art', role: 'hero', key, x, y, w, h, flip: !!o.flip });
+    c.add({ t: 'shape', role: 'deco', kind: 'rect', r: o.r == null ? .08 : o.r, fill: pbMix(o.tint || c.acc, '#FFFFFF', .55), x, y, w, h });
+    const p = Math.min(w, h) * .08; return c.add({ t: 'art', role: 'hero', key, x: x + p, y: y + p, w: w - 2 * p, h: h - p * (SD_KIT[key][1] === 'people' ? 1 : 2), flip: !!o.flip });
+  }
+  return c.add({ t: 'char', role: 'hero', key, tint: o.tint || c.acc, panel: !!o.panel, r: o.r, x, y, w, h, flip: !!o.flip });
+}
 function sdDateParts(t) {
   t = pbThaiDigits(t || ''); const m = t.match(new RegExp(`(\\d{1,2})(?:\\s*[-–]\\s*(\\d{1,2}))?\\s*(${SD_TH_MON})\\s*(\\d{2,4})?`, 'i'));
   if (m) return { day: m[2] ? `${m[1]}–${m[2]}` : m[1], mon: m[3] + (m[4] ? ' ' + m[4] : ''), top: (t.match(/(จันทร์|อังคาร|พุธ|พฤหัส\S*|ศุกร์|เสาร์|อาทิตย์)/) || [])[1] || 'SAVE THE DATE' };
@@ -383,7 +430,7 @@ const SD_GEN = {
     let y = c.top; const kk = sdKicker(c, { x: M, y: y + (lg.h - 44 * u * c.s) / 2 }); y += lg.h + 34 * u;
     const bs = (c.land ? 300 : c.square ? 250 : 290) * u * c.s;
     if (c.land) {
-      if (dp) c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.primary, x: M, y, w: bs, h: bs * 1.08 });
+      if (dp) c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.red, ink: C.primary, x: M, y, w: bs, h: bs * 1.08 });
       const tx = dp ? M + bs + 40 * u : M, tw = W * .6 - tx; let ty = y;
       const hd = sdHead(c, { x: tx, y: ty, w: tw, size: 64 * u * c.s }); ty += hd.h + 18 * u; const sb = sdSub(c, { x: tx, y: ty, w: tw }); if (sb) ty += sb.h + 20 * u;
       ty = Math.max(ty, dp ? y + bs * 1.08 + 30 * u : ty); ty = sdFacts(c, M, ty, W * .6 - M, { stack: false, fill: C.paper }) + 24 * u;
@@ -393,7 +440,7 @@ const SD_GEN = {
       return { bg: { c1: '#FFFFFF', c2: C.paper }, layers: c.L, over: c.over };
     }
     if (dp) {
-      c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.primary, x: M, y, w: bs, h: bs * 1.08 });
+      c.add({ t: 'date', role: 'dateblock', ...dp, fill: C.red, ink: C.primary, x: M, y, w: bs, h: bs * 1.08 });
       const fx = M + bs + 34 * u; sdFacts(c, fx, y + 10 * u, W - M - fx, { stack: true, fill: C.paper, size: c.square ? 26 : 30 }); y += bs * 1.08 + 36 * u;
     }
     const hd = sdHead(c, { x: M, y, w: bw, size: (c.story ? 84 : c.square ? 62 : 74) * u * c.s }); y += hd.h + 18 * u;

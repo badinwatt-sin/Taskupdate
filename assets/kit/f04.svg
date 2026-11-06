@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="439" height="519" viewBox="109 58 439 519" id="e04-04-shape-0-1">
+  <title>Generic tax planning document</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e04-document-1" transform="rotate(-7 320 320)">
+    <g id="e04-paper-1">
+      <path d="M166 91H386L467 172V546H166Z" fill="#071C74" id="e04-04-shape-5-1" />
+      <path d="M151 76H376L451 151V531H151Z" fill="#F7FAFF" id="e04-04-shape-6-1" />
+      <path d="M376 76v75h75z" fill="#B5D2FF" id="e04-04-shape-7-1" />
+      <path d="M151 76h12v455h-12z" fill="#DFE6EF" id="e04-04-shape-8-1" />
+    </g>
+    <g id="e04-form-heading-1">
+      <rect x="191" y="120" width="123" height="19" rx="4" fill="#071C74" id="e04-04-shape-10-1" />
+      <rect x="191" y="153" width="89" height="9" rx="4" fill="#3979FF" id="e04-04-shape-11-1" />
+      <rect x="191" y="199" width="220" height="4" rx="2" fill="#DFE6EF" id="e04-04-shape-12-1" />
+    </g>
+    <g id="e04-generic-form-fields-1">
+      <rect x="191" y="233" width="25" height="25" rx="5" fill="#B5D2FF" id="e04-04-shape-14-1" />
+      <path d="M197 245l6 6 9-12" fill="none" stroke="#0026E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="e04-04-shape-15-1" />
+      <rect x="234" y="236" width="172" height="7" rx="3" fill="#3979FF" id="e04-04-shape-16-1" />
+      <rect x="234" y="250" width="121" height="7" rx="3" fill="#DFE6EF" id="e04-04-shape-17-1" />
+      <rect x="191" y="291" width="25" height="25" rx="5" fill="#B5D2FF" id="e04-04-shape-18-1" />
+      <path d="M197 303l6 6 9-12" fill="none" stroke="#0026E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="e04-04-shape-19-1" />
+      <rect x="234" y="294" width="172" height="7" rx="3" fill="#3979FF" id="e04-04-shape-20-1" />
+      <rect x="234" y="308" width="121" height="7" rx="3" fill="#DFE6EF" id="e04-04-shape-21-1" />
+      <rect x="191" y="349" width="25" height="25" rx="5" fill="#B5D2FF" id="e04-04-shape-22-1" />
+      <path d="M197 361l6 6 9-12" fill="none" stroke="#0026E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" id="e04-04-shape-23-1" />
+      <rect x="234" y="352" width="172" height="7" rx="3" fill="#3979FF" id="e04-04-shape-24-1" />
+      <rect x="234" y="366" width="121" height="7" rx="3" fill="#DFE6EF" id="e04-04-shape-25-1" />
+      <rect x="191" y="407" width="220" height="66" rx="7" fill="#B5D2FF" id="e04-04-shape-26-1" />
+      <rect x="208" y="424" width="91" height="8" rx="3" fill="#3979FF" id="e04-04-shape-27-1" />
+      <rect x="208" y="444" width="151" height="8" rx="3" fill="#F7FAFF" id="e04-04-shape-28-1" />
+    </g>
+  </g>
+  <g id="e04-tax-symbol-1">
+    <circle cx="456" cy="453" r="79" fill="#0026E1" id="e04-04-shape-30-1" />
+    <circle cx="456" cy="453" r="65" fill="#3979FF" id="e04-04-shape-31-1" />
+    <circle cx="434" cy="430" r="12" fill="#F7FAFF" id="e04-04-shape-32-1" />
+    <circle cx="480" cy="477" r="12" fill="#F7FAFF" id="e04-04-shape-33-1" />
+    <path d="M432 479l47-52" fill="none" stroke="#F7FAFF" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" id="e04-04-shape-34-1" />
+  </g>
+</svg>

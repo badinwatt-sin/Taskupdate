@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="465" height="463" viewBox="90 70 465 463" id="e08-08-shape-0-1">
+  <title>Wallet with cashflow arrows</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e08-cash-1">
+    <path d="M164 278l-27-136 305-59 37 188z" fill="#278B88" id="e08-08-shape-4-1" />
+    <path d="M179 246l-16-90 264-51 27 137z" fill="#9AE7C2" id="e08-08-shape-5-1" />
+    <path d="M193 169l218-42 17 85-218 42z" fill="none" stroke="#278B88" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" id="e08-08-shape-6-1" />
+    <ellipse cx="311" cy="191" rx="44" ry="37" fill="#278B88" id="e08-08-shape-7-1" />
+    <ellipse cx="311" cy="191" rx="28" ry="24" fill="#9AE7C2" id="e08-08-shape-8-1" />
+  </g>
+  <g id="e08-cards-1">
+    <rect x="248" y="185" width="260" height="159" rx="15" fill="#071C74" id="e08-08-shape-10-1" />
+    <rect x="248" y="206" width="260" height="27" rx="0" fill="#3979FF" id="e08-08-shape-11-1" />
+    <rect x="275" y="254" width="41" height="31" rx="6" fill="#F8D67A" id="e08-08-shape-12-1" />
+    <rect x="334" y="266" width="94" height="8" rx="4" fill="#B5D2FF" id="e08-08-shape-13-1" />
+  </g>
+  <g id="e08-wallet-shell-1">
+    <rect x="103" y="276" width="419" height="244" rx="26" fill="#071C74" id="e08-08-shape-15-1" />
+    <rect x="103" y="264" width="408" height="242" rx="26" fill="#3979FF" id="e08-08-shape-16-1" />
+    <path d="M103 295q0-31 31-31h352q25 0 25 25v15H125q-22 0-22-9" fill="#0026E1" id="e08-08-shape-17-1" />
+    <path d="M119 327v139q0 23 23 23h337" fill="none" stroke="#B5D2FF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" id="e08-08-shape-18-1" />
+    <rect x="421" y="340" width="121" height="99" rx="17" fill="#071C74" id="e08-08-shape-19-1" />
+    <rect x="413" y="332" width="121" height="99" rx="17" fill="#0026E1" id="e08-08-shape-20-1" />
+    <circle cx="452" cy="380" r="15" fill="#B5D2FF" id="e08-08-shape-21-1" />
+    <circle cx="452" cy="380" r="6" fill="#071C74" id="e08-08-shape-22-1" />
+  </g>
+  <g id="e08-cashflow-symbol-1">
+    <path d="M183 379h124l-21-21m21 21-21 21M304 437H180l21-21m-21 21 21 21" fill="none" stroke="#F7FAFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" id="e08-08-shape-24-1" />
+  </g>
+</svg>

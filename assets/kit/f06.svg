@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="473" height="486" viewBox="93 98 473 486" id="e06-06-shape-0-1">
+  <title>Emergency reserve safe with protection emblem</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e06-safe-feet-1">
+    <rect x="169" y="514" width="54" height="38" rx="8" fill="#071C74" id="e06-06-shape-4-1" />
+    <rect x="417" y="514" width="54" height="38" rx="8" fill="#071C74" id="e06-06-shape-5-1" />
+  </g>
+  <g id="e06-safe-body-1">
+    <rect x="118" y="123" width="412" height="407" rx="35" fill="#071C74" id="e06-06-shape-7-1" />
+    <rect x="106" y="111" width="412" height="405" rx="32" fill="#3979FF" id="e06-06-shape-8-1" />
+    <rect x="132" y="138" width="360" height="351" rx="22" fill="#0026E1" id="e06-06-shape-9-1" />
+    <rect x="155" y="159" width="314" height="309" rx="15" fill="#B5D2FF" id="e06-06-shape-10-1" />
+    <rect x="169" y="171" width="286" height="285" rx="10" fill="#DFE6EF" id="e06-06-shape-11-1" />
+    <rect x="137" y="204" width="34" height="43" rx="6" fill="#071C74" id="e06-06-shape-12-1" />
+    <rect x="137" y="378" width="34" height="43" rx="6" fill="#071C74" id="e06-06-shape-13-1" />
+  </g>
+  <g id="e06-safe-lock-1">
+    <circle cx="291" cy="310" r="66" fill="#071C74" id="e06-06-shape-15-1" />
+    <circle cx="291" cy="310" r="54" fill="#3979FF" id="e06-06-shape-16-1" />
+    <circle cx="291" cy="310" r="20" fill="#B5D2FF" id="e06-06-shape-17-1" />
+    <path d="M291 270v20m-35 40l18-10m52 10l-18-10" fill="none" stroke="#B5D2FF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" id="e06-06-shape-18-1" />
+    <rect x="406" y="264" width="16" height="94" rx="8" fill="#071C74" id="e06-06-shape-19-1" />
+  </g>
+  <g id="e06-protection-emblem-1">
+    <path d="M454 364q48 26 99 24v70q0 71-99 113-99-42-99-113v-70q51 2 99-24z" fill="#9AE7C2" id="e06-06-shape-21-1" />
+    <path d="M454 384v165q77-35 79-94v-49q-41-4-79-22z" fill="#278B88" id="e06-06-shape-22-1" />
+    <path d="M417 463l25 25 50-58" fill="none" stroke="#F7FAFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" id="e06-06-shape-23-1" />
+  </g>
+</svg>

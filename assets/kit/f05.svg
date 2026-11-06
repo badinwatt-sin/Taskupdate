@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="461" height="523" viewBox="97 46 461 523" id="e05-05-shape-0-1">
+  <title>Savings target and coin</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e05-target-stand-1">
+    <path d="M260 459l-37 96h28l39-92M361 459l37 96h-28l-39-92" fill="#071C74" id="e05-05-shape-4-1" />
+    <rect x="246" y="523" width="123" height="12" rx="5" fill="#071C74" id="e05-05-shape-5-1" />
+  </g>
+  <g id="e05-target-rings-1">
+    <circle cx="309" cy="287" r="196" fill="#071C74" id="e05-05-shape-7-1" />
+    <circle cx="300" cy="279" r="190" fill="#3979FF" id="e05-05-shape-8-1" />
+    <circle cx="300" cy="279" r="151" fill="#F7FAFF" id="e05-05-shape-9-1" />
+    <circle cx="300" cy="279" r="115" fill="#0026E1" id="e05-05-shape-10-1" />
+    <circle cx="300" cy="279" r="77" fill="#F7FAFF" id="e05-05-shape-11-1" />
+    <circle cx="300" cy="279" r="39" fill="#3979FF" id="e05-05-shape-12-1" />
+  </g>
+  <g id="e05-arrow-1">
+    <path d="M301 279L458 122" fill="none" stroke="#071C74" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" id="e05-05-shape-14-1" />
+    <path d="M409 168l-5-51 58-58 5 51 51 5-58 58z" fill="#9AE7C2" id="e05-05-shape-15-1" />
+    <path d="M409 168l58-58 51 5-58 58z" fill="#278B88" id="e05-05-shape-16-1" />
+  </g>
+  <g id="e05-goal-coin-1">
+    <g id="e05-coin-456-467-1">
+      <circle cx="456" cy="467" r="89" fill="#DDA33E" id="e05-05-shape-19-1" />
+      <circle cx="452" cy="463" r="85" fill="#F8D67A" id="e05-05-shape-20-1" />
+      <circle cx="452" cy="463" r="76" fill="#DDA33E" id="e05-05-shape-21-1" />
+      <circle cx="452" cy="463" r="71" fill="#F8D67A" id="e05-05-shape-22-1" />
+      <path d="M451 447v32M440 453h23M440 474h23" fill="none" stroke="#DDA33E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" id="e05-05-shape-23-1" />
+    </g>
+  </g>
+</svg>

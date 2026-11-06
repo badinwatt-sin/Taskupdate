@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="430" height="527" viewBox="105 38 430 527">
+<title>Abstract blue policy booklet</title>
+<desc>Fully editable flat vector. Solid blue cover, abstract line marks in place of wording, and two solid-color tiles in place of detailed logos. No lettering, embedded images, or font dependency.</desc>
+<g id="booklet-v3-booklet" transform="translate(166 80) rotate(-14 150 220)">
+<g id="booklet-v3-back-cover"><path d="M6 6H304L307 445H8Z" fill="#0A1047"/></g>
+<g id="booklet-v3-paper-edge"><path d="M10 435H300L303 442H11Z" fill="#DFE6EF"/><path d="M14 438H299" fill="none" stroke="#AEBED2" stroke-width="1.5"/></g>
+<g id="booklet-v3-front-cover"><path d="M0 0H300V436H0Z" fill="#11175D"/><path d="M0 0H12V436H0Z" fill="#0A1047"/><path d="M12 0H16V436H12Z" fill="#1D246F"/><path d="M17 0H300V8H17Z" fill="#1B246E"/><path d="M298 8H300V436H298Z" fill="#0B124C"/></g>
+<g id="booklet-v3-flat-color-tiles"><rect x="112" y="82" width="34" height="34" fill="#36A5C8"/><rect x="151" y="82" width="34" height="34" fill="#8ACDE3"/></g>
+<g id="booklet-v3-abstract-cover-lines" fill="none" stroke-linecap="round">
+<path d="M90 231H123M132 231H166M175 231H211" stroke="#F4F8FF" stroke-width="4.5"/>
+<path d="M111 247H143M152 247H190" stroke="#BFCDE4" stroke-width="3"/>
+</g>
+<g id="booklet-v3-abstract-footer-lines" fill="none" stroke-linecap="round"><path d="M122 357H179" stroke="#DDE5F2" stroke-width="2"/><path d="M137 365H165" stroke="#AEBBD8" stroke-width="1.4"/></g>
+</g></svg>

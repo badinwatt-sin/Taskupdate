@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="547" height="482" viewBox="47 86 547 482" id="e07-07-shape-0-1">
+  <title>Open budget planning notebook</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e07-ledger-1" transform="rotate(-5 320 320)">
+    <g id="e07-book-cover-1">
+      <path d="M75 143q120-36 245 11 125-47 245-11v368q-133-24-245 17-112-41-245-17z" fill="#071C74" id="e07-07-shape-5-1" />
+      <path d="M87 143q115-25 233 19 118-44 233-19v350q-121-21-233 20-112-41-233-20z" fill="#B5D2FF" id="e07-07-shape-6-1" />
+    </g>
+    <g id="e07-open-pages-1">
+      <path d="M93 122q114-27 227 21v351q-116-42-227-15z" fill="#F7FAFF" id="e07-07-shape-8-1" />
+      <path d="M320 143q113-48 227-21v357q-111-27-227 15z" fill="#F7FAFF" id="e07-07-shape-9-1" />
+      <path d="M303 137l17 6v351l-17-6z" fill="#DFE6EF" id="e07-07-shape-10-1" />
+      <path d="M320 143l17-6v351l-17 6z" fill="#B5D2FF" id="e07-07-shape-11-1" />
+    </g>
+    <g id="e07-left-page-fields-1">
+      <rect x="123" y="166" width="116" height="15" rx="4" fill="#071C74" id="e07-07-shape-13-1" />
+      <rect x="123" y="197" width="141" height="8" rx="3" fill="#3979FF" id="e07-07-shape-14-1" />
+    </g>
+    <g id="e07-budget-rows-1">
+      <rect x="123" y="242" width="19" height="19" rx="4" fill="#B5D2FF" id="e07-07-shape-16-1" />
+      <rect x="154" y="244" width="113" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-17-1" />
+      <rect x="154" y="256" width="75" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-18-1" />
+      <rect x="123" y="293" width="19" height="19" rx="4" fill="#B5D2FF" id="e07-07-shape-19-1" />
+      <rect x="154" y="295" width="113" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-20-1" />
+      <rect x="154" y="307" width="75" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-21-1" />
+      <rect x="123" y="344" width="19" height="19" rx="4" fill="#B5D2FF" id="e07-07-shape-22-1" />
+      <rect x="154" y="346" width="113" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-23-1" />
+      <rect x="154" y="358" width="75" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-24-1" />
+      <rect x="123" y="395" width="19" height="19" rx="4" fill="#B5D2FF" id="e07-07-shape-25-1" />
+      <rect x="154" y="397" width="113" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-26-1" />
+      <rect x="154" y="409" width="75" height="6" rx="3" fill="#DFE6EF" id="e07-07-shape-27-1" />
+    </g>
+    <g id="e07-right-page-summary-1">
+      <rect x="368" y="166" width="128" height="15" rx="4" fill="#071C74" id="e07-07-shape-29-1" />
+      <rect x="368" y="197" width="104" height="8" rx="3" fill="#3979FF" id="e07-07-shape-30-1" />
+      <rect x="368" y="241" width="131" height="95" rx="6" fill="#B5D2FF" id="e07-07-shape-31-1" />
+      <rect x="386" y="291" width="12" height="29" rx="3" fill="#3979FF" id="e07-07-shape-32-1" />
+      <rect x="418" y="271" width="12" height="49" rx="3" fill="#3979FF" id="e07-07-shape-33-1" />
+      <rect x="450" y="281" width="12" height="39" rx="3" fill="#3979FF" id="e07-07-shape-34-1" />
+      <rect x="482" y="255" width="12" height="65" rx="3" fill="#3979FF" id="e07-07-shape-35-1" />
+      <path d="M368 365h131m-131 28h131m-131 28h89" fill="none" stroke="#DFE6EF" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" id="e07-07-shape-36-1" />
+      <path d="M480 122v99l-19-15-19 15V119z" fill="#F35C63" id="e07-07-shape-37-1" />
+    </g>
+  </g>
+  <g id="e07-pencil-1">
+    <path d="M512 310l25 8-70 220-21 17-7-26z" fill="#F8D67A" id="e07-07-shape-39-1" />
+    <path d="M524 314l13 4-70 220-14-5z" fill="#DDA33E" id="e07-07-shape-40-1" />
+    <path d="M439 531l28 7-21 17z" fill="#DFE6EF" id="e07-07-shape-41-1" />
+    <path d="M442 545l11 4-7 6z" fill="#071C74" id="e07-07-shape-42-1" />
+    <path d="M512 310l7-22q3-9 12-6l8 2q9 3 6 12l-8 22z" fill="#F35C63" id="e07-07-shape-43-1" />
+  </g>
+</svg>

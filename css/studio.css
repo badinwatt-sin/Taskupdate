@@ -1,3 +1,9 @@
+/* brand fonts used when installed on the computer (files can also be uploaded in CI Control) */
+@font-face{font-family:"Publico";src:local("Publico Headline Bold"),local("PublicoHeadline-Bold"),local("Publico Headline"),local("Publico Bold"),local("Publico-Bold");font-weight:700}
+@font-face{font-family:"Publico";src:local("Publico Headline Light"),local("PublicoHeadline-Light"),local("Publico Text Roman"),local("PublicoText-Roman"),local("Publico Roman");font-weight:400}
+@font-face{font-family:"DB Helvethaica X";src:local("DB Helvethaica X 75 Bd"),local("DBHelvethaicaX-75Bd"),local("DB HelvethaicaX 75 Bd");font-weight:700}
+@font-face{font-family:"DB Helvethaica X";src:local("DB Helvethaica X 55 Regular"),local("DBHelvethaicaX-55Regular"),local("DB HelvethaicaX 55 Regular"),local("DB Helvethaica X");font-weight:400}
+@font-face{font-family:"DB Helvethaica X";src:local("DB Helvethaica X 45 Li"),local("DBHelvethaicaX-45Li");font-weight:300}
 /* ---------- Poster Studio ---------- */
 .sd{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr) minmax(260px,300px);gap:16px;align-items:start}
 .sd-left,.sd-center,.sd-right{display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -93,3 +99,24 @@
   #sdStep1{order:0}.sd-center{order:1}#sdBrief{order:2;display:flex;flex-direction:column;gap:16px}.sd-right{order:3}
   .sd-canvasbox{padding:8px}
 }
+
+.sd-kit{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px;max-height:360px;overflow:auto;padding:2px}
+.sd-kit.sm{grid-template-columns:repeat(auto-fill,minmax(54px,1fr));max-height:240px}
+.sd-kit button{display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--line2);background:#fff;border-radius:10px;padding:5px;cursor:pointer;min-height:44px}
+.sd-kit button:hover{border-color:var(--accent)}.sd-kit button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.sd-kit img{height:64px;width:100%;object-fit:contain}.sd-kit.sm img{height:46px}
+.sd-kit small{font-size:10.5px;line-height:1.2;color:#555;text-align:center}
+.sd-kitg{margin-top:-2px}
+.sd-logos{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sd-logos button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;border:1px solid var(--line2);border-radius:10px;padding:8px;background:#fff;cursor:pointer}
+.sd-logos button.dk{background:#00008F}.sd-logos button.dk b{color:#fff}.sd-logos button.dk small{color:rgba(255,255,255,.75)}
+.sd-logos button.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.sd-logos img{height:30px;width:auto;max-width:100%}
+.sd-logos b{font-size:12px;color:#111}.sd-logos small{font-size:11px;color:#666}
+.sd-fontfiles{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.sd-fontfiles .badge{display:inline-flex;align-items:center;gap:4px}
+.sd-fontup{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.sd-fontup input{flex:1;min-width:180px}.sd-fontup select{width:auto}
+.pb-brand .pb-logo{min-height:80px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pb-brand .pb-logo img{max-height:64px;max-width:100%;width:auto;object-fit:contain}
+.sd-logos-ci{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin:6px 0}
+.sd-logos-ci span{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line2);border-radius:10px;padding:8px;background:#fff}
+.sd-logos-ci span.dk{background:#00008F}.sd-logos-ci span.dk b{color:#fff}.sd-logos-ci span.dk small{color:rgba(255,255,255,.75)}

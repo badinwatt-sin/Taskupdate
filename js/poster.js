@@ -750,19 +750,20 @@ ACT.pbBrand = () => {
         <label class="field"><span>ข้อความกำกับท้ายโปสเตอร์ <small>(ไม่บังคับ)</small></span><input id="pbBFoot" value="${esc(draft.footer)}" ${can ? '' : 'disabled'}></label>
         <div class="field"><span>ตำแหน่งโลโก้</span><div class="seg-chips pb-logopos" id="pbBPos">${[['right', 'มุมขวาบน (ค่าเริ่มต้น)'], ['left', 'มุมซ้ายบน']].map(([k, l]) => `<button type="button" class="${(draft.logoPos || 'right') === k ? 'on' : ''}" data-pos="${k}" ${can ? '' : 'disabled'}>${l}</button>`).join('')}</div></div>
         <p class="full small muted">โลโก้วางมุมซ้ายบนของทุกโปสเตอร์ตามแนวทาง CI — ใช้ไฟล์ทางการของทีม Brand (ชุดโลโก้คู่ Krungthai-AXA) ห้ามแก้สี สัดส่วน หรือเว้นพื้นที่ปลอดภัยให้น้อยกว่าที่กำหนด</p>
+        ${typeof SD_LOGOS === 'object' ? `<div class="full"><span class="small muted">ชุดโลโก้ทางการจากไฟล์ CI (มีในระบบแล้ว · เลือกแบบได้ในแต่ละโปสเตอร์โดยคลิกที่โลโก้)</span><div class="sd-logos sd-logos-ci">${Object.values(SD_LOGOS).map(v => `<span class="${/สีเต็ม|เทาเข้ม/.test(v[0]) ? '' : 'dk'}"><img src="${v[1]}" alt=""><b>${v[0]}</b><small>${v[2]}</small></span>`).join('')}</div><span class="small muted">ช่องอัปโหลดด้านล่างใช้เมื่อต้องการแทนที่แบบสีเต็ม / แบบขอบขาวด้วยไฟล์อื่น</span></div>` : ''}
         <div class="field"><span>โลโก้คู่ Krungthai-AXA (สี) — พื้นสว่าง</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
         <div class="field"><span>โลโก้คู่แบบขาว / ขอบขาว — พื้นเข้มและรูปถ่าย <small>(ถ้าไม่มี ระบบวางโลโก้สีบนป้ายขาว)</small></span>${logoBox('logoWhite', 1)}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logoWhite">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logoWhite">ลบ</button></div>` : ''}</div>
       </div>
       <h4 class="mt">สีที่อนุมัติ</h4>
       <div class="pb-colors">${Object.keys(PB_BRAND_DEFAULT.colors).map(key => `<label class="pb-color"><input type="color" data-col="${key}" value="${draft.colors[key]}" ${can ? '' : 'disabled'}><span><b>${PB_COLOR_LABEL[key]}</b><small>${draft.colors[key].toUpperCase()}</small></span></label>`).join('')}</div>
-      <h4 class="mt">ฟอนต์</h4>
-      <p class="small muted">ตามแนวทาง CI: หัวข้อ <b>Publico</b> · ไทย <b>DB Helvethaica</b> · อังกฤษ/เนื้อหา <b>Source Sans Pro</b> — ระบบใช้ฟอนต์จริงเมื่อติดตั้งในเครื่อง ไม่เช่นนั้นใช้ IBM Plex Sans Thai / Source Sans 3 แทน · พื้นหลังที่อนุญาต: AXA Blue, Blue Tint 1–2, Red Tint 1, White และรูปถ่าย · ห้ามใช้สีแดงเป็นพื้น ห้ามสร้างสีหรือไล่สีเอง</p>`,
+      <div id="sdFontBox"></div>`,
     actions: can ? [
       { label: 'คืนค่าเริ่มต้น', cls: 'btn-ghost', left: true, onClick: async () => { if (!(await confirmBox('คืนค่า CI เป็นค่าเริ่มต้น?', 'คืนค่า'))) return false; delete S().settings.brand; commit(); pbRender(); toast('คืนค่า CI แล้ว'); } },
       { label: 'ยกเลิก' },
       { label: 'บันทึก CI', cls: 'btn-primary', onClick: () => { S().settings.brand = draft; commit(); pbRender(); toast('บันทึก CI แล้ว — ใช้กับโปสเตอร์ของทุกคน'); } },
     ] : [{ label: 'ปิด', cls: 'btn-primary' }],
     onOpen(md) {
+      if (typeof sdFontSectionBind === 'function') sdFontSectionBind(md, draft, can);
       if (!can) return;
       $('#pbBOrg', md.el).oninput = e => { draft.org = e.target.value.trim() || PB_BRAND_DEFAULT.org; };
       $('#pbBFoot', md.el).oninput = e => { draft.footer = e.target.value.trim(); };

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="474" height="470" viewBox="91 86 474 470" id="e09-09-shape-0-1">
+  <title>Nest egg and savings coins with leaf</title>
+  <desc>Original editable flat vector financial planning illustration. Transparent background. No financial advice or product claims.</desc>
+  <g id="e09-rear-nest-1">
+    <ellipse cx="322" cy="422" rx="206" ry="84" fill="#DDA33E" id="e09-09-shape-4-1" />
+    <ellipse cx="322" cy="403" rx="193" ry="61" fill="#F8D67A" id="e09-09-shape-5-1" />
+    <ellipse cx="322" cy="409" rx="162" ry="43" fill="#DDA33E" id="e09-09-shape-6-1" />
+  </g>
+  <g id="e09-nest-egg-1">
+    <path d="M212 355C207 265 258 99 321 99C383 99 435 265 430 355C427 419 385 457 321 457S215 419 212 355Z" fill="#F7FAFF" id="e09-09-shape-8-1" />
+    <path d="M321 99C384 105 435 265 430 355C427 420 383 457 321 457C373 423 391 371 387 302C383 224 359 145 321 99Z" fill="#B5D2FF" id="e09-09-shape-9-1" />
+    <path d="M258 280q8-53 29-82" fill="none" stroke="#F7FAFF" stroke-width="15" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-10-1" />
+  </g>
+  <g id="e09-front-nest-1">
+    <path d="M113 408q202 108 416 0-20 130-207 135Q139 538 113 408Z" fill="#F8D67A" id="e09-09-shape-12-1" />
+    <path d="M113 408q203 108 416 0-7 39-22 57-173 91-373 0z" fill="#DDA33E" id="e09-09-shape-13-1" />
+    <path d="M153 484q175 65 330-1M184 512q144 39 270-2" fill="none" stroke="#DDA33E" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-14-1" />
+    <path d="M144 430q157 65 310 18" fill="none" stroke="#F8D67A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-15-1" />
+  </g>
+  <g id="e09-savings-coins-1">
+    <g id="e09-coin-159-457-1">
+      <circle cx="159" cy="457" r="55" fill="#DDA33E" id="e09-09-shape-18-1" />
+      <circle cx="155" cy="453" r="51" fill="#F8D67A" id="e09-09-shape-19-1" />
+      <circle cx="155" cy="453" r="42" fill="#DDA33E" id="e09-09-shape-20-1" />
+      <circle cx="155" cy="453" r="37" fill="#F8D67A" id="e09-09-shape-21-1" />
+      <path d="M154 437v32M143 443h23M143 464h23" fill="none" stroke="#DDA33E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-22-1" />
+    </g>
+    <g id="e09-coin-492-460-1">
+      <circle cx="492" cy="460" r="60" fill="#DDA33E" id="e09-09-shape-24-1" />
+      <circle cx="488" cy="456" r="56" fill="#F8D67A" id="e09-09-shape-25-1" />
+      <circle cx="488" cy="456" r="47" fill="#DDA33E" id="e09-09-shape-26-1" />
+      <circle cx="488" cy="456" r="42" fill="#F8D67A" id="e09-09-shape-27-1" />
+      <path d="M487 440v32M476 446h23M476 467h23" fill="none" stroke="#DDA33E" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-28-1" />
+    </g>
+  </g>
+  <g id="e09-leaf-1">
+    <path d="M442 241q-8-93 85-126 15 95-85 126z" fill="#9AE7C2" id="e09-09-shape-30-1" />
+    <path d="M442 241q-27-67-94-68 6 70 94 68z" fill="#278B88" id="e09-09-shape-31-1" />
+    <path d="M440 277q-4-76 56-128" fill="none" stroke="#278B88" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" id="e09-09-shape-32-1" />
+  </g>
+</svg>
