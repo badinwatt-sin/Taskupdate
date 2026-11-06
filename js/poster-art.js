@@ -120,12 +120,15 @@ function paMega(g, x, y) {
 function paCal(g, x, y) { paRR(g, x - 15, y - 16, 30, 32, 4, '#FFFFFF'); paRR(g, x - 15, y - 16, 30, 9, 4, '#FF1721'); g.fillStyle = '#FF1721'; g.fillRect(x - 15, y - 11, 30, 4); g.fillStyle = '#00008F'; for (let i = 0; i < 6; i++) g.fillRect(x - 10 + (i % 3) * 8, y - 2 + Math.floor(i / 3) * 9, 5, 5); }
 function paHeart(g, x, y, s = 1) { g.save(); g.translate(x, y); g.scale(s, s); g.fillStyle = '#FF4D5E'; g.fill(paP('M0,12 C-18,0 -16,-14 -7,-14 C-3,-14 0,-11 0,-8 C0,-11 3,-14 7,-14 C16,-14 18,0 0,12 Z')); g.restore(); }
 function paIV(g, x, y0, h) {   // drip stand (scene element, absolute coordinates)
+  if (PA_NOBG) return;
   g.strokeStyle = '#B9C4D8'; g.lineWidth = Math.max(2, h * .02); g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y0); g.lineTo(x, y0 - h); g.moveTo(x - h * .09, y0 - h); g.lineTo(x + h * .09, y0 - h); g.moveTo(x - h * .1, y0); g.lineTo(x + h * .1, y0); g.stroke();
   const bw = h * .12, bh = h * .2, bx = x - bw / 2, by = y0 - h + h * .03; paRR(g, bx, by, bw, bh, bw * .22, '#FFFFFF'); paRR(g, bx + bw * .12, by + bh * .4, bw * .76, bh * .5, bw * .15, '#F2A5B8'); g.strokeStyle = '#E5A0B0'; g.lineWidth = Math.max(1.5, h * .012); g.beginPath(); g.moveTo(x, by + bh); g.bezierCurveTo(x, y0 - h * .45, x - h * .12, y0 - h * .4, x - h * .1, y0 - h * .2); g.stroke();
 }
 
 /* ---------- room backdrops (panel coordinates, r = {x,y,w,h}) ---------- */
+let PA_NOBG = false;   // Poster Studio draws characters without their room backdrop
 function paBg(g, r, tint, kind) {
+  if (PA_NOBG) return;
   const { x, y, w, h } = r, light = pbMix(tint, '#FFFFFF', .55), mid = pbMix(tint, '#FFFFFF', .32), dark = pbMix(tint, '#000000', .06);
   g.fillStyle = light; g.fillRect(x, y, w, h);
   if (kind === 'clinic') {

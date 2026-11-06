@@ -115,11 +115,12 @@ const pbSceneOf = st => (st.scene && st.scene !== 'auto' && PB_SCENES[st.scene])
 
 /* ---------- CI (set by Admin / Brand team, shared with everyone) ---------- */
 const PB_BRAND_DEFAULT = {   // values from the Krungthai-AXA Logo/Font/CI guidelines (core + tints palette)
-  org: 'Krungthai-AXA', footer: '', logo: '', logoWhite: '',
+  org: 'Krungthai-AXA', footer: '', logo: 'assets/brand/ktaxa-logo.png', logoWhite: 'assets/brand/ktaxa-logo-bordered.png',   // official files from the Logo/Font/CI guidelines
+ 
   colors: { primary: '#00008F', sky: '#6574F8', red: '#FF1721', lavender: '#6574F8', pink: '#FFEAEA', paper: '#E2EFFF', navy: '#0C0E45', ink: '#0E0E0E' },
 };
 const PB_COLOR_LABEL = { primary: 'AXA Blue (หลัก)', sky: 'Blue Tint 2 (สีเน้น)', red: 'AXA Red', lavender: 'Blue Tint 2 (พื้น)', pink: 'Red Tint 1 (พื้น)', paper: 'Blue Tint 1 (พื้น)', navy: 'Blue Tint 3', ink: 'Black (ตัวอักษร)' };
-const pbBrand = () => { const b = S().settings.brand || {}; return { ...PB_BRAND_DEFAULT, ...b, colors: { ...PB_BRAND_DEFAULT.colors, ...(b.colors || {}) } }; };
+const pbBrand = () => { const b = S().settings.brand || {}; return { ...PB_BRAND_DEFAULT, ...b, logo: b.logo || PB_BRAND_DEFAULT.logo, logoWhite: b.logoWhite || PB_BRAND_DEFAULT.logoWhite, colors: { ...PB_BRAND_DEFAULT.colors, ...(b.colors || {}) } }; };
 const PB_HEAD = '"Brand Serif", "DB HelvethaicaX", "DB Helvethaica X", "IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';   // Publico (Latin) + DB Helvethaica (Thai) when installed
 const PB_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
 const PB_THAI = '"DB HelvethaicaX", "DB Helvethaica X", "IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';
@@ -150,7 +151,7 @@ function pbDateText(f) {
 function pbImg(src) {   // decoded image (cached); triggers a repaint once it is ready
   if (!src) return null;
   if (PB_IMG.has(src)) { const im = PB_IMG.get(src); return im.complete && im.naturalWidth ? im : null; }
-  const im = new Image(); PB_IMG.set(src, im); im.onload = () => pbPaint(); im.src = src; return null;
+  const im = new Image(); PB_IMG.set(src, im); im.onload = () => { pbPaint(); if (typeof sdPaint === 'function' && $('#sdRoot')) { sdPaint(); sdGallery(); } }; im.src = src; return null;
 }
 function pbQr(text) {   // → { n, dark(r,c) } or null
   if (!text || typeof qrcode !== 'function') return null;
