@@ -46,6 +46,6 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
    - ใช้ `ANTHROPIC_API_KEY` เดียวกับ AI Import · ไม่มี Key หรือโหมดสาธิต → ใช้การเลือกอัตโนมัติแทน
 4. Preview สด ปรับพื้นหลัง (Deep Blue · Lavender · Light Blue · Soft Pink · White · Photo) สีเน้น ภาพประกอบ ไอคอนหลัก · เปลี่ยนขนาดจากงานเดิมได้ทันที ระบบจัดใหม่และย่อตัวอักษรให้พอดีเอง (ภาพประกอบหดก่อนตัวอักษร)
 5. Export PNG / JPG หรือครบ 4 ขนาด — ต้องติ๊ก “ตรวจสอบแล้ว” ใหม่ทุกครั้งที่แก้ไข
-- **CI Control** (Admin): โลโก้คู่มุมขวาบน (โลโก้ 1 + โลโก้ 2 เช่น Krungthai + AXA — อัปโหลดไฟล์ทางการจากทีม Brand; repo นี้ไม่เก็บไฟล์โลโก้) สีที่อนุมัติ (ค่าเริ่มต้น AXA Blue #00008F · Krungthai Sky #00A5E3 · AXA Red #FF1721 · Lavender · Soft Pink · Light Blue) ชื่อองค์กร และข้อความกำกับท้าย — เก็บใน `settings.brand` ใช้ร่วมกันทั้งทีม
+- **CI Control** (Admin): โลโก้คู่ Krungthai-AXA มุมซ้ายบน (ไฟล์สีสำหรับพื้นสว่าง + ไฟล์ขาว/ขอบขาวสำหรับพื้นเข้มและรูป รับ SVG/PNG — อัปโหลดไฟล์ทางการจากทีม Brand; repo นี้ไม่เก็บไฟล์โลโก้) สีที่อนุมัติ (ค่าเริ่มต้นตามไฟล์ Logo_Font_CI_Guidelines: AXA Blue #00008F · AXA Red #FF1721 · Blue Tint 1/2/3 #E2EFFF/#6574F8/#0C0E45 · Red Tint 1 #FFEAEA) ชื่อองค์กร และข้อความกำกับท้าย — เก็บใน `settings.brand` ใช้ร่วมกันทั้งทีม
 - ฉบับร่างเก็บในเบราว์เซอร์ของแต่ละคน (ล่าสุด 20 งาน)
 - QR Code: `js/vendor/qrcode.min.js` — qrcode-generator โดย Kazuhiko Arase (MIT)

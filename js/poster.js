@@ -29,9 +29,9 @@ const PB_FIELD_HINT = {
   recognition: { headline: 'เช่น ขอแสดงความยินดี', content: 'ผลงาน / คำชื่นชม — ขึ้นบรรทัดใหม่ = 1 ข้อ', highlight: ['ชื่อผู้ได้รับรางวัล / ทีม', 'เช่น คุณสมหญิง ใจดี · ทีม Agency North'] },
 };
 const PB_STYLES = {   // CI-approved backgrounds — [name, Thai, dark?]
-  deep: ['Deep Blue', 'น้ำเงินเข้ม', 1], lavender: ['Lavender', 'ม่วงลาเวนเดอร์', 1], sky: ['Light Blue', 'ฟ้าอ่อน', 0], pink: ['Soft Pink', 'ชมพูอ่อน', 0], white: ['White', 'ขาว', 0], photo: ['Photo', 'รูปเต็มพื้นหลัง', 1],
+  deep: ['AXA Blue', 'น้ำเงิน AXA', 1], lavender: ['Blue Tint 2', 'น้ำเงินกลาง', 1], sky: ['Blue Tint 1', 'ฟ้าอ่อน', 0], pink: ['Red Tint 1', 'ชมพูอ่อน', 0], white: ['White', 'ขาว', 0], photo: ['Photo', 'รูปเต็มพื้นหลัง', 1],
 };
-const PB_ACCENTS = { sky: 'ฟ้า Krungthai', red: 'แดง AXA', primary: 'น้ำเงิน AXA' };
+const PB_ACCENTS = { sky: 'Blue Tint 2', red: 'AXA Red', primary: 'AXA Blue' };
 /* poster icons — single SVG path strings on a 24 grid (drawn with Path2D, stroked) */
 const PB_ICONS = {
   megaphone: 'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z M15 9a4 4 0 0 1 0 6 M18 6a8 8 0 0 1 0 12',
@@ -110,15 +110,15 @@ function pbAutoScene(st) {
 const pbSceneOf = st => (st.scene && st.scene !== 'auto' && PB_SCENES[st.scene]) ? st.scene : pbAutoScene(st);
 
 /* ---------- CI (set by Admin / Brand team, shared with everyone) ---------- */
-const PB_BRAND_DEFAULT = {
-  org: 'Krungthai-AXA', footer: '', logo: '', logo2: '',
-  colors: { primary: '#00008F', sky: '#00A5E3', red: '#FF1721', lavender: '#6E70EE', pink: '#FBE1E5', paper: '#E8F2FC', ink: '#0B0B45' },
+const PB_BRAND_DEFAULT = {   // values from the Krungthai-AXA Logo/Font/CI guidelines (core + tints palette)
+  org: 'Krungthai-AXA', footer: '', logo: '', logoWhite: '',
+  colors: { primary: '#00008F', sky: '#6574F8', red: '#FF1721', lavender: '#6574F8', pink: '#FFEAEA', paper: '#E2EFFF', navy: '#0C0E45', ink: '#0E0E0E' },
 };
-const PB_COLOR_LABEL = { primary: 'AXA Blue (หลัก)', sky: 'Krungthai Sky', red: 'AXA Red', lavender: 'Lavender (พื้น)', pink: 'Soft Pink (พื้น)', paper: 'Light Blue (พื้น)', ink: 'Ink (ตัวอักษร)' };
+const PB_COLOR_LABEL = { primary: 'AXA Blue (หลัก)', sky: 'Blue Tint 2 (สีเน้น)', red: 'AXA Red', lavender: 'Blue Tint 2 (พื้น)', pink: 'Red Tint 1 (พื้น)', paper: 'Blue Tint 1 (พื้น)', navy: 'Blue Tint 3', ink: 'Black (ตัวอักษร)' };
 const pbBrand = () => { const b = S().settings.brand || {}; return { ...PB_BRAND_DEFAULT, ...b, colors: { ...PB_BRAND_DEFAULT.colors, ...(b.colors || {}) } }; };
-const PB_HEAD = '"IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';   // poster headlines: bold Thai sans (per the health-content posters)
+const PB_HEAD = '"Brand Serif", "DB HelvethaicaX", "DB Helvethaica X", "IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';   // Publico (Latin) + DB Helvethaica (Thai) when installed
 const PB_BODY = '"Source Sans Pro", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif';
-const PB_THAI = '"IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';
+const PB_THAI = '"DB HelvethaicaX", "DB Helvethaica X", "IBM Plex Sans Thai", "Source Sans Pro", -apple-system, sans-serif';
 
 /* ---------- working state ---------- */
 const pbBlank = () => ({
@@ -157,7 +157,7 @@ function pbLoadImage(file, maxSide, png) {   // photo → JPEG; logo / QR → PN
     const img = new Image(), url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const k = Math.min(1, maxSide / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      const k = file.type === 'image/svg+xml' ? maxSide / Math.max(img.width, img.height) : Math.min(1, maxSide / Math.max(img.width, img.height)), cv = document.createElement('canvas');
       cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
       const g = cv.getContext('2d'); if (!png) { g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); }
       g.drawImage(img, 0, 0, cv.width, cv.height);
@@ -181,7 +181,7 @@ const pbTextOn = fill => pbContrast(fill, '#FFFFFF') >= 2.6 ? '#FFFFFF' : '#0B0B
 const pbMix = (a, b, t) => { const p = h => [0, 2, 4].map(i => parseInt(h.replace('#', '').slice(i, i + 2), 16)), x = p(a), y = p(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
 function pbPalette(st, B, hasPhoto) {
   const c = B.colors, style = st.style === 'photo' && !hasPhoto ? 'deep' : st.style, dark = !!PB_STYLES[style]?.[2];
-  const bg = { deep: [c.primary, pbMix(c.primary, c.sky, .35)], lavender: [c.lavender, pbMix(c.lavender, '#FFFFFF', .25)], sky: [c.paper, '#FFFFFF'], pink: [c.pink, '#FFFFFF'], white: ['#FFFFFF', '#FFFFFF'], photo: [c.primary, c.primary] }[style] || [c.primary, c.primary];
+  const bg = { deep: [c.primary, c.navy], lavender: [c.lavender, pbMix(c.lavender, c.primary, .4)], sky: [c.paper, '#FFFFFF'], pink: [c.pink, '#FFFFFF'], white: ['#FFFFFF', '#FFFFFF'], photo: [c.primary, c.primary] }[style] || [c.primary, c.primary];
   const acc = c[st.accent] || c.sky;
   return {
     c, style, dark, bg,
@@ -311,16 +311,16 @@ function pbScene(k, st, P, x, y, w, h) {
   });
   g.restore();
 }
-function pbLogos(k, P, B, right, y, h) {   // logo lockup, right-aligned; returns width used
-  const { g } = k, ims = [B.logo, B.logo2].map(pbImg).filter(Boolean), gap = h * .1;
-  if (ims.length) {
-    let x = right;
-    for (const im of ims.slice().reverse()) { const w = im.width * h / im.height; x -= w; g.drawImage(im, x, y, w, h); x -= gap; }
-    return right - x - gap;
+function pbLogos(k, P, B, x, y, h) {   // official Krungthai-AXA logo pair, top-left (per CI guideline); returns width used
+  const { g } = k, src = P.dark ? (B.logoWhite || B.logo) : (B.logo || B.logoWhite), im = pbImg(src);
+  if (im) {
+    const w = im.width * h / im.height;
+    if (P.dark && !B.logoWhite) { g.fillStyle = '#FFFFFF'; k.rr(x - h * .08, y - h * .08, w + h * .16, h + h * .16, h * .1); g.fill(); }   // colour logo on a dark ground needs a white plate
+    g.drawImage(im, x, y, w, h); return w;
   }
-  k.font(700, h * .3, PB_BODY); const t = B.org || 'LOGO', tw = g.measureText(t).width, w = tw + h * .6;   // placeholder until the official files are uploaded
-  g.fillStyle = '#FFFFFF'; k.rr(right - w, y + h * .2, w, h * .6, h * .12); g.fill();
-  g.fillStyle = P.c.primary; g.fillText(t, right - w + h * .3, y + h * .6);
+  k.font(700, h * .3, PB_BODY); const t = B.org || 'LOGO', tw = g.measureText(t).width, w = tw + h * .6;   // placeholder until the official file is uploaded
+  g.fillStyle = '#FFFFFF'; k.rr(x, y + h * .2, w, h * .6, h * .12); g.fill();
+  g.fillStyle = P.c.primary; g.fillText(t, x + h * .3, y + h * .6);
   return w;
 }
 
@@ -335,14 +335,14 @@ function pbDraw(cv, st, fmtKey) {
   if (photoBg) pbPhotoBg(k, P, photo, st, W, H, !story); else pbBackground(k, P, W, H, u);
 
   /* header: logo lockup (fixed size) */
-  const lh = 92 * u, top0 = M + safeT, logoW = pbLogos(k, P, B, W - M, top0, lh);
+  const lh = 92 * u, top0 = M + safeT; pbLogos(k, P, B, M, top0, lh);
   const bottom = H - M - safeB;
 
   /* content pieces (measured at scale s) */
   const pts = pbPoints(f.content), date = pbDateText(f), qr = st.qrImg ? null : pbQr(safeUrl(st.qrUrl) || st.qrUrl.trim()), qrIm = pbImg(st.qrImg), hasQr = !!(qr || qrIm);
   const rows = [date && ['calendar', date], f.time && ['clock', f.time], f.venue && ['pin', f.venue]].filter(Boolean);
   const head = (s, draw, x, y) => {   // keyword pill + headline (line 1 on a highlight bar)
-    let h = 0, w = bw - logoW - 36 * u;
+    let h = 0, w = bw;
     if (f.keyword) {
       const ks = Math.min(s, 1.05); k.font(700, 26 * u * ks, PB_THAI); const t = f.keyword.trim(), tw = g.measureText(t).width, ph = 50 * u * ks;
       if (draw) { g.fillStyle = P.c.red; k.rr(x, y, tw + 40 * u * ks, ph, ph / 2); g.fill(); g.fillStyle = '#FFFFFF'; g.fillText(t, x + 20 * u * ks, y + ph * .68); }
@@ -455,7 +455,7 @@ function pbDraw(cv, st, fmtKey) {
   const hasVisual = st.visual !== 'none' && !(photoBg && story);
   const base = !hasVisual ? 0 : story ? .3 : land ? .36 : .34;
   const plan = (frac, s) => {
-    const hh = head(s, false, 0, 0), th = tail(s, false, 0, 0), bodyTop = top0 + Math.max(hh, lh) + 40 * u, bodyBot = bottom - (th ? th + 36 * u : 0), bodyH = bodyBot - bodyTop;
+    const hh = head(s, false, 0, 0), th = tail(s, false, 0, 0), bodyTop = top0 + lh + 36 * u + hh + 40 * u, bodyBot = bottom - (th ? th + 36 * u : 0), bodyH = bodyBot - bodyTop;
     if (story) { const ch = cardH(s, bw), vh = frac ? Math.max(bodyH * frac, Math.min(bodyH - ch - 30 * u, bodyH * .5)) : 0; return { ok: ch <= bodyH - (vh ? vh + 30 * u : 0), bodyTop, bodyH, th, V: vh ? { x: M, y: bodyTop, w: bw, h: vh } : null, C: { x: M, y: bodyTop + (vh ? vh + 30 * u : 0), w: bw } }; }
     const vw = frac ? bw * frac : 0, cw = bw - (vw ? vw + 36 * u : 0), ch = cardH(s, cw);
     return { ok: ch <= bodyH, bodyTop, bodyH, th, ch, V: vw ? { x: W - M - vw, y: bodyTop, w: vw, h: bodyH } : null, C: { x: M, y: bodyTop, w: cw } };
@@ -465,7 +465,7 @@ function pbDraw(cv, st, fmtKey) {
   for (const m of [.75, .5, 0]) { if (!base || F.s >= .78) break; const F2 = fit(base * m); if (F2.s > F.s + (m ? 0 : .1)) F = F2; }
   const { s: S, L } = F;
   if (L.V && !photoBg) pbScene(k, st, P, L.V.x, L.V.y, L.V.w, L.V.h);
-  head(S, true, M, top0);
+  head(S, true, M, top0 + lh + 36 * u);
   const ch = cardH(S, L.C.w), free = story ? 0 : Math.max(0, L.bodyH - ch);
   cardDraw(S, L.C.x, L.C.y + free * .3, L.C.w);
   if (L.th) tail(S, true, M, bottom - L.th);
@@ -726,21 +726,21 @@ ACT.pbDrafts = () => {
 /* ---------- CI Control (Admin edits · everyone else sees what is locked) ---------- */
 ACT.pbBrand = () => {
   const B = pbBrand(), can = isAdmin(), draft = JSON.parse(JSON.stringify(B));
-  const logoBox = key => `<div class="pb-logo" id="pbL_${key}">${draft[key] ? `<img src="${draft[key]}" alt="">` : '<span class="muted small">ใช้ชื่อองค์กรแทนโลโก้</span>'}</div>`;
+  const logoBox = (key, dark) => `<div class="pb-logo ${dark ? 'dark' : ''}" id="pbL_${key}">${draft[key] ? `<img src="${draft[key]}" alt="">` : '<span class="muted small">ใช้ชื่อองค์กรแทนโลโก้</span>'}</div>`;
   modal({
     title: 'CI Control · มาตรฐานภาพลักษณ์', wide: true, cls: 'pb-brand',
     body: `<p class="muted small">${can ? 'กำหนดสี โลโก้ และข้อความท้ายโปสเตอร์ตามที่ทีม Brand อนุมัติ — ทุกคนในทีมใช้ชุดเดียวกัน ผู้ใช้เลือกได้เฉพาะจากชุดนี้' : 'ล็อกโดย Admin / ทีม Brand — ผู้ใช้เลือกได้เฉพาะสีและองค์ประกอบในชุดนี้'}</p>
       <div class="form-grid mt">
         <label class="field"><span>ชื่อองค์กร / ทีม</span><input id="pbBOrg" value="${esc(draft.org)}" ${can ? '' : 'disabled'}></label>
         <label class="field"><span>ข้อความกำกับท้ายโปสเตอร์ <small>(ไม่บังคับ)</small></span><input id="pbBFoot" value="${esc(draft.footer)}" ${can ? '' : 'disabled'}></label>
-        <p class="full small muted">โลโก้วางคู่กันมุมขวาบนของทุกโปสเตอร์ (ตามแนวทาง Health Content) — อัปโหลดไฟล์ทางการจากทีม Brand เป็น PNG แบบ tile สี่เหลี่ยม ห้ามแก้สีหรือสัดส่วน</p>
-        <div class="field"><span>โลโก้ 1 (ซ้าย) — เช่น Krungthai</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
-        <div class="field"><span>โลโก้ 2 (ขวา) — เช่น AXA</span>${logoBox('logo2')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo2">${ico('upload', 13)} อัปโหลด PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo2">ลบ</button></div>` : ''}</div>
+        <p class="full small muted">โลโก้วางมุมซ้ายบนของทุกโปสเตอร์ตามแนวทาง CI — ใช้ไฟล์ทางการของทีม Brand (ชุดโลโก้คู่ Krungthai-AXA) ห้ามแก้สี สัดส่วน หรือเว้นพื้นที่ปลอดภัยให้น้อยกว่าที่กำหนด</p>
+        <div class="field"><span>โลโก้คู่ Krungthai-AXA (สี) — พื้นสว่าง</span>${logoBox('logo')}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logo">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logo">ลบ</button></div>` : ''}</div>
+        <div class="field"><span>โลโก้คู่แบบขาว / ขอบขาว — พื้นเข้มและรูปถ่าย <small>(ถ้าไม่มี ระบบวางโลโก้สีบนป้ายขาว)</small></span>${logoBox('logoWhite', 1)}${can ? `<div class="btn-row"><button type="button" class="btn btn-sm btn-ghost" data-logo="logoWhite">${ico('upload', 13)} อัปโหลด SVG / PNG</button><button type="button" class="btn btn-sm btn-danger-ghost" data-logo-x="logoWhite">ลบ</button></div>` : ''}</div>
       </div>
       <h4 class="mt">สีที่อนุมัติ</h4>
       <div class="pb-colors">${Object.keys(PB_BRAND_DEFAULT.colors).map(key => `<label class="pb-color"><input type="color" data-col="${key}" value="${draft.colors[key]}" ${can ? '' : 'disabled'}><span><b>${PB_COLOR_LABEL[key]}</b><small>${draft.colors[key].toUpperCase()}</small></span></label>`).join('')}</div>
       <h4 class="mt">ฟอนต์</h4>
-      <p class="small muted">Headline และเนื้อหาภาษาไทย: <b>IBM Plex Sans Thai</b> (ตัวหนา) · ตัวเลข/อังกฤษ: <b>Source Sans Pro</b> — ล็อกในระบบ · พื้นหลังที่อนุญาต: Deep Blue, Lavender, Light Blue, Soft Pink, White และรูปถ่าย</p>`,
+      <p class="small muted">ตามแนวทาง CI: หัวข้อ <b>Publico</b> · ไทย <b>DB Helvethaica</b> · อังกฤษ/เนื้อหา <b>Source Sans Pro</b> — ระบบใช้ฟอนต์จริงเมื่อติดตั้งในเครื่อง ไม่เช่นนั้นใช้ IBM Plex Sans Thai / Source Sans 3 แทน · พื้นหลังที่อนุญาต: AXA Blue, Blue Tint 1–2, Red Tint 1, White และรูปถ่าย · ห้ามใช้สีแดงเป็นพื้น ห้ามสร้างสีหรือไล่สีเอง</p>`,
     actions: can ? [
       { label: 'คืนค่าเริ่มต้น', cls: 'btn-ghost', left: true, onClick: async () => { if (!(await confirmBox('คืนค่า CI เป็นค่าเริ่มต้น?', 'คืนค่า'))) return false; delete S().settings.brand; commit(); pbRender(); toast('คืนค่า CI แล้ว'); } },
       { label: 'ยกเลิก' },
