@@ -81,8 +81,8 @@ function sdKitPick(text, group, avoid = []) {   // best kit piece for a text (ke
 }
 /* draw a kit piece: contained in the box, people stand on the bottom edge */
 function sdDrawArt(k, L, draw) {
-  const K = SD_KIT[L.key]; if (!K || !draw) return; const g = k.g;
-  const im = pbImg(sdKitSrc(L.key)) || pbImg(sdKitThumb(L.key)); if (!im) return;
+  const K = L.src ? [L.name || 'ภาพจาก AI', 'objects', L.gw || 512, L.gh || 512] : SD_KIT[L.key]; if (!K || !draw) return; const g = k.g;
+  const im = L.src ? pbImg(L.src) : (pbImg(sdKitSrc(L.key)) || pbImg(sdKitThumb(L.key))); if (!im) return;
   const ar = K[2] / K[3], s = Math.min(L.w / K[2], L.h / K[3]), w = K[2] * s, h = K[3] * s;
   const x = L.x + (L.w - w) / 2, y = K[1] === 'people' ? L.y + L.h - h : L.y + (L.h - h) / 2;
   g.save(); if (L.flip) { g.translate(x * 2 + w, 0); g.scale(-1, 1); } g.drawImage(im, x, y, w, h); g.restore();

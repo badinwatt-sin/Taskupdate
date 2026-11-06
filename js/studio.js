@@ -45,7 +45,7 @@ function sdExportState() { $$('[data-sd-exp]').forEach(b => { b.disabled = !SDOC
 function sdApply(design, keepUser = true) {
   const b = SDOC.brief; if (!b) return;
   const r = sdBuild(b, design, SDOC.format), user = keepUser ? SDOC.layers.filter(L => !L.role || L.role === 'user') : [];
-  SDOC.layers = [...r.layers, ...user]; SDOC.bg = r.bg; SDOC.design = design; SDOC.over = r.over; SDOC.fit = r.scale; SDOC.edited = false;
+  SDOC.layers = [...r.layers, ...user]; SDOC.bg = r.bg; SDOC.design = design; SDOC.over = r.over; SDOC.fit = r.scale; SDOC.dropped = r.dropped || ''; SDOC.edited = false;
   if (SD_SEL && !sdLayer(SD_SEL)) SD_SEL = null;
 }
 const SD_ROLE_FIELD = { kicker: 'kicker', sub: 'sub', note: 'note', cta: 'cta', date: 'date', time: 'time', venue: 'venue' };
@@ -54,7 +54,7 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
   SDOC.layers.forEach(L => {
     if (L.role === 'headline') { L.text = sdHeadText(b); L.emph = L.emph === -1 ? -1 : b.emph; }
     else if (SD_ROLE_FIELD[L.role]) { if (L.t === 'card') L.body = b[SD_ROLE_FIELD[L.role]]; else L.text = b[SD_ROLE_FIELD[L.role]]; }
-    else if (/^p\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.title = p.title; L.body = p.body; } }
+    else if (/^p\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { if (L.t === 'list') L.items = [{ title: p.title, body: p.body }]; else { L.title = p.title; L.body = p.body; } } }
     else if (/^v\d$/.test(L.role || '')) { const p = b.points[+L.role.slice(1)]; if (p) { L.key = p.visual; L.t = sdIsKit(L.key) ? 'art' : 'char'; } }
     else if (L.role === 'pts') { L.items = b.points.map(p => ({ title: p.title, body: p.body })); }
     else if (L.role === 'sub' && L.t === 'card') { L.body = b.sub; }
@@ -98,6 +98,7 @@ ACT.sdRead = async () => {
   brief.theme = SDOC.prefTheme || 'grad';
   sdApply(SDOC.prefDesign && SD_ACTIVE.includes(SDOC.prefDesign) ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
   toast('สร้างโปสเตอร์แล้ว — เลือกแบบอื่นหรือแตะชิ้นใดก็ได้เพื่อปรับ');
+  if (brief.by === 'ai' && brief.hero_fit === 'weak' && brief.hero_draw) sdAutoDraw(brief);
   if (matchMedia('(max-width: 900px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 ACT.sdPrefTheme = el => { SDOC.prefTheme = el.dataset.id; $$('[data-act=sdPrefTheme]').forEach(b => b.classList.toggle('on', b === el)); if (SDOC.brief) { if (SDOC.edited && !confirm('เปลี่ยนโทนพื้นหลังจะจัดตำแหน่งใหม่ (ข้อความที่แก้ไว้ยังอยู่) ต่อไหม?')) return; sdPush(); SDOC.brief.theme = SDOC.prefTheme; sdApply(SDOC.design || SDOC.brief.designs[0]); sdChanged(true); sdFull(); } else sdTplThumbs(true); };
@@ -173,13 +174,57 @@ function sdAiPick(refresh) {   // shown only when the team connected an AI
   paint(); if (refresh !== false) sdAiState(true).then(paint);
 }
 ACT.sdUseAI = el => { SDOC.useAI = el.dataset.id === '1'; sdAiPick(false); };
+const svgUrl = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+async function sdDrawAI(prompt) {   // → data URL of a new flat SVG illustration (throws with a Thai message)
+  const r = await fetch('api/ai-vector', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ prompt }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'AI วาดภาพไม่สำเร็จ');
+  if (j.usage && SD_AI) SD_AI.usage = j.usage; return svgUrl(j.svg);
+}
+async function sdAutoDraw(brief) {   // the kit had nothing that carries the message: draw a concept illustration, then swap it in
+  const st = $('#sdStage'); if (st) st.dataset.drawing = '1'; sdDrawingNote(true);
+  try {
+    const src = await sdDrawAI(brief.hero_draw);
+    if (SDOC.brief !== brief) return;   // the user started something else
+    brief.heroSrc = src; if (!SDOC.edited) { sdApply(SDOC.design || brief.designs[0]); sdChanged(true); sdFull(); }
+    else { const L = SDOC.layers.find(x => x.role === 'hero'); if (L) { Object.assign(L, { key: 'gen', src, gw: 512, gh: 512 }); sdChanged(); } }
+    toast('AI วาดภาพประกอบใหม่ให้ตรงกับเนื้อหาแล้ว');
+  } catch (e) { console.warn('auto draw', e); }
+  finally { sdDrawingNote(false); }
+}
+function sdDrawingNote(on) { const el = $('#sdDrawNote'); if (el) el.hidden = !on; }
+ACT.sdDrawArt = async el => {   // on a picture layer, or from the Kit tab
+  const inp = el.closest('.sd-draw')?.querySelector('input'); const prompt = (inp && inp.value || '').trim(); if (prompt.length < 3) { toast('บอกว่าอยากได้ภาพอะไร เช่น “โล่กับนาฬิกาทราย แสดงระยะรอคอย 30 วัน”', 'error'); inp?.focus(); return; }
+  const btn = el; btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<span class="spin"></span> AI กำลังวาด… (~20 วินาที)';
+  try {
+    const src = await sdDrawAI(prompt); sdPush(); const L = sdSel(), u = Math.min(sdFmt()[2], sdFmt()[3]) / 1080;
+    if (L && L.t === 'art' && L.role === 'hero' && SDOC.brief) { SDOC.brief.heroSrc = src; sdApply(SDOC.design || SDOC.brief.designs[0]); SD_SEL = (SDOC.layers.find(x => x.role === 'hero') || {}).id || null; sdFull(); toast('AI วาดภาพเสร็จแล้ว — จัดวางใหม่ให้เต็มพื้นที่ภาพ'); return; }
+    if (L && L.t === 'art') { const sq = Math.min(Math.max(L.w, L.h * .6), PB_FORMATS[SDOC.format][2] * .5); Object.assign(L, { key: 'gen', src, gw: 512, gh: 512, name: prompt.slice(0, 40), y: L.y + (L.h - sq) / 2, x: L.x + (L.w - sq) / 2, w: sq, h: sq }); }
+    else sdAddLayer({ t: 'art', key: 'gen', src, gw: 512, gh: 512, name: prompt.slice(0, 40), w: 420 * u, h: 420 * u });
+    SDOC.edited = true; sdChanged(); sdProps(); toast('AI วาดภาพเสร็จแล้ว — ลาก ย่อ ขยายได้');
+  } catch (e) { toast(e.message, 'error'); }
+  finally { btn.disabled = false; btn.innerHTML = t; }
+};
 let sdCiT = 0;
+function sdDesignQa(doc) {   // art-director checks on the layout itself
+  const out = [], fm = PB_FORMATS[doc.format], W = fm[2], H = fm[3], u = Math.min(W, H) / 1080, story = H / W > 1.6;
+  const txt = (doc.layers || []).filter(L => !L.hide && ['text', 'card', 'list', 'chip', 'qr', 'date', 'circ', 'logo'].includes(L.t));
+  for (let i = 0; i < txt.length; i++) for (let j = i + 1; j < txt.length; j++) { const a = txt[i], c = txt[j], ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y); if (ox > 6 * u && oy > 6 * u) { out.push({ level: 'warn', text: 'มีข้อความ/กล่องซ้อนทับกัน — ลากแยกออก หรือกด “จัดวางใหม่”' }); i = txt.length; break; } }
+  txt.forEach(L => { if (L.x < -2 || L.y < -2 || L.x + L.w > W + 2 || L.y + L.h > H + 2) out.push({ level: 'warn', text: 'มีข้อความล้นออกนอกภาพ' }); });
+  if (story) txt.forEach(L => { if (L.role !== 'logo' && (L.y < 120 * u || L.y + L.h > H - 150 * u)) out.push({ level: 'warn', text: 'Story: มีข้อความอยู่ในขอบบน/ล่างที่แอปจะบัง' }); });
+  const small = txt.filter(L => L.size && L.size < 20 * u && L.role !== 'note'); if (small.length) out.push({ level: 'warn', text: 'มีตัวอักษรเล็กเกินไป อ่านบนมือถือยาก' });
+  if (doc.dropped) out.push({ level: 'note', text: doc.dropped });
+  return out.filter((x, i, a) => a.findIndex(y => y.text === x.text) === i);
+}
 function sdCiBox() {   // runs the CI rules on the current poster (cheap; debounced while dragging)
   clearTimeout(sdCiT); sdCiT = setTimeout(() => {
     const el = $('#sdCi'); if (!el) return; if (!SDOC.layers.length) { el.innerHTML = ''; return; }
     const r = sdCiCheck(SDOC), err = r.filter(x => x.level === 'error');
     el.className = 'sd-ci ' + (err.length ? 'bad' : r.length ? 'warn' : 'ok');
-    el.innerHTML = r.length ? `<b>${ico('alert', 14)} ตรวจ CI: ${err.length ? `ไม่ผ่าน ${err.length} ข้อ` : 'ควรปรับ'}</b><ul>${r.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul>` : `<b>${ico('check', 14)} ผ่านการตรวจ CI</b> <small>สี พื้นหลัง และฟอนต์ตรงตามแนวทาง Krungthai-AXA</small>`;
+    const qa = sdDesignQa(SDOC), b = SDOC.brief || {}, content = [...(b.review || []).filter(x => x.by === 'content').map(x => ({ level: 'note', text: x.note })), ...(SDOC.warn || []).length ? [{ level: 'error', text: 'มีตัวเลขที่ไม่อยู่ในข้อความที่พิมพ์: ' + SDOC.warn.join(', ') }] : []];
+    const design = [...(b.review || []).filter(x => x.by === 'design').map(x => ({ level: 'note', text: x.note })), ...qa];
+    const sec = (name, list, okText) => { const bad = list.some(x => x.level === 'error'), warn = list.some(x => x.level === 'warn'); return `<div class="sd-qa-row ${bad ? 'bad' : warn ? 'warn' : 'ok'}"><b>${bad || warn ? ico('alert', 13) : ico('check', 13)} ${name}</b>${list.length ? `<ul>${list.map(x => `<li class="${x.level}">${esc(x.text)}</li>`).join('')}</ul>` : `<small>${okText}</small>`}</div>`; };
+    const all = [...content, ...design, ...r]; el.className = 'sd-ci ' + (all.some(x => x.level === 'error') ? 'bad' : all.some(x => x.level === 'warn') ? 'warn' : 'ok');
+    el.innerHTML = `<div class="sd-qa-h">ทีมตรวจงานก่อนส่งออก</div>${sec('Content — เนื้อหา', content, b.by === 'ai' ? 'ข้อความชัดเจน ตัวเลขตรงกับต้นฉบับ' : 'ตัวเลขตรงกับต้นฉบับ')}${sec('Creative — การออกแบบ', design, 'องค์ประกอบไม่ซ้อนกัน ตัวอักษรอ่านง่าย อยู่ในพื้นที่ปลอดภัย')}${sec('CI — สีและตัวอักษร', r, 'สี พื้นหลัง และฟอนต์ตรงตามแนวทาง Krungthai-AXA')}`;
   }, 250);
 }
 ACT.sdSample = () => { SDOC.text = SD_SAMPLE; const t = $('#sdText'); if (t) t.value = SD_SAMPLE; };
@@ -353,7 +398,7 @@ function sdProps() {
   else if (L.t === 'qr') body = `<label class="field"><span>ลิงก์สำหรับ QR Code</span><input data-lp="url" value="${esc(L.url)}" placeholder="https://…" inputmode="url"></label>${L.url && !pbQr(L.url) ? '<p class="pb-warn small">ลิงก์ยาวเกินไปสำหรับ QR</p>' : ''}`;
   else if (L.t === 'img') body = `<button type="button" class="btn btn-sm btn-ghost" data-act="sdImgSwap">${ico('image', 14)} เปลี่ยนรูป</button>${sdRange('r', 'มุมโค้ง', L.r || 0, 0, .5, .01)}`;
   else if (L.t === 'date') body = `<label class="field"><span>บรรทัดบน (หัวปฏิทิน)</span><input data-lp="top" value="${esc(L.top)}"></label><label class="field"><span>วันที่ (ตัวใหญ่)</span><input data-lp="day" value="${esc(L.day)}"></label><label class="field"><span>เดือน / ปี</span><input data-lp="mon" value="${esc(L.mon)}"></label><div class="sd-sub">สีหัวปฏิทิน</div>${sdColorRow('fill', L.fill)}<div class="sd-sub">สีตัวเลขวันที่</div>${sdColorRow('ink', L.ink || '#00008F', 'text')}`;
-  else if (L.t === 'art') body = `<div class="sd-sub">เปลี่ยนภาพ (${esc(SD_KIT_GROUPS[SD_KIT[L.key][1]])})</div><div class="sd-kit sm">${Object.entries(SD_KIT).filter(([, v]) => v[1] === SD_KIT[L.key][1]).map(([k, v]) => `<button type="button" class="${L.key === k ? 'on' : ''}" data-act="sdSet" data-id="key=${k}" title="${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"></button>`).join('')}</div><div class="sd-row"><span class="seg-chips"><button type="button" class="${L.flip ? 'on' : ''}" data-act="sdSet" data-id="flip=${!L.flip}">กลับด้าน</button></span></div>`;
+  else if (L.t === 'art') body = `${sdDrawBox('วาดภาพนี้ใหม่ด้วย AI')}<div class="sd-sub">เปลี่ยนภาพ (${esc(SD_KIT_GROUPS[(SD_KIT[L.key] || ['', 'objects'])[1]])})</div><div class="sd-kit sm">${Object.entries(SD_KIT).filter(([, v]) => v[1] === (SD_KIT[L.key] || ['', 'objects'])[1]).map(([k, v]) => `<button type="button" class="${L.key === k ? 'on' : ''}" data-act="sdSet" data-id="key=${k}" title="${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"></button>`).join('')}</div><div class="sd-row"><span class="seg-chips"><button type="button" class="${L.flip ? 'on' : ''}" data-act="sdSet" data-id="flip=${!L.flip}">กลับด้าน</button></span></div>`;
   el.innerHTML = `<h3>${ico('edit', 16)} ${SD_TNAME[L.t] || 'ชิ้นส่วน'}${L.role && L.role !== 'user' && L.role !== 'deco' ? ' <small class="muted">· จากข้อความ</small>' : ''}</h3>${body}<div class="sd-sub">${''}</div>${sdRange('op', 'ความโปร่งใส', L.op == null ? 1 : L.op, .1, 1, .05)}${common}`;
   sdThumbs(el);
 }
@@ -376,11 +421,12 @@ function sdThumbs(root) {
     const c2 = document.createElement('canvas'); c2.width = cv.width; c2.height = cv.height; c2.getContext('2d').drawImage(cv, 0, 0); SD_THUMB.set(key, c2);
   });
 }
+const sdDrawBox = title => (SD_AI && SD_AI.gemini && SD_AI.gemini.on) ? `<div class="sd-draw"><b>${ico('sparkles', 14)} ${title}</b><input placeholder="เช่น ใบเสร็จค่ารักษาแยก 2 หมวด กับแว่นขยาย" maxlength="300"><button type="button" class="btn btn-sm btn-primary" data-act="sdDrawArt">วาดภาพ</button><small class="muted">ภาพเวกเตอร์ใหม่ในสี CI · ใช้โควตา AI 1 ครั้ง</small></div>` : '';
 function sdAddPanel() {
   const el = $('#sdAdd'); if (!el) return;
   const tabs = [['kit', 'ภาพชุด Kit'], ['shape', 'รูปทรง'], ['text', 'ข้อความ'], ['more', 'อื่น ๆ']];
   let body = '';
-  if (SD_ADD === 'kit') body = `<div class="seg-chips sd-tabs sd-kitg">${Object.entries(SD_KIT_GROUPS).map(([k, l]) => `<button type="button" class="${SD_KITG === k ? 'on' : ''}" data-act="sdKitG" data-id="${k}">${l}</button>`).join('')}</div><div class="sd-kit">${Object.entries(SD_KIT).filter(([, v]) => v[1] === SD_KITG).map(([k, v]) => `<button type="button" data-act="sdAdd" data-id="art:${k}" title="${k} ${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"><small>${esc(v[0])}</small></button>`).join('')}</div>`;
+  if (SD_ADD === 'kit') body = `${sdDrawBox('ไม่มีภาพที่ต้องการ? ให้ AI วาดใหม่')}<div class="seg-chips sd-tabs sd-kitg">${Object.entries(SD_KIT_GROUPS).map(([k, l]) => `<button type="button" class="${SD_KITG === k ? 'on' : ''}" data-act="sdKitG" data-id="${k}">${l}</button>`).join('')}</div><div class="sd-kit">${Object.entries(SD_KIT).filter(([, v]) => v[1] === SD_KITG).map(([k, v]) => `<button type="button" data-act="sdAdd" data-id="art:${k}" title="${k} ${esc(v[0])}"><img src="${sdKitThumb(k)}" alt="" loading="lazy"><small>${esc(v[0])}</small></button>`).join('')}</div>`;
   else if (SD_ADD === 'shape') body = `<div class="sd-props-grid">${Object.entries(SA_SHAPES).map(([k, n]) => `<button type="button" data-act="sdAdd" data-id="shape:${k}" title="${n}"><canvas data-thumb="shape:${k}" width="56" height="56"></canvas></button>`).join('')}</div>`;
   else if (SD_ADD === 'text') body = `<div class="sd-addlist"><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="text:head"><b class="sd-a-h">หัวข้อ</b></button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="text:body">ข้อความ</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="text:pill">ป้ายข้อความ</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="card:plain">การ์ด</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="card:num">การ์ดมีตัวเลข</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="card:icon">การ์ดมีไอคอน</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="chip:info">ป้ายข้อมูล + ไอคอน</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="chip:cta">ปุ่มชวนทำ</button></div>`;
   else body = `<div class="sd-addlist"><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="logo:">${ico('lock', 14)} โลโก้ CI</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="logo:primeBlue">AXA Prime</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="qr:">QR Code</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="date:">บล็อกวันที่</button><button type="button" class="btn btn-ghost" data-act="sdAdd" data-id="img:">${ico('image', 14)} รูปถ่าย</button></div>`;
@@ -474,6 +520,7 @@ V.poster = (root, force) => {
         </div>
         <div class="sd-canvasbox"><div class="sd-wrap" id="sdWrap" data-fmt="${SDOC.format}" style="aspect-ratio:${fm[2]}/${fm[3]}"><canvas id="sdCv" role="img" aria-label="ตัวอย่างโปสเตอร์"></canvas><div class="sd-ov" id="sdOv"></div>
           <div class="sd-empty" id="sdEmpty" ${SDOC.layers.length ? 'hidden' : ''}>${ico('sparkles', 28)}<b>พิมพ์สิ่งที่อยากสื่อสาร แล้วกด “สร้างโปสเตอร์”</b><span>ได้หลายแบบให้เลือก และปรับได้ทุกชิ้น</span></div></div></div>
+        <p class="sd-drawnote" id="sdDrawNote" hidden><span class="spin"></span> AI กำลังวาดภาพประกอบใหม่ให้ตรงกับเนื้อหา…</p>
         <p class="pb-fit" id="sdFit" hidden>${ico('alert', 14)} ข้อความแน่นสำหรับขนาดนี้ — ตัวอักษรถูกย่อลง ลองตัดข้อความ ลบบางชิ้น หรือเลือกขนาด Portrait / Story</p>
         <div class="sd-export">
           <div id="sdCi" class="sd-ci"></div>
@@ -514,7 +561,7 @@ function sdInput(e) {
   }
 }
 let sdFontsOk = false;
-const sdLogosReady = () => Promise.all([...new Set([sdLogoSrc({ variant: 'color' }), ...SDOC.layers.map(L => L.t === 'logo' ? sdLogoSrc(L) : L.t === 'art' ? sdKitSrc(L.key) : L.t === 'img' ? L.src : '')].filter(Boolean))].map(src => { pbImg(src); const im = PB_IMG.get(src); return im && !im.complete ? new Promise(r => { im.addEventListener('load', r, { once: true }); im.addEventListener('error', r, { once: true }); setTimeout(r, 4000); }) : null; }));
+const sdLogosReady = () => Promise.all([...new Set([sdLogoSrc({ variant: 'color' }), ...SDOC.layers.map(L => L.t === 'logo' ? sdLogoSrc(L) : L.t === 'art' ? (L.src || sdKitSrc(L.key)) : L.t === 'img' ? L.src : '')].filter(Boolean))].map(src => { pbImg(src); const im = PB_IMG.get(src); return im && !im.complete ? new Promise(r => { im.addEventListener('load', r, { once: true }); im.addEventListener('error', r, { once: true }); setTimeout(r, 4000); }) : null; }));
 async function sdFonts() { sdLogosReady(); sdFontLinks(); await sdFontFiles(); if (sdFontsOk) { SDOC.layers.forEach(sdM); sdPaint(); sdGallery(); return; } try { await Promise.all(['400', '500', '600', '700'].map(w => document.fonts.load(`${w} 30px "IBM Plex Sans Thai"`, 'ไทย'))); await document.fonts.load('700 30px "Source Sans Pro"'); const c = sdFontCfg(); await Promise.all([c.head, c.body, c.thai].flatMap(f => ['400', '700'].map(w => document.fonts.load(`${w} 30px "${f}"`, 'Aก')))); } catch (e) { } sdFontsOk = true; SDOC.layers.forEach(sdM); sdPaint(); sdGallery(); }
 
 /* ---------- export, drafts ---------- */

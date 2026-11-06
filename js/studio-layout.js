@@ -119,6 +119,8 @@ function sdNormBrief(x) {
   if (!SD_LOOKS[b.look]) b.look = '';
   if (!SD_KINDS[b.kind]) b.kind = 'announce';
   if (!b.kindText) b.kindText = SD_KINDS[b.kind][0];
+  b.hero_fit = b.hero_fit === 'weak' ? 'weak' : 'good'; b.hero_draw = str(b.hero_draw); b.heroSrc = typeof b.heroSrc === 'string' && /^data:image\/svg\+xml/.test(b.heroSrc) ? b.heroSrc : '';
+  b.review = (Array.isArray(b.review) ? b.review : []).filter(r => r && r.note).slice(0, 4).map(r => ({ by: r.by === 'design' ? 'design' : 'content', note: str(r.note) }));
   const ds = (Array.isArray(b.designs) ? b.designs : []).filter(k => SD_DESIGNS[k]); SD_ORDER.forEach(k => { if (!ds.includes(k)) ds.push(k); }); b.designs = ds;
   return b;
 }
@@ -188,7 +190,7 @@ function sdDrawCard(k, L, draw) {
 function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
   const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
   const rows = (L.items || []).map(it => { k.font(700, s, sdStack('body')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon }; });
-  return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3) };
+  return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3, L.minH || 0) };
 }
 function sdDrawList(k, L, draw) {
   const m = sdListLayout(k, L), g = k.g; L.h = Math.ceil(m.h); if (!draw) return;
@@ -655,10 +657,21 @@ const SD_GEN = {
     return { bg: { c1: C.paper, c2: '#FFFFFF' }, layers: c.L, over: c.over };
   },
 };
-function sdBuild(b, design, fk) {
+const SD_MIN_SCALE = { portrait: .86, square: .95, story: .9, landscape: .95 };   // below this the type is too small to read on a phone
+function sdFit(b, design, fk) {
   let r = null;
-  for (const s of [1.6, 1.45, 1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits: fills the poster instead of leaving empty space
+  for (const s of [1.6, 1.45, 1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits
+  return r;
+}
+function sdBuild(b, design, fk) {   // art direction per format: keep type readable — drop secondary copy before shrinking the type
+  const tries = [[b, '']], min = SD_MIN_SCALE[fk] || .86;
+  if (b.sub && b.points.length) tries.push([{ ...b, sub: '' }, 'ซ่อนข้อความสรุปในขนาดนี้ เพื่อให้ตัวอักษรใหญ่อ่านง่าย']);
+  if (b.points.some(p => p.body)) tries.push([{ ...b, sub: b.points.length ? '' : b.sub, points: b.points.map(p => ({ ...p, body: '' })) }, 'ซ่อนคำอธิบายย่อยในขนาดนี้ เพื่อให้ตัวอักษรใหญ่อ่านง่าย']);
+  let r = null, best = null;
+  for (const [bb, why] of tries) { r = sdFit(bb, design, fk); r.dropped = why; if (!best || r.scale > best.scale) best = r; if (r.scale >= min && !r.over) break; }
+  r = r.scale >= min && !r.over ? r : best;
   r.layers.forEach(L => { L.id = L.id || sdId(); });
-  const top = L => (L.role === 'logo' ? 2 : L.role === 'cta' || L.role === 'note' || L.role === 'qr' ? 1 : L.role === 'hero' ? -1 : 0);   // the person always sits under the text r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
+  const top = L => (L.role === 'logo' ? 2 : L.role === 'cta' || L.role === 'note' || L.role === 'qr' ? 1 : L.role === 'hero' ? -1 : 0);
+  r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations   // logo on top, footer above art, the person always under the text
   return r;
 }
