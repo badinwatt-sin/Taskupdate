@@ -96,7 +96,7 @@ ACT.sdRead = async () => {
   brief.qr = (SDOC.qr || '').trim();
   sdPush(); SDOC.brief = brief; SDOC.warn = sdFactWarn(text, brief); SD_SEL = null;
   if (SDOC.prefAccent && SDOC.prefAccent !== 'auto') brief.accent = SDOC.prefAccent;
-  sdApply(SDOC.prefDesign && SDOC.prefDesign !== 'auto' ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
+  sdApply(SDOC.prefDesign && SD_ACTIVE.includes(SDOC.prefDesign) ? SDOC.prefDesign : brief.designs[0], false); sdChanged(true); sdFull();
   toast('สร้างโปสเตอร์แล้ว — เลือกแบบอื่นหรือแตะชิ้นใดก็ได้เพื่อปรับ');
   if (matchMedia('(max-width: 900px)').matches) $('#sdStage')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -385,9 +385,7 @@ function sdLeft() {
   const el = $('#sdBrief'); if (!el) return; const b = SDOC.brief;
   if (!b) { el.innerHTML = ''; return; }
   const inp = (k, label, ph = '') => `<label class="field"><span>${label}</span><input data-bf="${k}" value="${esc(b[k])}" placeholder="${esc(ph)}"></label>`;
-  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>เลือกแบบที่ชอบ <small class="muted">— แตะเพื่อเปลี่ยนได้ทันที</small></h3><div class="sd-gallery" id="sdGallery"></div>
-    <div class="sd-sub">ลุคฉากหลังภาพคน <small class="muted">— ${b.look ? SD_LOOKS[b.look] : 'อัตโนมัติ: ' + SD_LOOKS[sdLookOf(b)]}</small></div>
-    <div class="seg-chips sd-looks"><button type="button" class="${!b.look ? 'on' : ''}" data-act="sdLook" data-id="auto">อัตโนมัติ</button>${SD_LOOK_ORDER.map(k => `<button type="button" class="${b.look === k ? 'on' : ''}" data-act="sdLook" data-id="${k}">${SD_LOOKS[k]}</button>`).join('')}</div></section>
+  el.innerHTML = `<section class="card sd-step"><h3><span class="pb-n">2</span>เลือกแบบที่ชอบ <small class="muted">— แตะเพื่อเปลี่ยนได้ทันที</small></h3><div class="sd-gallery" id="sdGallery"></div></section>
   <section class="card sd-step"><h3><span class="pb-n">3</span>ตรวจข้อความ</h3>
     ${b.by === 'ai' && b.summary ? `<p class="sd-summary">${esc(b.summary)}</p>` : ''}
     <div id="sdWarn"></div>

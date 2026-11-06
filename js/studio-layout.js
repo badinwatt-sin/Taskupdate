@@ -187,7 +187,7 @@ function sdDrawCard(k, L, draw) {
 }
 function sdListLayout(k, L) {   // checklist box: ✓ + bold title + one-line body per item
   const s = L.size, pad = s * .9, ic = s * 1.05, tw = Math.max(s * 3, L.w - 2 * pad - ic - s * .5); let h = pad;
-  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('head')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh }; });
+  const rows = (L.items || []).map(it => { k.font(700, s, sdStack('head')); const t = it.title ? k.wrap(it.title, tw) : []; k.font(400, s * .8, sdStack('body')); const bb = it.body ? String(it.body).split('\n').flatMap(x => k.wrap(x, tw)) : []; const rh = t.length * s * 1.18 + (bb.length ? s * .12 + bb.length * s * .8 * 1.34 : 0); h += rh + s * .55; return { t, bb, rh, icon: it.icon }; });
   return { s, pad, ic, tw, rows, h: Math.max(h - s * .55 + pad, s * 3) };
 }
 function sdDrawList(k, L, draw) {
@@ -198,7 +198,9 @@ function sdDrawList(k, L, draw) {
   g.restore();
   let y = L.y + m.pad; const x0 = L.x + m.pad, tx = x0 + m.ic + m.s * .5; g.textBaseline = 'middle';
   m.rows.forEach(row => {
-    const cy = y + m.s * .6; paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke();
+    const cy = y + m.s * .6;
+    if (row.icon) { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.iconBg || '#E8EBFF'); saProp(g, row.icon, x0 + m.ic * .18, cy - m.ic * .32, m.ic * .64, m.ic * .64); }
+    else { paCircle(g, x0 + m.ic / 2, cy, m.ic / 2, L.check || '#2FB36D'); g.strokeStyle = '#FFFFFF'; g.lineWidth = m.s * .13; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath(); g.moveTo(x0 + m.ic * .28, cy); g.lineTo(x0 + m.ic * .45, cy + m.ic * .17); g.lineTo(x0 + m.ic * .74, cy - m.ic * .18); g.stroke(); }
     k.font(700, m.s, sdStack('head')); g.fillStyle = L.titleInk || '#FFFFFF'; row.t.forEach(t => { g.fillText(t, tx, y + m.s * .62); y += m.s * 1.18; });
     if (row.bb.length) { y += m.s * .12; k.font(400, m.s * .8, sdStack('body')); g.fillStyle = L.ink || 'rgba(255,255,255,.92)'; row.bb.forEach(t => { g.fillText(t, tx, y + m.s * .8 * .62); y += m.s * .8 * 1.34; }); }
     y += m.s * .55;
@@ -285,6 +287,8 @@ function sdRender(cv, doc, opt = {}) {
   cv.width = Math.round(W * sc); cv.height = Math.round(H * sc);
   const g = cv.getContext('2d'), k = pbKit(g); g.setTransform(sc, 0, 0, sc, 0, 0);
   const bg = doc.bg || {}, gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, bg.c1 || '#FFFFFF'); gr.addColorStop(1, bg.c2 || bg.c1 || '#FFFFFF'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  if (bg.glow) { const o = bg.glow, rg = g.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r); rg.addColorStop(0, `rgba(255,255,255,${o.a == null ? .6 : o.a})`); rg.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rg; g.fillRect(0, 0, W, H); }
+  if (bg.band) { const o = bg.band, lg2 = g.createLinearGradient(0, 0, W, o.h); lg2.addColorStop(0, o.c1); lg2.addColorStop(1, o.c2 || o.c1); g.fillStyle = lg2; g.fillRect(0, 0, W, o.h); }
   (doc.layers || []).forEach(L => {
     if (L.hide) return; g.save(); g.globalAlpha = L.op == null ? 1 : L.op;
     if (L.rot) { const cx = L.x + L.w / 2, cy = L.y + (L.h || 0) / 2; g.translate(cx, cy); g.rotate(L.rot * Math.PI / 180); g.translate(-cx, -cy); }
@@ -340,7 +344,7 @@ function sdFacts(c, x, y, w, o = {}) {   // date / time / venue chips, flowing i
 }
 function sdFoot(c, x, w, o = {}) {   // note (fine print) at the bottom, CTA above it; returns top of the footer
   let y = c.bot;
-  if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.max(c.s, .8), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#55557A', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
+  if (c.b.note) { const n = sdT({ role: 'note', text: c.b.note, size: 22 * c.u * Math.min(1.05, Math.max(c.s, .8)), weight: 400, font: 'body', lh: 1.35, color: o.noteInk || '#55557A', x, y: 0, w, align: o.align || 'left' }); n.y = y - n.h; y = n.y - 22 * c.u; c.add(n); }
   if (c.b.qr && !o.noQr) {   // QR code with the call to action beside it
     const qs = Math.min(170 * c.u * Math.max(c.s, .8), w * .34), qy = y - qs; c.add({ t: 'qr', role: 'qr', url: c.b.qr, x: o.align === 'center' ? x + (w - qs) / 2 : x, y: qy, w: qs, h: qs, shadow: true });
     if (o.align !== 'center') { const tx = x + qs + 22 * c.u, tw = w - qs - 22 * c.u, t = sdT({ role: 'cta', text: c.b.cta || 'สแกนเพื่อดูรายละเอียด', size: 32 * c.u * c.s, weight: 700, font: 'head', color: o.qrInk || c.C.primary, lh: 1.25, x: tx, y: 0, w: tw }); for (let n = 0; n < 8 && t.h > qs * 1.02; n++) { t.size *= .9; sdM(t); } t.y = qy + (qs - t.h) / 2; c.add(t); }
@@ -653,8 +657,8 @@ const SD_GEN = {
 };
 function sdBuild(b, design, fk) {
   let r = null;
-  for (const s of [1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits: fills the poster instead of leaving empty space
+  for (const s of [1.6, 1.45, 1.3, 1.2, 1.1, 1, .93, .86, .8, .74, .68, .62, .56]) { r = SD_GEN[design](sdCtx(b, fk, s)); r.scale = s; if (!r.over && r.fill !== false) break; }   // largest type that fits: fills the poster instead of leaving empty space
   r.layers.forEach(L => { L.id = L.id || sdId(); });
-  const top = L => (L.role === 'logo' ? 2 : L.role === 'cta' || L.role === 'note' ? 1 : 0); r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
+  const top = L => (L.role === 'logo' ? 2 : L.role === 'cta' || L.role === 'note' || L.role === 'qr' ? 1 : L.role === 'hero' ? -1 : 0);   // the person always sits under the text r.layers = r.layers.map((L, i) => [L, i]).sort((a, b) => top(a[0]) - top(b[0]) || a[1] - b[1]).map(x => x[0]);   // footer text always above illustrations
   return r;
 }
