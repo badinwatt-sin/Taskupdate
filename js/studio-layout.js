@@ -48,13 +48,15 @@ function sdLocalBrief(text) {   // zero-token fallback: simple reading of the pa
   b.kicker = SD_KINDS[b.kind][1]; b.kindText = SD_KINDS[b.kind][0];
   b.hero = sdKitPick(head + ' ' + all, 'people') || SD_KIND_HERO[b.kind];
   const usedK = [];
-  b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || paPick({ title: p.title, body: p.body, tag: '' }, i + 1); });
-  b.props = { event: ['mega', 'cal', 'star'], change: ['doc', 'bulb', 'check'], reminder: ['clock', 'cal', 'check'], recognition: ['trophy', 'star', 'gift'], campaign: ['coins', 'trophy', 'star'], recruit: ['doc', 'star', 'chat'], knowledge: ['bulb', 'check', 'doc'], announce: ['mega', 'chat', 'star'] }[b.kind];
+  b.points.forEach((p, i) => { const k = sdKitPick(p.title + ' ' + p.body, ['objects', 'money', 'info'], usedK); if (k) usedK.push(k); p.visual = k || sdKitFallback(i, usedK); usedK.push(p.visual); });
+  b.props = SD_KIND_DECOR[b.kind];
   b.accent = { recognition: 'pink', campaign: 'amber', reminder: 'amber', knowledge: 'mint', change: 'lavender' }[b.kind] || 'blue';
   b.designs = sdRank(b);
   b.summary = `อ่านเป็น “${SD_KINDS[b.kind][0]}”${b.points.length ? ` มี ${b.points.length} ประเด็น` : ''}${b.date ? ` · วันที่ ${b.date}` : ''} (จัดอัตโนมัติโดยไม่ใช้ AI — ตรวจและแก้ได้ด้านล่าง)`;
   return b;
 }
+const SD_KIND_DECOR = { event: ['H19', 'H20'], change: ['H20', 'H11'], reminder: ['H19', 'F14'], recognition: ['H39', 'F03'], campaign: ['F05', 'F03'], recruit: ['H20', 'H40'], knowledge: ['F14', 'H18'], announce: ['H40', 'H20'] };
+const sdKitFallback = (i, avoid = []) => ['H18', 'H20', 'F14', 'H19', 'H40', 'F05'].filter(k => !avoid.includes(k))[i % 4] || 'H18';
 const SD_KIND_HERO = { event: 'H36', change: 'H02', reminder: 'H37', recognition: 'H38', campaign: 'H35', recruit: 'H22', knowledge: 'H01', announce: 'H02' };
 function sdGuessKind(head, all) {   // kind from free text (headline first, then the whole message)
   const t = [head, all || head];
@@ -84,16 +86,16 @@ function sdRank(b) {
   SD_ORDER.forEach(k => { if (!out.includes(k)) out.push(k); });
   return out;
 }
-const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'H02', kindText: '', props: ['mega', 'star'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
+const sdEmptyBrief = () => ({ kind: 'announce', tone: 'friendly', audience: '', summary: '', kicker: '', headline: [], emph: 0, sub: '', points: [], date: '', time: '', venue: '', cta: '', note: '', hero: 'H02', kindText: '', props: ['H40', 'H20'], accent: 'blue', designs: [...SD_ORDER], warn: '', by: '' });
 function sdNormBrief(x) {
   const b = { ...sdEmptyBrief(), ...(x || {}) }, str = v => String(v == null ? '' : v).trim();
   if (x && x.kind_text && !x.kindText) b.kindText = x.kind_text; delete b.kind_text;
   ['kicker', 'sub', 'date', 'time', 'venue', 'cta', 'note', 'summary', 'audience', 'warn', 'kindText'].forEach(k => { b[k] = str(b[k]); });
   b.headline = (Array.isArray(b.headline) ? b.headline : str(b.headline).split('\n')).map(str).filter(Boolean).slice(0, 3);
   b.emph = Number.isInteger(+b.emph) ? Math.max(-1, Math.min(b.headline.length - 1, +b.emph)) : 0;
-  b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: p && (PA_CHARS[p.visual] || SD_KIT[p.visual]) ? p.visual : paPick({ title: str(p && p.title), body: str(p && p.body), tag: '' }, i + 1) })).filter(p => p.title || p.body);
-  if (!PA_CHARS[b.hero] && !SD_KIT[b.hero]) b.hero = 'H02';
-  b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SA_PROPS[k]).slice(0, 3); if (!b.props.length) b.props = ['star', 'chat'];
+  b.points = (Array.isArray(b.points) ? b.points : []).slice(0, 4).map((p, i) => ({ title: str(p && p.title), body: str(p && p.body), visual: p && SD_KIT[p.visual] ? p.visual : (sdKitPick(str(p && p.title) + ' ' + str(p && p.body), ['objects', 'money', 'info']) || sdKitFallback(i)) })).filter(p => p.title || p.body);
+  if (!SD_KIT[b.hero]) b.hero = SD_KIND_HERO[b.kind] || 'H02';
+  b.props = (Array.isArray(b.props) ? b.props : []).filter(k => SD_KIT[k] && SD_KIT[k][1] !== 'people').slice(0, 2); if (!b.props.length) b.props = (SD_KIND_DECOR[b.kind] || SD_KIND_DECOR.announce).slice();
   if (!SD_ACCENTS.includes(b.accent)) b.accent = 'blue';
   if (!SD_KINDS[b.kind]) b.kind = 'announce';
   if (!b.kindText) b.kindText = SD_KINDS[b.kind][0];
@@ -285,8 +287,9 @@ function sdList(c, x, y, w, o = {}) {   // points as compact white rows with a n
 }
 function sdDecor(c, x, y, w, h) {   // the object props + sparkles scattered around a hero area
   const P = c.b.props, u = c.u, sz = Math.min(w, h) * .2;
-  if (P[0]) c.add({ t: 'prop', role: 'deco', key: P[0], x: x - sz * .25, y: y + h * .08, w: sz, h: sz });
-  if (P[1]) c.add({ t: 'prop', role: 'deco', key: P[1], x: x + w - sz * .8, y: y + h * .02, w: sz * .85, h: sz * .85 });
+  const art = k => SD_KIT[k] && SD_KIT[k][1] !== 'people' ? k : null;
+  if (art(P[0])) c.add({ t: 'art', role: 'deco', key: P[0], x: x - sz * .3, y: y + h * .06, w: sz * 1.1, h: sz * 1.1 });
+  if (art(P[1])) c.add({ t: 'art', role: 'deco', key: P[1], x: x + w - sz * .85, y: y, w: sz, h: sz });
   c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: '#F6C873', x: x + w * .12, y: y - 6 * u, w: 34 * u, h: 34 * u });
   c.add({ t: 'shape', role: 'deco', kind: 'sparkle', fill: c.C.sky || '#6574F8', x: x + w * .86, y: y + h * .36, w: 24 * u, h: 24 * u });
 }
