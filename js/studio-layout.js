@@ -190,6 +190,8 @@ const SD_LOGOS = {   // official variants from the Logo/Font/CI guidelines
   outline: ['โปร่งใสทั้งคู่ ขอบขาว', 'assets/brand/ktaxa-logo-outline.png', 'พื้นเข้ม / รูปถ่าย'],
   white: ['โมโนขาว', 'assets/brand/ktaxa-logo-mono-white.png', 'พื้นสีเทา / ขาวดำ'],
   dark: ['โมโนเทาเข้ม', 'assets/brand/ktaxa-logo-mono-dark.png', 'งานขาวดำ'],
+  prime: ['AXA Prime (ขาว)', 'assets/brand/axa-prime-logo.png', 'ตราสินค้า · พื้นเข้ม'],
+  primeBlue: ['AXA Prime (น้ำเงิน)', 'assets/brand/axa-prime-logo-blue.png', 'ตราสินค้า · พื้นสว่าง'],
 };
 function sdLogoSrc(L) {
   const B = pbBrand(), v = SD_LOGOS[L.variant] ? L.variant : (L.dark ? 'bordered' : 'color');
