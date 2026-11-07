@@ -25,7 +25,7 @@ const HubPost = {
     body.cid = body.cid || uid('c');
     if (this.local()) {
       const st = S(); st.posts ||= []; const n = (st.postSeq || 0) + 1; st.postSeq = n;
-      const e = { ...body, id: 'pst_' + n, by: me().id, at: Date.now() }; delete e.cid; if (e.kind !== 'post') delete e.ref;
+      const e = { ...body, id: 'pst_' + n, by: me().id, at: Date.now() }; delete e.cid; if (e.kind !== 'post') { delete e.ref; delete e.tags; } else e.tags = [...new Set(e.tags || [])].filter(id => id !== me().id && member(id)).slice(0, 30);
       st.posts.push(e); st.posts = st.posts.slice(-1500); Store.save(); this.entries = st.posts.slice(); return e;
     }
     let r;
@@ -66,9 +66,10 @@ const HP_OPEN = new Set();   // posts whose replies are expanded
 function hpPostHTML(p, compact) {
   const m = member(p.by), mine = p.by === me().id, can = mine || isAdmin();
   const reps = p.replies, showAll = HP_OPEN.has(p.id) || compact === false, shown = compact ? [] : (showAll ? reps : reps.slice(-2));
-  return `<article class="hp-post" data-post="${p.id}">
+  return `<article class="hp-post ${(p.tags || []).includes(me().id) ? 'tagged-me' : ''}" data-post="${p.id}">
     <header class="hp-h">${avatar(m, 36)}<div class="grow"><b>${esc(m?.name || 'สมาชิก')}</b><small class="muted">${esc(m?.position || '')}${m?.position ? ' · ' : ''}<time datetime="${new Date(p.at).toISOString()}">${hpAgo(p.at)}</time></small></div>
       ${can && !compact ? `<button type="button" class="icon-btn hp-del" data-act="hpDel" data-id="${p.id}" aria-label="ลบโพสต์" title="ลบโพสต์">${ico('trash', 16)}</button>` : ''}</header>
+    ${(p.tags || []).length ? `<div class="hp-to"><span class="muted small">ถึง</span>${p.tags.map(id => { const x = member(id); return x ? `<span class="hp-tag ${id === me().id ? 'me' : ''}">${avatar(x, 18)}${esc(id === me().id ? 'คุณ' : x.name)}</span>` : ''; }).join('')}</div>` : ''}
     <div class="hp-text">${hpLinkify(p.text || '')}</div>${hpRef(p.ref)}
     <div class="hp-acts">${HP_REACTS.map(e => { const s = p.reacts[e], n = s ? s.size : 0, on = s && s.has(me().id); return n || !compact ? `<button type="button" class="hp-react ${on ? 'on' : ''} ${n ? '' : 'zero'}" data-act="hpReact" data-id="${p.id}" data-emoji="${e}" aria-pressed="${!!on}" aria-label="${e} ${n}">${e}${n ? `<span>${n}</span>` : ''}</button>` : ''; }).join('')}
       <span class="grow"></span>${compact ? `<a class="link small" href="#/hub" data-act="hpGo" data-id="${p.id}">${reps.length ? reps.length + ' ความเห็น' : 'ตอบกลับ'}</a>` : ''}</div>
@@ -112,12 +113,16 @@ async function hpNotice(ver) { if (HubPost.local() || !HubPost.loaded || String(
 document.addEventListener('visibilitychange', async () => { if (!document.hidden && Store.state && HubPost.loaded && route().name === 'hub') { if (await HubPost.load()) hpDraw(); } });
 
 /* ---------- page ---------- */
+let HP_TAGS = [];   // people tagged in the post being written
 V.hub = root => {
-  const refs = [...sortBy(S().events.filter(e => e.status !== 'cancelled' && e.end >= addDays(today(), -30)), e => e.start).map(e => ['event', e.id, 'Event · ' + e.name]), ...visibleProjects().map(p => ['project', p.id, 'Project · ' + p.name])];
+  const refs = visibleProjects().map(p => ['project', p.id, p.name]);
   root.innerHTML = pageHead(pageName('hub'), 'แชร์ข่าว อัปเดตงาน และคุยกันในทีม — ทุกคนในทีมเห็นโพสต์นี้') + `
     <form class="card hp-compose" id="hpCompose" autocomplete="off">
       <div class="hp-c-top">${avatar(me(), 40)}<label class="grow"><span class="sr">ข้อความ</span><textarea name="text" rows="3" maxlength="2000" placeholder="อยากบอกอะไรกับทีม? ใส่ลิงก์ได้" required></textarea></label></div>
-      <div class="hp-c-foot"><label class="hp-c-ref"><span class="sr">แนบ Event หรือ Project</span><select name="ref"><option value="">แนบ Event / Project</option>${refs.map(([t, id, l]) => `<option value="${t}:${esc(id)}">${esc(l)}</option>`).join('')}</select></label>
+      <div class="hp-tags" id="hpTags" aria-live="polite"></div>
+      <div class="hp-tagpick" id="hpTagPick" hidden><input type="search" id="hpTagQ" placeholder="ค้นหาชื่อ…" aria-label="ค้นหาชื่อคนที่จะแท็ก" autocomplete="off"><div class="hp-tp-list" id="hpTagList" role="group" aria-label="เลือกคนที่จะแท็ก"></div></div>
+      <div class="hp-c-foot"><button type="button" class="btn btn-ghost hp-tagbtn" id="hpTagBtn" aria-expanded="false" aria-controls="hpTagPick">@ แท็กคน</button>
+        <label class="hp-c-ref"><span class="sr">แนบ Project</span><select name="ref"><option value="">แนบ Project (ไม่บังคับ)</option>${refs.map(([t, id, l]) => `<option value="${t}:${esc(id)}">${esc(l)}</option>`).join('')}</select></label>
         <small class="muted hp-count" aria-live="polite"></small><button class="btn btn-primary" type="submit">${ico('chat', 16)} โพสต์</button></div>
     </form>
     <div class="hp-feed" data-hp-feed="0" aria-live="polite">${hpFeedHTML(0)}</div>`;
@@ -125,11 +130,27 @@ V.hub = root => {
   try { ta.value = sessionStorage.getItem('aex-hp-draft') || ''; } catch (e) { }
   const cnt = () => { $('.hp-count', f).textContent = ta.value.length > 1500 ? `${ta.value.length}/2000` : ''; try { sessionStorage.setItem('aex-hp-draft', ta.value); } catch (e) { } };
   ta.addEventListener('input', cnt); cnt();
+  /* tag people: pick one or more teammates; they get a notification */
+  const drawTags = () => {
+    $('#hpTags', f).innerHTML = HP_TAGS.length ? `<span class="muted small">ถึง</span>${HP_TAGS.map(id => { const x = member(id); return x ? `<span class="hp-tag">${avatar(x, 20)}${esc(x.name)}<button type="button" data-untag="${id}" aria-label="เอา ${esc(x.name)} ออก">${ico('x', 12)}</button></span>` : ''; }).join('')}` : '';
+    const q = ($('#hpTagQ', f).value || '').toLowerCase().trim();
+    $('#hpTagList', f).innerHTML = S().members.filter(x => x.id !== me().id && (!q || (x.name + ' ' + (x.alias || '') + ' ' + (x.position || '')).toLowerCase().includes(q)))
+      .map(x => { const on = HP_TAGS.includes(x.id); return `<button type="button" class="pp-chip ${on ? 'on' : ''}" data-tag="${x.id}" aria-pressed="${on}">${avatar(x, 22)}<span>${esc(x.name)}</span></button>`; }).join('') || '<span class="muted small">ไม่พบชื่อ</span>';
+    $('#hpTagBtn', f).textContent = HP_TAGS.length ? `@ แท็กแล้ว ${HP_TAGS.length} คน` : '@ แท็กคน';
+  };
+  $('#hpTagBtn', f).onclick = () => { const pk = $('#hpTagPick', f), open = pk.hidden; pk.hidden = !open; $('#hpTagBtn', f).setAttribute('aria-expanded', open); if (open) $('#hpTagQ', f).focus(); };
+  $('#hpTagQ', f).oninput = drawTags;
+  f.addEventListener('click', e => {
+    const t = e.target.closest('[data-tag]'), u = e.target.closest('[data-untag]');
+    if (t) { const id = t.dataset.tag; HP_TAGS = HP_TAGS.includes(id) ? HP_TAGS.filter(x => x !== id) : [...HP_TAGS, id]; drawTags(); }
+    if (u) { HP_TAGS = HP_TAGS.filter(x => x !== u.dataset.untag); drawTags(); }
+  });
+  drawTags();
   f.onsubmit = async e => {
     e.preventDefault(); const btn = $('[type=submit]', f); if (btn.disabled) return;
     const text = ta.value.trim(); if (!text) { ta.focus(); return; }
     const [t, id] = (f.elements.ref.value || '').split(':'); btn.disabled = true; btn.setAttribute('aria-busy', 'true');
-    try { await HubPost.send({ kind: 'post', text, ref: t ? { type: t, id } : null, cid: f.dataset.cid || (f.dataset.cid = uid('c')) }); ta.value = ''; f.elements.ref.value = ''; delete f.dataset.cid; cnt(); hpDraw(); toast('โพสต์แล้ว'); }
+    try { await HubPost.send({ kind: 'post', text, ref: t ? { type: t, id } : null, tags: HP_TAGS.slice(), cid: f.dataset.cid || (f.dataset.cid = uid('c')) }); const n = HP_TAGS.length; ta.value = ''; f.elements.ref.value = ''; HP_TAGS = []; $('#hpTagPick', f).hidden = true; drawTags(); delete f.dataset.cid; cnt(); hpDraw(); toast(n ? `โพสต์แล้ว · แจ้ง ${n} คนที่แท็กไว้` : 'โพสต์แล้ว'); }
     catch (x) { toast(x.message, 'error'); }   // the text stays in the box — press โพสต์ again (same client id, so no duplicate)
     finally { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   };

@@ -659,3 +659,16 @@ input,select,textarea,button{font-family:inherit}
 .st-files small{display:block}.st-files b{white-space:nowrap}
 @media (max-width:600px){ .st-parts li{grid-template-columns:minmax(0,1fr) 64px}.st-parts i{grid-column:1/-1;grid-row:2} }
 .st-lim input{width:90px!important;max-width:90px}
+/* Hub Post: tag people */
+.hp-tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px;padding-left:52px}.hp-tags:empty{display:none}
+.hp-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 4px 2px 3px;border-radius:99px;background:var(--accent-l);color:var(--text);font-size:13px;font-weight:600}
+.hp-tag button{border:0;background:none;color:var(--muted);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;padding:0}
+.hp-tag.me{background:#00008F;color:#fff}
+.hp-tagpick{margin:10px 0 0 52px;padding:10px;border-radius:14px;background:var(--fill2)}
+.hp-tagpick input{margin-bottom:8px}
+.hp-tp-list{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow-y:auto}
+.hp-tagbtn{flex:none}
+.hp-to{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}
+.hp-post.tagged-me{box-shadow:inset 3px 0 0 #00008F,var(--shadow)}
+@media (max-width:860px){ .hp-tags,.hp-tagpick{padding-left:0;margin-left:0} }
+@media (max-width:600px){ .hp-c-foot .hp-c-ref{flex:1 1 0} .hp-c-foot [type=submit]{flex:1 1 100%;justify-content:center} }
