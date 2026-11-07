@@ -6,12 +6,14 @@
    Everyone who can sign in can read every post (there are no private channels).
    ============================================================ */
 const HP_REACTS = ['👍', '❤️', '🎉', '👏', '🙏'];
+const HP_DAYS = 60;   // posts (with replies, reactions and pictures) are removed 60 days after posting — the server does the deleting
+const HP_IMG_MAX = 4, HP_IMG_SIDE = 1280, HP_IMG_BYTES = 160 * 1024;
 const HP_SEEN_KEY = () => 'aex-hub-seen-' + (AEX.meId || '');
 const HubPost = {
   seq: null, entries: [], loaded: false, error: '', timer: null,
   local() { return Store.mode !== 'server'; },
   async load() {
-    if (this.local()) { this.entries = (S().posts || []).slice(); this.loaded = true; this.error = ''; return true; }
+    if (this.local()) { const st = S(), cut = Date.now() - HP_DAYS * 864e5, dead = new Set((st.posts || []).filter(e => e.kind === 'post' && e.at < cut).map(e => e.id)); if (dead.size) { st.posts = st.posts.filter(e => !dead.has(e.id) && !dead.has(e.parent)); Store.save(); } this.entries = (st.posts || []).slice(); this.loaded = true; this.error = ''; return true; }
     try {
       const r = await fetch('api/posts' + (this.seq != null ? '?seq=' + encodeURIComponent(this.seq) : ''), { cache: 'no-store', headers: Store.headers() });
       if (r.status === 304) { this.error = ''; return false; }
@@ -25,7 +27,7 @@ const HubPost = {
     body.cid = body.cid || uid('c');
     if (this.local()) {
       const st = S(); st.posts ||= []; const n = (st.postSeq || 0) + 1; st.postSeq = n;
-      const e = { ...body, id: 'pst_' + n, by: me().id, at: Date.now() }; delete e.cid; if (e.kind !== 'post') { delete e.ref; delete e.tags; } else e.tags = [...new Set(e.tags || [])].filter(id => id !== me().id && member(id)).slice(0, 30);
+      const e = { ...body, id: 'pst_' + n, by: me().id, at: Date.now() }; delete e.cid; if (e.kind !== 'post') { delete e.ref; delete e.tags; delete e.imgs; } else e.tags = [...new Set(e.tags || [])].filter(id => id !== me().id && member(id)).slice(0, 30);
       st.posts.push(e); st.posts = st.posts.slice(-1500); Store.save(); this.entries = st.posts.slice(); return e;
     }
     let r;
@@ -42,7 +44,7 @@ const HubPost = {
     const by = new Map(), dels = new Set(), out = [];
     this.entries.forEach(e => { if (e.kind === 'del') dels.add(e.parent); });
     this.entries.forEach(e => {
-      if (e.kind === 'post' && !dels.has(e.id)) { const p = { ...e, replies: [], reacts: {} }; by.set(e.id, p); out.push(p); }
+      if (e.kind === 'post' && !dels.has(e.id) && e.at >= Date.now() - HP_DAYS * 864e5) { const p = { ...e, replies: [], reacts: {} }; by.set(e.id, p); out.push(p); }
       else if (e.kind === 'reply' && by.has(e.parent) && !dels.has(e.id)) by.get(e.parent).replies.push(e);
       else if (e.kind === 'react' && by.has(e.parent)) { const r = by.get(e.parent).reacts; const s = r[e.emoji] ||= new Set(); if (s.has(e.by)) s.delete(e.by); else s.add(e.by); }
     });
@@ -63,6 +65,56 @@ function hpRef(ref) {
   return '';
 }
 const HP_OPEN = new Set();   // posts whose replies are expanded
+const hpExpiry = (p, compact) => { const left = Math.ceil((p.at + HP_DAYS * 864e5 - Date.now()) / 864e5); return !compact && left <= 7 ? `<small class="hp-exp">${ico('clock', 12)} ลบอัตโนมัติใน ${Math.max(left, 0)} วัน</small>` : ''; };
+/* pictures: stored apart from the post, fetched only when they scroll into view */
+const HP_IMGS = new Map();
+function hpImgData(im) {
+  if (im.data) return Promise.resolve(im.data);
+  if (HP_IMGS.has(im.id)) return HP_IMGS.get(im.id);
+  const pr = fetch('api/img?id=' + encodeURIComponent(im.id), { headers: Store.headers() }).then(r => r.ok ? r.json() : null).then(j => j && j.data || null).catch(() => null)
+    .then(d => { if (!d) HP_IMGS.delete(im.id); return d; });
+  HP_IMGS.set(im.id, pr); return pr;
+}
+function hpImgs(p, compact) {
+  const list = (p.imgs || []).slice(0, compact ? 1 : HP_IMG_MAX); if (!list.length) return '';
+  return `<div class="hp-imgs n${list.length}${compact ? ' compact' : ''}">${list.map((im, i) => `<button type="button" class="hp-img" data-act="hpImgView" data-id="${p.id}" data-i="${i}" style="--ar:${im.w}/${im.h}" aria-label="ดูรูปที่ ${i + 1}"><span class="hp-img-in" data-hpimg="${esc(im.id)}"></span></button>`).join('')}${compact && p.imgs.length > 1 ? `<span class="hp-more">+${p.imgs.length - 1}</span>` : ''}</div>`;
+}
+const HP_IO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { HP_IO.unobserve(e.target); hpFill(e.target); } }), { rootMargin: '400px' }) : null;
+function hpFill(el) {
+  const post = HubPost.entries.find(x => x.imgs && x.imgs.some(i => i.id === el.dataset.hpimg)), im = post && post.imgs.find(i => i.id === el.dataset.hpimg); if (!im) return;
+  hpImgData(im).then(d => { if (!el.isConnected) return; el.innerHTML = d ? `<img src="${d}" alt="" loading="lazy" decoding="async">` : '<small class="muted">โหลดรูปไม่สำเร็จ</small>'; });
+}
+const hpHydrate = root => $$('[data-hpimg]', root).forEach(el => { if (el.firstChild) return; if (HP_IO) HP_IO.observe(el); else hpFill(el); });
+/* compress before upload: longest side 1280 px, WebP (JPEG where WebP is not supported), stepping quality down to ~160 KB */
+function hpCompress(file) {
+  return new Promise((resolve, reject) => {
+    if (!/^image\//.test(file.type)) return reject(new Error(`${file.name}: ไม่ใช่ไฟล์รูป`));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let side = HP_IMG_SIDE, out = null;
+      for (let round = 0; round < 3 && !out; round++, side = Math.round(side * .8)) {
+        const k = Math.min(1, side / Math.max(img.width, img.height)), w = Math.max(1, Math.round(img.width * k)), h = Math.max(1, Math.round(img.height * k));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+        for (const q of [.72, .62, .52, .42]) {
+          let d = cv.toDataURL('image/webp', q); if (!d.startsWith('data:image/webp')) d = cv.toDataURL('image/jpeg', q);
+          const bytes = Math.round((d.length - d.indexOf(',') - 1) * .75);
+          if (bytes <= HP_IMG_BYTES || (round === 2 && q === .42)) { out = { data: d, w, h, bytes }; break; }
+        }
+      }
+      resolve(out);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error(`${file.name}: อ่านรูปไม่ได้ — ลอง JPG หรือ PNG`)); };
+    img.src = url;
+  });
+}
+ACT.hpImgView = el => {
+  const p = HubPost.posts().find(x => x.id === el.dataset.id); if (!p) return; let i = +el.dataset.i || 0;
+  const md = modal({ title: 'รูปภาพ', wide: true, cls: 'hp-view', body: `<div class="hp-view-img" id="hpView"></div>${p.imgs.length > 1 ? `<div class="hp-view-nav"><button type="button" class="btn btn-ghost btn-sm" data-v="-1">${ico('left', 14)} ก่อนหน้า</button><span id="hpViewN"></span><button type="button" class="btn btn-ghost btn-sm" data-v="1">ถัดไป ${ico('right', 14)}</button></div>` : ''}` });
+  const show = () => { const box = $('#hpView', md.el); box.innerHTML = '<p class="muted small" role="status">กำลังโหลดรูป…</p>'; const n = $('#hpViewN', md.el); if (n) n.textContent = `${i + 1} / ${p.imgs.length}`; hpImgData(p.imgs[i]).then(d => { box.innerHTML = d ? `<img src="${d}" alt="รูปที่ ${i + 1}">` : '<p class="muted">โหลดรูปไม่สำเร็จ</p>'; }); };
+  md.el.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; i = (i + +b.dataset.v + p.imgs.length) % p.imgs.length; show(); });
+  show();
+};
 function hpPostHTML(p, compact) {
   const m = member(p.by), mine = p.by === me().id, can = mine || isAdmin();
   const reps = p.replies, showAll = HP_OPEN.has(p.id) || compact === false, shown = compact ? [] : (showAll ? reps : reps.slice(-2));
@@ -70,7 +122,7 @@ function hpPostHTML(p, compact) {
     <header class="hp-h">${avatar(m, 36)}<div class="grow"><b>${esc(m?.name || 'สมาชิก')}</b><small class="muted">${esc(m?.position || '')}${m?.position ? ' · ' : ''}<time datetime="${new Date(p.at).toISOString()}">${hpAgo(p.at)}</time></small></div>
       ${can && !compact ? `<button type="button" class="icon-btn hp-del" data-act="hpDel" data-id="${p.id}" aria-label="ลบโพสต์" title="ลบโพสต์">${ico('trash', 16)}</button>` : ''}</header>
     ${(p.tags || []).length ? `<div class="hp-to"><span class="muted small">ถึง</span>${p.tags.map(id => { const x = member(id); return x ? `<span class="hp-tag ${id === me().id ? 'me' : ''}">${avatar(x, 18)}${esc(id === me().id ? 'คุณ' : x.name)}</span>` : ''; }).join('')}</div>` : ''}
-    <div class="hp-text">${hpLinkify(p.text || '')}</div>${hpRef(p.ref)}
+    ${p.text ? `<div class="hp-text">${hpLinkify(p.text)}</div>` : ''}${hpImgs(p, compact)}${hpRef(p.ref)}${hpExpiry(p, compact)}
     <div class="hp-acts">${HP_REACTS.map(e => { const s = p.reacts[e], n = s ? s.size : 0, on = s && s.has(me().id); return n || !compact ? `<button type="button" class="hp-react ${on ? 'on' : ''} ${n ? '' : 'zero'}" data-act="hpReact" data-id="${p.id}" data-emoji="${e}" aria-pressed="${!!on}" aria-label="${e} ${n}">${e}${n ? `<span>${n}</span>` : ''}</button>` : ''; }).join('')}
       <span class="grow"></span>${compact ? `<a class="link small" href="#/hub" data-act="hpGo" data-id="${p.id}">${reps.length ? reps.length + ' ความเห็น' : 'ตอบกลับ'}</a>` : ''}</div>
     ${compact ? '' : `<div class="hp-replies">${!showAll && reps.length > 2 ? `<button type="button" class="link-btn small" data-act="hpMore" data-id="${p.id}">ดูความเห็นทั้งหมด ${reps.length} รายการ</button>` : ''}
@@ -91,7 +143,7 @@ function hpDraw() {   // refresh only the feed parts on screen (never the box yo
   $$('[data-hp-feed]').forEach(el => {
     if (busy && el.contains(busy)) { el.dataset.stale = '1'; return; }
     $$('.hp-reply input', el).forEach(i => { if (i.value) HP_DRAFT[i.closest('form').dataset.parent] = i.value; });
-    el.innerHTML = hpFeedHTML(+el.dataset.hpFeed || 0); delete el.dataset.stale;
+    el.innerHTML = hpFeedHTML(+el.dataset.hpFeed || 0); delete el.dataset.stale; hpHydrate(el);
     $$('.hp-reply', el).forEach(f => { const d = HP_DRAFT[f.dataset.parent]; if (d) f.elements.t.value = d; });
   });
   if (route().name === 'hub' && !document.hidden) HubPost.markSeen();
@@ -113,15 +165,21 @@ async function hpNotice(ver) { if (HubPost.local() || !HubPost.loaded || String(
 document.addEventListener('visibilitychange', async () => { if (!document.hidden && Store.state && HubPost.loaded && route().name === 'hub') { if (await HubPost.load()) hpDraw(); } });
 
 /* ---------- page ---------- */
-let HP_TAGS = [];   // people tagged in the post being written
+let HP_TAGS = [], HP_PICS = [];   // people tagged / pictures added to the post being written
+async function hpUpload(x) {
+  if (HubPost.local()) return;
+  let r; try { r = await fetch('api/img?id=' + x.id, { method: 'PUT', headers: Store.headers(true), body: JSON.stringify({ data: x.data }) }); } catch (e) { throw new Error('อัปโหลดรูปไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วกดโพสต์อีกครั้ง'); }
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || 'อัปโหลดรูปไม่สำเร็จ'); }
+}
 V.hub = root => {
   const refs = visibleProjects().map(p => ['project', p.id, p.name]);
-  root.innerHTML = pageHead(pageName('hub'), 'แชร์ข่าว อัปเดตงาน และคุยกันในทีม — ทุกคนในทีมเห็นโพสต์นี้') + `
+  root.innerHTML = pageHead(pageName('hub'), `แชร์ข่าว อัปเดตงาน และคุยกันในทีม — ทุกคนในทีมเห็นโพสต์นี้ · โพสต์จะถูกลบอัตโนมัติหลัง ${HP_DAYS} วัน`) + `
     <form class="card hp-compose" id="hpCompose" autocomplete="off">
-      <div class="hp-c-top">${avatar(me(), 40)}<label class="grow"><span class="sr">ข้อความ</span><textarea name="text" rows="3" maxlength="2000" placeholder="อยากบอกอะไรกับทีม? ใส่ลิงก์ได้" required></textarea></label></div>
+      <div class="hp-c-top">${avatar(me(), 40)}<label class="grow"><span class="sr">ข้อความ</span><textarea name="text" rows="3" maxlength="2000" placeholder="อยากบอกอะไรกับทีม? ใส่ลิงก์หรือรูปได้"></textarea></label></div>
       <div class="hp-tags" id="hpTags" aria-live="polite"></div>
       <div class="hp-tagpick" id="hpTagPick" hidden><input type="search" id="hpTagQ" placeholder="ค้นหาชื่อ…" aria-label="ค้นหาชื่อคนที่จะแท็ก" autocomplete="off"><div class="hp-tp-list" id="hpTagList" role="group" aria-label="เลือกคนที่จะแท็ก"></div></div>
-      <div class="hp-c-foot"><button type="button" class="btn btn-ghost hp-tagbtn" id="hpTagBtn" aria-expanded="false" aria-controls="hpTagPick">@ แท็กคน</button>
+      <div class="hp-pics" id="hpPics" aria-live="polite"></div>
+      <div class="hp-c-foot"><label class="btn btn-ghost hp-picbtn">${ico('image', 16)} รูป<input type="file" id="hpPicIn" accept="image/*" multiple hidden></label><button type="button" class="btn btn-ghost hp-tagbtn" id="hpTagBtn" aria-expanded="false" aria-controls="hpTagPick">@ แท็กคน</button>
         <label class="hp-c-ref"><span class="sr">แนบ Project</span><select name="ref"><option value="">แนบ Project (ไม่บังคับ)</option>${refs.map(([t, id, l]) => `<option value="${t}:${esc(id)}">${esc(l)}</option>`).join('')}</select></label>
         <small class="muted hp-count" aria-live="polite"></small><button class="btn btn-primary" type="submit">${ico('chat', 16)} โพสต์</button></div>
     </form>
@@ -146,16 +204,32 @@ V.hub = root => {
     if (u) { HP_TAGS = HP_TAGS.filter(x => x !== u.dataset.untag); drawTags(); }
   });
   drawTags();
+  /* pictures: compressed on this device, uploaded when you press โพสต์ */
+  const drawPics = () => { const tot = HP_PICS.reduce((n, x) => n + x.bytes, 0); $('#hpPics', f).innerHTML = HP_PICS.length ? HP_PICS.map((x, i) => `<span class="hp-pic"><img src="${x.data}" alt="รูปที่ ${i + 1}"><button type="button" data-unpic="${i}" aria-label="เอารูปที่ ${i + 1} ออก">${ico('x', 12)}</button></span>`).join('') + `<small class="muted">${HP_PICS.length}/${HP_IMG_MAX} รูป · บีบอัดแล้ว ${fmtBytes(tot)}</small>` : ''; };
+  $('#hpPicIn', f).onchange = async e => {
+    const files = [...e.target.files].slice(0, HP_IMG_MAX - HP_PICS.length); e.target.value = '';
+    if (!files.length) return toast(`แนบได้สูงสุด ${HP_IMG_MAX} รูปต่อโพสต์`, 'error');
+    $('#hpPics', f).insertAdjacentHTML('beforeend', '<small class="muted" role="status">กำลังบีบอัดรูป…</small>');
+    for (const file of files) { try { HP_PICS.push(await hpCompress(file)); } catch (x) { toast(x.message, 'error'); } }
+    drawPics();
+  };
+  f.addEventListener('click', e => { const u = e.target.closest('[data-unpic]'); if (u) { HP_PICS.splice(+u.dataset.unpic, 1); drawPics(); } });
+  drawPics();
   f.onsubmit = async e => {
     e.preventDefault(); const btn = $('[type=submit]', f); if (btn.disabled) return;
-    const text = ta.value.trim(); if (!text) { ta.focus(); return; }
+    const text = ta.value.trim(); if (!text && !HP_PICS.length) { ta.focus(); return; }
     const [t, id] = (f.elements.ref.value || '').split(':'); btn.disabled = true; btn.setAttribute('aria-busy', 'true');
-    try { await HubPost.send({ kind: 'post', text, ref: t ? { type: t, id } : null, tags: HP_TAGS.slice(), cid: f.dataset.cid || (f.dataset.cid = uid('c')) }); const n = HP_TAGS.length; ta.value = ''; f.elements.ref.value = ''; HP_TAGS = []; $('#hpTagPick', f).hidden = true; drawTags(); delete f.dataset.cid; cnt(); hpDraw(); toast(n ? `โพสต์แล้ว · แจ้ง ${n} คนที่แท็กไว้` : 'โพสต์แล้ว'); }
+    try {
+      const imgs = []; for (const x of HP_PICS) { x.id ||= 'hp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); if (!x.up) { await hpUpload(x); x.up = true; } imgs.push(HubPost.local() ? { id: x.id, w: x.w, h: x.h, data: x.data } : { id: x.id, w: x.w, h: x.h }); if (!HubPost.local()) HP_IMGS.set(x.id, Promise.resolve(x.data)); }   // a retry skips pictures already uploaded
+      await HubPost.send({ kind: 'post', text, ref: t ? { type: t, id } : null, tags: HP_TAGS.slice(), imgs, cid: f.dataset.cid || (f.dataset.cid = uid('c')) });
+      const n = HP_TAGS.length; ta.value = ''; f.elements.ref.value = ''; HP_TAGS = []; HP_PICS = []; drawPics(); $('#hpTagPick', f).hidden = true; drawTags(); delete f.dataset.cid; cnt(); hpDraw(); toast(n ? `โพสต์แล้ว · แจ้ง ${n} คนที่แท็กไว้` : 'โพสต์แล้ว');
+    }
     catch (x) { toast(x.message, 'error'); }   // the text stays in the box — press โพสต์ again (same client id, so no duplicate)
     finally { btn.disabled = false; btn.removeAttribute('aria-busy'); }
   };
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) f.requestSubmit(); });
   if (!HubPost.loaded || HubPost.local()) HubPost.load().then(hpDraw); else HubPost.markSeen();
+  hpHydrate(root);
   hpBadge();
 };
 /* dashboard: latest posts near the end of Home */

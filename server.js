@@ -9,6 +9,13 @@ const DATA = path.join(DIR, 'state.json'), AUTH = path.join(DIR, 'auth.json'), P
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 const read = f => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { return null; } };
 const write = (f, o) => { fs.mkdirSync(DIR, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify(o)); fs.renameSync(f + '.tmp', f); };
+/* entries to drop when posts expire: the post, its replies/reactions, deletions that point at them; returns the pictures to delete */
+function expiredOf(entries, cutoff) {
+  const dead = new Set(entries.filter(e => e.kind === 'post' && e.at < cutoff).map(e => e.id));
+  entries.filter(e => e.kind === 'reply' && dead.has(e.parent)).forEach(e => dead.add(e.id));
+  const drop = entries.filter(e => dead.has(e.id) || (e.parent && dead.has(e.parent)));
+  return { drop, images: drop.flatMap(e => (e.imgs || []).map(i => i.id)) };
+}
 let db = read(DATA) || { rev: 0, state: null };
 const store = {
   async getRev() { return db.rev || 0; }, async getState() { return db; },
@@ -28,6 +35,7 @@ const store = {
     const posts = read(POSTS) || { entries: [] };
     return { state: size(DATA), auth: size(AUTH), posts: { bytes: size(POSTS), count: posts.entries.length }, blobs, backend: 'file' };
   },
+  async prunePosts(cutoff) { const d = read(POSTS) || { seq: 0, entries: [] }; const { drop, images } = expiredOf(d.entries, cutoff); if (!drop.length) return { removed: 0, images: [] }; const ids = new Set(drop); d.entries = d.entries.filter(e => !ids.has(e)); d.seq++; write(POSTS, d); return { removed: drop.length, images }; },
   async trimPosts(keep) { const d = read(POSTS) || { seq: 0, entries: [] }; const before = d.entries.length; d.entries = d.entries.slice(-keep); d.seq++; write(POSTS, d); return { removed: before - d.entries.length }; },
   async setBlob(k, v) { const d = path.join(DIR, 'img'); fs.mkdirSync(d, { recursive: true }); if (v == null) { try { fs.unlinkSync(path.join(d, k + '.txt')); } catch (e) { } } else fs.writeFileSync(path.join(d, k + '.txt'), v); },
 };

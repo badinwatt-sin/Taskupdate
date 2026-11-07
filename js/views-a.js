@@ -118,7 +118,7 @@ V.dashboard = root => {
   root.innerHTML = hero + `<div class="home-grid">${focusCard}${nextCard}</div>` + teamHTML + projHTML + `
   <section class="card mt"><div class="card-h"><h3>สัดส่วนงาน${team ? 'ของทีม' : 'ของฉัน'}</h3><div class="seg-ctl sm">${byTabs}</div></div>
     <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span title="${OVERDUE_TIP}"><i class="x"></i>เลยกำหนด</span></div>${breakdown}</section>` + hpDashHTML();
-  if (!HubPost.loaded) HubPost.load().then(hpDraw);
+  if (!HubPost.loaded) HubPost.load().then(hpDraw); else hpHydrate(root);
 };
 ACT.dashBy = el => { ST.dash.by = el.dataset.id; render(); };
 ACT.dashKanban = () => { ST.board.tab = 'kanban'; };   // the link itself navigates

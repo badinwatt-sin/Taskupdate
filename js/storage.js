@@ -40,12 +40,13 @@ async function loadStorage(force) {
     catch (e) { box.querySelector('.st-body').innerHTML = `<div class="note warn" role="alert">อ่านขนาดพื้นที่ไม่สำเร็จ (${esc(e.message)}) <button type="button" class="link-btn" data-act="storageRefresh">ลองใหม่</button></div>`; return; }
   }
   const I = STORAGE_INFO, limitMB = +(st.settings.storageLimitMB || 256), limit = limitMB * 1048576;
-  const used = new Set([...st.projects.map(p => p.poster && p.poster.id), ...((st.settings.brand || {}).fontFiles || []).map(f => f.id)].filter(Boolean));
+  const used = new Set([...st.projects.map(p => p.poster && p.poster.id), ...((st.settings.brand || {}).fontFiles || []).map(f => f.id), ...HubPost.entries.flatMap(e => (e.imgs || []).map(i => i.id))].filter(Boolean));
+  const young = Date.now() - 3600e3, hpTime = id => parseInt(id.split('_')[1] || '', 36) || 0;
   let html = '';
   if (server && I) {
-    const posters = I.blobs.filter(b => b.id.startsWith('pp_')), fonts = I.blobs.filter(b => b.id.startsWith('font_')), other = I.blobs.filter(b => !b.id.startsWith('pp_') && !b.id.startsWith('font_'));
-    const orphan = I.blobs.filter(b => !used.has(b.id)), sum = a => a.reduce((n, b) => n + b.bytes, 0);
-    const segs = [['ข้อมูลทีม (ซิงก์)', I.state, '#00008F'], ['Hub Post', I.posts.bytes, '#6574F8'], ['โปสเตอร์ Project', sum(posters), '#74BDE8'], ['ฟอนต์ CI', sum(fonts), '#614FE8'], ['บัญชี · แจ้งเตือนบนเครื่อง', I.auth, '#999999'], ['อื่น ๆ', sum(other), '#E6E6E6']].filter(s => s[1]);
+    const posters = I.blobs.filter(b => b.id.startsWith('pp_')), fonts = I.blobs.filter(b => b.id.startsWith('font_')), pics = I.blobs.filter(b => b.id.startsWith('hp_')), other = I.blobs.filter(b => !/^(pp|font|hp)_/.test(b.id));
+    const orphan = I.blobs.filter(b => !used.has(b.id) && !(b.id.startsWith('hp_') && hpTime(b.id) > young)), sum = a => a.reduce((n, b) => n + b.bytes, 0);
+    const segs = [['ข้อมูลทีม (ซิงก์)', I.state, '#00008F'], ['Hub Post (ข้อความ)', I.posts.bytes, '#6574F8'], ['รูปใน Hub Post', sum(pics), '#FFB4CE'], ['โปสเตอร์ Project', sum(posters), '#74BDE8'], ['ฟอนต์ CI', sum(fonts), '#614FE8'], ['บัญชี · แจ้งเตือนบนเครื่อง', I.auth, '#999999'], ['อื่น ๆ', sum(other), '#E6E6E6']].filter(s => s[1]);
     const total = segs.reduce((n, s) => n + s[1], 0), p = pctOf(total, limit);
     html += meterHTML(segs, total, limit, 'พื้นที่ฐานข้อมูลทั้งหมด', `แพ็กเกจที่ตั้งไว้ <label class="st-lim"><input type="number" id="stLimit" min="16" max="102400" step="1" value="${limitMB}" aria-label="ขนาดพื้นที่ของแพ็กเกจ (MB)"> MB</label> — ตั้งให้ตรงกับแพ็กเกจ Upstash ที่ใช้จริง (ดูใน Upstash Console) · ตัวเลขเป็นขนาดข้อมูลจริง ฐานข้อมูลใช้พื้นที่เพิ่มเล็กน้อยต่อรายการ`);
     html += meterHTML([['ข้อมูลทีม', syncBytes, syncBytes > SYNC_LIMIT * .6 ? '#FF4E56' : '#00008F']], syncBytes, SYNC_LIMIT, 'ข้อมูลที่ซิงก์ทุกครั้ง', 'ทุกเครื่องดาวน์โหลดก้อนนี้เมื่อมีการเปลี่ยนแปลง และส่งขึ้นทุกครั้งที่บันทึก — ถ้าเกิน 4 MB จะบันทึกไม่ได้ จึงควรเก็บให้เล็ก (ไฟล์ใหญ่ให้ใส่เป็นลิงก์)');
@@ -55,7 +56,8 @@ async function loadStorage(force) {
     html += tips.length ? `<div class="note warn">${tips.map(esc).join('<br>')}</div>` : '<p class="st-ok">อยู่ในเกณฑ์ปกติ — ยังไม่ต้องทำอะไร</p>';
     html += `<h4 class="st-h">เครื่องมือจัดการ</h4><div class="st-tools">
       <div class="st-tool"><div><b>รูปและฟอนต์ที่ไม่ได้ใช้แล้ว</b><small>${orphan.length ? `${orphan.length} ไฟล์ · ${fmtBytes(sum(orphan))} (เช่น โปสเตอร์ของ Project ที่ลบไปแล้ว)` : 'ไม่มี'}</small></div><button type="button" class="btn btn-ghost btn-sm" data-act="storageOrphans" ${orphan.length ? '' : 'disabled'}>ลบ</button></div>
-      <div class="st-tool"><div><b>Hub Post</b><small>${I.posts.count} รายการ · ${fmtBytes(I.posts.bytes)} — ระบบเก็บล่าสุดไม่เกิน 1,500 รายการอยู่แล้ว</small></div><span class="st-act"><select id="stKeep" aria-label="จำนวนรายการ Hub Post ที่จะเก็บ">${[1000, 500, 200].map(n => `<option value="${n}">เก็บล่าสุด ${n} รายการ</option>`).join('')}</select><button type="button" class="btn btn-ghost btn-sm" data-act="storagePosts" ${I.posts.count > 200 ? '' : 'disabled'}>ลดลง</button></span></div>
+      <div class="st-tool"><div><b>Hub Post หมดอายุ</b><small>ระบบลบโพสต์ ความเห็น และรูป อัตโนมัติ ${I.postDays || 60} วันหลังวันโพสต์ (ตรวจทุกชั่วโมงเมื่อมีการโพสต์)</small></div><button type="button" class="btn btn-ghost btn-sm" data-act="storageExpire">ลบที่หมดอายุตอนนี้</button></div>
+      <div class="st-tool"><div><b>Hub Post</b><small>${I.posts.count} รายการ · ${fmtBytes(I.posts.bytes)} + รูป ${pics.length} ไฟล์ · ${fmtBytes(sum(pics))} — เก็บล่าสุดไม่เกิน 1,500 รายการ</small></div><span class="st-act"><select id="stKeep" aria-label="จำนวนรายการ Hub Post ที่จะเก็บ">${[1000, 500, 200].map(n => `<option value="${n}">เก็บล่าสุด ${n} รายการ</option>`).join('')}</select><button type="button" class="btn btn-ghost btn-sm" data-act="storagePosts" ${I.posts.count > 200 ? '' : 'disabled'}>ลดลง</button></span></div>
       ${noticeTool(st)}</div>`;
   } else {
     html += meterHTML([['ข้อมูลในเบราว์เซอร์', syncBytes, '#00008F']], syncBytes, LOCAL_LIMIT, 'พื้นที่ในเบราว์เซอร์นี้ (โหมดสาธิต)', 'โหมดสาธิตเก็บทุกอย่างในเบราว์เซอร์เครื่องนี้ ซึ่งจำกัดราว 5 MB');
@@ -90,6 +92,12 @@ ACT.storagePosts = async el => {
   if (!await confirmBox(`เก็บ Hub Post ไว้เฉพาะ ${keep} รายการล่าสุด (นับรวมความเห็นและการกดแสดงความรู้สึก) — รายการที่เก่ากว่าจะถูกลบถาวร`, 'ยืนยัน', true)) return;
   el.disabled = true;
   try { const r = await fetch('api/storage/clean', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ action: 'posts', keep }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); toast(`ลบ Hub Post เก่าแล้ว ${j.removed} รายการ`); HubPost.seq = null; HubPost.load().then(hpDraw); }
+  catch (e) { toast(e.message, 'error'); }
+  loadStorage(true);
+};
+ACT.storageExpire = async el => {
+  el.disabled = true;
+  try { const r = await fetch('api/storage/clean', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ action: 'expire' }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'ไม่สำเร็จ'); toast(j.removed ? `ลบรายการที่หมดอายุแล้ว ${j.removed} รายการ${(j.images || []).length ? ` · รูป ${j.images.length} ไฟล์` : ''}` : 'ยังไม่มีโพสต์ที่หมดอายุ'); HubPost.seq = null; HubPost.load().then(hpDraw); }
   catch (e) { toast(e.message, 'error'); }
   loadStorage(true);
 };
