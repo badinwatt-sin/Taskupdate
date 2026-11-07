@@ -546,6 +546,7 @@ async function openCalExport() {
   const now = new Date();
   EXP_CATS = [...(ST.cal.cats || [])];
   const st = { layout: 'year-l', theme: 'ciEvent', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  try { await loadPosterKit(); } catch (e) { }   // CI fonts + logo helpers live with the studio
   try { if (typeof sdFontFiles === 'function') await sdFontFiles(); } catch (e) { }
   await expLoadLogos();
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }

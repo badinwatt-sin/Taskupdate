@@ -51,8 +51,8 @@ function openTask(taskOrId, preset, opts = {}) {
     <div class="form-grid">
       <div class="field full"><span>${ico('users', 14)} ผู้รับผิดชอบ <small class="muted">เลือกได้สูงสุด 2 คน · คนแรกคือผู้รับผิดชอบหลัก</small></span><div class="ppl-chips" id="pplChips"></div>
         <input type="hidden" name="assigneeId" value="${esc(t.assigneeId || '')}"><input type="hidden" name="coId" value="${esc(t.coId || '')}"></div>
-      <label class="field"><span>${ico('folder', 14)} Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— งานส่วนตัว (ไม่ผูก Project) —')}</select></label>
-      <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เก็บเป็นงานส่วนตัว (เห็นเฉพาะฉัน)</label>
+      <label class="field"><span>${ico('folder', 14)} Project <em data-req></em></span><select name="projectId" ${dis()}>${projectOptions(t.projectId, '— ไม่ผูก Project —')}</select></label>
+      <label class="check full" id="privRow"><input type="checkbox" name="private" ${t.private ? 'checked' : ''} ${dis()}> ${ico('lock', 14)} เฉพาะฉัน — ไม่แสดงในหน้าจอของคนอื่น</label><p class="aud-line full" id="audLine" aria-live="polite"></p>
       <div class="field full"><span>${ico('calendar', 14)} ช่วงเวลา</span><div class="triad">
         <label class="field"><small>เริ่ม</small><input type="date" name="start" value="${t.start}" ${dis()}></label>
         <label class="field"><small>เสร็จ</small><input type="date" name="end" value="" ${dis()}></label>
@@ -132,6 +132,7 @@ function openTask(taskOrId, preset, opts = {}) {
         if (['personal', 'project'].includes(srcEl.value)) srcEl.value = pid ? 'project' : 'personal';   // kind follows the Project choice
         const src = srcEl.value;
         $('#privRow', m.el).hidden = !(src === 'personal' && !pid);
+        { const pr = !$('#privRow', m.el).hidden && f.elements.private.checked, A = taskAudience({ ...t, private: pr, projectId: pid || null, source: src, status: f.elements.status.value || t.status }); $('#audLine', m.el).innerHTML = `${ico(A.icon, 13)} <b>ใครเห็นงานนี้:</b> ${A.label} <span class="muted">— ${A.tip}</span>`; }
         $('#attachBox', m.el).hidden = src !== 'project';
         const gs = f.elements.groupId, gcur = gs.value || t.groupId || '', gl = (pid && project(pid)?.taskGroups) || [];
         $('#grpBox', m.el).hidden = !gl.length; gs.innerHTML = opt('', '— ไม่ระบุกลุ่ม —', gcur) + gl.map(g => opt(g.id, g.name, gcur)).join('');   // To-Do items: no links / files
@@ -182,7 +183,7 @@ function openTask(taskOrId, preset, opts = {}) {
       refresh(); drawFiles();
       if (!isNew) {
         const risks = depRisks(orig);
-        if (risks.length) $('#depsBox', m.el).insertAdjacentHTML('beforeend', `<div class="note warn">${ico('alert', 14)} อาจกระทบกำหนดการ: ${risks.map(r => esc(r.title) + (isDelayed(r) ? ' (ล่าช้า)' : ' (เสร็จหลังวันเริ่ม)')).join(', ')}</div>`);
+        if (risks.length) $('#depsBox', m.el).insertAdjacentHTML('beforeend', `<div class="note warn">${ico('alert', 14)} อาจกระทบกำหนดการ: ${risks.map(r => esc(r.title) + (isDelayed(r) ? ' (เลยกำหนด)' : ' (เสร็จหลังวันเริ่ม)')).join(', ')}</div>`);
       }
     },
   });

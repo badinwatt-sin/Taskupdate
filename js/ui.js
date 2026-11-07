@@ -50,25 +50,64 @@ function toast(msg, type = 'ok', undo) {
   setTimeout(kill, undo ? 6000 : 3200);
 }
 
-/* ---------- Modal ---------- */
+/* ---------- Modal ----------
+   Keyboard: Tab stays inside the top window (focus trap), Esc closes it, and focus returns to the
+   control that opened it. The page behind is inert while a window is open.
+   Actions: a button is locked while its handler runs (no double submit); if the handler throws,
+   the window stays open with everything typed still there, and the error is shown. */
 let modalStack = [];
+const FOCUSABLE = 'a[href],area[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),summary';
+const focusables = el => $$(FOCUSABLE, el).filter(x => !x.hidden && x.offsetParent !== null && !x.closest('[hidden],[inert]'));
+function trapTab(e, el) {
+  if (e.key !== 'Tab') return; const f = focusables(el); if (!f.length) { e.preventDefault(); return; }
+  const first = f[0], last = f[f.length - 1], a = document.activeElement;
+  if (!el.contains(a)) { e.preventDefault(); first.focus(); }
+  else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+}
+const PAGE_PARTS = () => [$('.sidebar'), $('.main'), $('#tabbar'), $('#fab'), $('.skip')].filter(Boolean);
+function setPageInert(on) { PAGE_PARTS().forEach(x => { if (on) x.setAttribute('inert', ''); else x.removeAttribute('inert'); }); }
+function focusBack(el) {   // return focus to where it was — or to the same item after a re-render (same data-act + data-id)
+  if (!el) return;
+  if (el.isConnected && !el.closest('[inert]')) { try { el.focus({ preventScroll: true }); } catch (e) { } return; }
+  const act = el.dataset && el.dataset.act, id = el.dataset && el.dataset.id;
+  const twin = act && $$(`[data-act="${act}"]`).find(x => (x.dataset.id || '') === (id || '') && !x.closest('[inert]'));
+  if (twin) try { twin.focus({ preventScroll: true }); } catch (e) { }
+}
 function modal({ title, body, actions = [], wide = false, onOpen, cls = '' }) {
   const back = document.createElement('div'); back.className = 'modal-back';
   back.innerHTML = `<div class="modal ${wide ? 'wide' : ''} ${cls}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <header><h3>${esc(title)}</h3><button class="icon-btn" data-close aria-label="ปิด">${ico('x')}</button></header>
     <div class="modal-body">${body}</div><footer></footer></div>`;
+  const opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+  if (modalStack.length) modalStack[modalStack.length - 1].el.setAttribute('inert', '');
   document.body.appendChild(back);
-  document.body.classList.add('no-scroll');
+  document.body.classList.add('no-scroll'); setPageInert(true);
   const api = {
-    el: back, body: $('.modal-body', back),
-    close() { back.remove(); modalStack = modalStack.filter(m => m !== api); if (!modalStack.length) document.body.classList.remove('no-scroll'); },
+    el: back, body: $('.modal-body', back), closed: false,
+    close() {
+      if (api.closed) return; api.closed = true;
+      back.remove(); modalStack = modalStack.filter(m => m !== api);
+      if (modalStack.length) modalStack[modalStack.length - 1].el.removeAttribute('inert');
+      else { document.body.classList.remove('no-scroll'); setPageInert(false); }
+      setTimeout(() => focusBack(opener), 0);
+    },
   };
+  back.addEventListener('keydown', e => trapTab(e, back));
   const foot = $('footer', back);
   actions.forEach(a => {
     const b = document.createElement('button'); b.type = 'button';
     b.className = 'btn ' + (a.cls || 'btn-ghost'); b.innerHTML = a.label;
     if (a.left) b.style.marginRight = 'auto';
-    b.onclick = async () => { const r = a.onClick ? await a.onClick(api) : undefined; if (r !== false) api.close(); };
+    b.onclick = async () => {
+      if (b.dataset.busy) return;   // ignore double taps while saving
+      b.dataset.busy = '1'; b.setAttribute('aria-busy', 'true'); const all = $$('footer button', back); all.forEach(x => { x.disabled = true; });
+      let r;
+      try { r = a.onClick ? await a.onClick(api) : undefined; }
+      catch (err) { r = false; console.error(err); toast((err && err.message) || 'ทำรายการไม่สำเร็จ — ข้อมูลที่กรอกยังอยู่ ลองใหม่อีกครั้ง', 'error'); }
+      finally { delete b.dataset.busy; b.removeAttribute('aria-busy'); all.forEach(x => { x.disabled = false; }); }
+      if (r !== false) api.close();
+    };
     foot.appendChild(b);
   });
   if (!actions.length) foot.remove();
@@ -76,7 +115,9 @@ function modal({ title, body, actions = [], wide = false, onOpen, cls = '' }) {
   $('[data-close]', back).onclick = api.close;
   modalStack.push(api);
   onOpen && onOpen(api);
-  const first = $('input:not([type=hidden]):not([disabled]), textarea, select', back); first && !matchMedia('(pointer:coarse)').matches && first.focus();
+  const first = $('input:not([type=hidden]):not([disabled]), textarea, select', back);
+  if (first && !matchMedia('(pointer:coarse)').matches) first.focus();
+  else { const box = $('.modal', back); box.setAttribute('tabindex', '-1'); box.focus({ preventScroll: true }); }   // keyboard focus starts inside the window
   return api;
 }
 document.addEventListener('keydown', e => {
@@ -122,7 +163,7 @@ const emojiOwner = (e, exceptId) => S().members.find(x => x.id !== exceptId && x
 const personChip = (m, size = 22) => m ? `<span class="person">${avatar(m, size)}<span>${esc(m.name)}</span></span>` : '<span class="muted">ยังไม่ระบุ</span>';
 function statusBadge(t) {
   const s = STATUS[t.status];
-  return `<span class="badge st-${t.status}">${s.th}</span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}`;
+  return `<span class="badge st-${t.status}">${s.th}</span>${isDelayed(t) ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">เลยกำหนด</span>` : ''}`;
 }
 const prioDot = p => `<span class="prio p-${p}" title="ความสำคัญ: ${PRIO[p].th}"></span>`;
 const groupChip = g => { g = typeof g === 'string' ? group(g) : g; return `<span class="gchip" style="--c:${g.color}">${esc(g.short)}</span>`; };
@@ -174,3 +215,19 @@ document.addEventListener('input', e => {
   const n = document.querySelector(`[data-f-live="${el.dataset.fLive}"]`);
   if (n) { n.focus(); try { n.setSelectionRange(pos, pos); } catch (e) { } }
 });
+
+/* ---------- on-screen keyboard: keep windows and the focused field above it ---------- */
+(() => {
+  const vv = window.visualViewport; if (!vv) return;
+  const root = document.documentElement;
+  const sync = () => {
+    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
+    root.style.setProperty('--vvh', vv.height + 'px'); root.style.setProperty('--vvt', vv.offsetTop + 'px');
+    document.body.classList.toggle('kb-open', kb > 120);
+  };
+  vv.addEventListener('resize', sync); vv.addEventListener('scroll', sync); sync();
+  document.addEventListener('focusin', e => {
+    const f = e.target; if (!f.matches || !f.matches('input,textarea,select,[contenteditable]')) return;
+    setTimeout(() => { try { f.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (x) { } }, 300);   // after the keyboard has opened
+  });
+})();

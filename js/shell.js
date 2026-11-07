@@ -126,3 +126,17 @@ function celebrate(big) {
   }
   document.body.appendChild(wrap); setTimeout(() => wrap.remove(), 1000);
 }
+
+/* ---------- floating “+”: icon-only while scrolling down (covers less), label back when scrolling up ---------- */
+(() => {
+  let lastY = 0, ticking = false;
+  addEventListener('scroll', () => {
+    if (ticking) return; ticking = true;
+    requestAnimationFrame(() => {
+      const y = scrollY, atEnd = innerHeight + y >= document.documentElement.scrollHeight - 40;
+      document.body.classList.toggle('fab-mini', y > 120 && y > lastY && !atEnd);
+      lastY = y; ticking = false;
+    });
+  }, { passive: true });
+  addEventListener('hashchange', () => document.body.classList.remove('fab-mini'));
+})();

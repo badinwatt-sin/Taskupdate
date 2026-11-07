@@ -85,7 +85,7 @@ const STATUS = {
   cancelled: { label: 'Cancelled', th: 'ยกเลิก' },
 };
 const PRIO = { high: { th: 'สูง' }, med: { th: 'กลาง' }, low: { th: 'ต่ำ' } };
-const KINDS = { project: 'งาน Project', ram: 'งานสนับสนุน RAM', personal: 'งานส่วนตัว', meeting: 'จากการประชุม', assigned: 'งานที่มอบหมาย' };
+const KINDS = { project: 'งาน Project', ram: 'งานสนับสนุน RAM', personal: 'ไม่ผูก Project', meeting: 'จากการประชุม', assigned: 'งานที่มอบหมาย' };
 /* Event categories (business line) */
 const EV_CATS = [['agency', 'Agency', '#007aff'], ['banca', 'Banca', '#ff9500'], ['cs', 'CS', '#34c759'], ['academy', 'Academy', '#af52de'], ['company', 'Company', '#5a6375']];
 const catOf = k => EV_CATS.find(c => c[0] === k);
@@ -118,7 +118,10 @@ const Store = {
     try {
       const r = await fetch('api/ping', { cache: 'no-store' });
       if (r.ok && (r.headers.get('content-type') || '').includes('json')) { const j = await r.json(); this.mode = 'server'; this.hasState = j.hasState; this.configured = j.configured !== false; this.recovery = !!j.recovery; this.version = j.version || ''; return; }
-    } catch (e) { /* static hosting / file:// → local mode */ }
+    } catch (e) {   // the network failed — this is not static hosting: say so instead of silently opening demo data
+      if (location.protocol.startsWith('http') && !/^(localhost|127\.)/.test(location.hostname) && navigator.onLine === false) { this.offline = true; }
+      else if (location.protocol.startsWith('http') && e && e.name === 'TypeError' && !/github\.io$/.test(location.hostname)) { this.offline = true; }
+    }
     this.mode = 'local';
   },
   /* 2) load data (server: needs a valid login token) */
@@ -140,6 +143,7 @@ const Store = {
     if (!this.hooked) {
       this.hooked = true;
       document.addEventListener('visibilitychange', () => { if (!document.hidden && this.mode === 'server') this.poll(); });
+      addEventListener('online', () => { if (this.mode === 'server' && this.pending) this.push(); });
       addEventListener('pagehide', () => { if (this.pending && this.mode === 'server' && this.token) { try { fetch('api/state', { method: 'PUT', keepalive: true, headers: this.headers(true), body: JSON.stringify({ state: this.state }) }); } catch (e) { } } });
     }
   },
@@ -161,7 +165,12 @@ const Store = {
       const r = await fetch('api/state', { method: 'PUT', headers: this.headers(true), body: JSON.stringify({ state: this.state, notify }) });
       if (r.status === 401) return Auth.expired();
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'save failed'); this.rev = j.rev; if (j.initialPassword) this.initialPassword = j.initialPassword; this.pending = false; this.setSync();
-    } catch (e) { this.setSync('err'); }
+      if (this.fails) { this.fails = 0; toast('บันทึกข้อมูลที่ค้างไว้เรียบร้อยแล้ว'); }
+    } catch (e) {   // keep the change on this device and retry with back-off; tell the user once (the sync label is hidden on phones)
+      this.fails = (this.fails || 0) + 1; this.setSync('err');
+      if (this.fails === 1 && window.toast) toast('บันทึกไม่สำเร็จ — ข้อมูลยังอยู่ในเครื่องนี้ ระบบจะลองบันทึกใหม่อัตโนมัติ', 'error');
+      clearTimeout(this.retryT); this.retryT = setTimeout(() => { if (this.pending) this.push(); }, Math.min(30000, 2000 * 2 ** (this.fails - 1)));
+    }
   },
   async poll() {
     if (this.pending || !this.token) return;
@@ -174,7 +183,7 @@ const Store = {
   },
   setSync(err) {
     const el = document.getElementById('sync'); if (!el) return;
-    if (err) { el.className = 'sync err'; el.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; return; }
+    if (err) { el.className = 'sync err'; el.textContent = this.pending ? 'ยังบันทึกไม่สำเร็จ — กำลังลองใหม่' : 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'; return; }
     el.className = 'sync ' + (this.mode === 'server' ? 'ok' : 'local');
     el.textContent = this.mode === 'server' ? (this.pending ? 'กำลังบันทึก…' : 'ซิงค์กับทีมแล้ว') : 'โหมดสาธิต (ในเบราว์เซอร์)';
     el.title = this.mode === 'server' ? 'ข้อมูลใช้ร่วมกันทั้งทีมผ่านเซิร์ฟเวอร์' : 'รัน "node server.js" เพื่อแชร์ข้อมูลและใช้การล็อกอินจริง';
@@ -195,7 +204,17 @@ const taskMode = t => { const p = t.projectId && project(t.projectId); return (p
 const taskStart = t => taskMode(t) === 'working' ? nextWork(t.start) : t.start;
 const taskEnd = t => calcEnd(t.start, t.duration, taskMode(t));
 const isActive = t => t.status === 'todo' || t.status === 'doing';
-const isDelayed = t => isActive(t) && taskEnd(t) < today();
+const isDelayed = t => isActive(t) && taskEnd(t) < today();   // เลยกำหนด: past its Target date and not done (a date fact, not a progress judgement)
+const OVERDUE_TIP = 'เลยกำหนด = เลยวัน Target แล้วแต่งานยังไม่เสร็จ';
+const BEHIND_TIP = 'ช้ากว่าแผน = สัดส่วนงานที่เสร็จน้อยกว่าที่ควรเป็น ณ วันนี้ของสัปดาห์ (ยังไม่จำเป็นต้องเลยกำหนด)';
+/* who can see a task — mirrors taskVisible(): private → owner only; post-it → everyone; project → project members (+ their leaders, Admin); other → owner, their leaders and Admin */
+function taskAudience(t) {
+  if (t.private) return { key: 'me', label: 'เฉพาะฉัน', icon: 'lock', tip: 'ไม่แสดงในหน้าจอของคนอื่น (รวมถึง Admin) — แสดงเฉพาะเจ้าของงาน' };
+  if (t.projectId) return { key: 'project', label: 'ทีม Project เห็นได้', icon: 'users', tip: 'สมาชิก Project, หัวหน้าของผู้รับผิดชอบ และ Admin เห็นได้' };
+  if (isPostit(t)) return { key: 'team', label: 'ทีมเห็นได้', icon: 'users', tip: 'ขึ้นเป็น Post-it ของทีม — ทุกคนในทีมเห็นได้' };
+  return { key: 'lead', label: 'หัวหน้าเห็นได้', icon: 'users', tip: 'ผู้รับผิดชอบ, หัวหน้าของผู้รับผิดชอบ และ Admin เห็นได้' };
+}
+const audienceChip = t => { const a = taskAudience(t); return `<span class="aud aud-${a.key}" title="${a.tip}">${ico(a.icon, 12)}<span>${a.label}</span></span>`; };
 /* ----- Visibility scope: Admin = everyone · Leader = self + direct/indirect reports · Staff = self.
    Everyone also sees tasks of projects they belong to, and team post-its. ----- */
 function subordinates(id, acc = new Set()) {
@@ -285,7 +304,7 @@ function projectStats(p) {
   const delayed = ts.filter(isDelayed).length;
   let start = null, end = null;
   ts.forEach(t => { const a = taskStart(t), b = taskEnd(t); if (!start || a < start) start = a; if (!end || b > end) end = b; });
-  return { total: ts.length, done, delayed, pct: ts.length ? Math.round(done / ts.length * 100) : 0, start: start || p.start, end };
+  return { total: ts.length, done, delayed, pct: ts.length ? Math.round(done / ts.length * 100) : 0, start: start || p.start, end, unplanned: !ts.length };
 }
 
 function workload(mid) {

@@ -17,7 +17,7 @@ function boardTasks(f, fixedProject) {
 }
 function filterBar(key, fixedProject, extra = '') {
   const f = ST[key];
-  const projOpts = opt('', 'ทุก Project', f.project) + visibleProjects().map(p => opt(p.id, p.name, f.project)).join('') + opt('__postit', 'Post-it ของทีม (งานส่วนตัว)', f.project);
+  const projOpts = opt('', 'ทุก Project', f.project) + visibleProjects().map(p => opt(p.id, p.name, f.project)).join('') + opt('__postit', 'Post-it ของทีม (ไม่ผูก Project)', f.project);
   return `<div class="filters">
     ${fixedProject ? '' : `<select data-f="${key}.project" aria-label="Project">${projOpts}</select>`}
     <select data-f="${key}.group" aria-label="Squad">${groupOptions(f.group, 'ทุก Squad / หน้าที่')}</select>
@@ -33,14 +33,14 @@ function kanbanHTML(tasks) {
     const ts = sortBy(tasks.filter(t => t.status === c), t => taskEnd(t));
     return `<div class="kcol k-${c}" data-col="${c}"><div class="kcol-h"><b>${STATUS[c].label}</b><span>${STATUS[c].th}</span><em>${ts.length}</em></div>
       <div class="kcol-body" data-drop="${c}">${ts.map(kcard).join('') || '<p class="kempty">ลากงานมาวางที่นี่</p>'}</div></div>`;
-  }).join('')}</div><p class="muted small kb-hint">ลากการ์ด / Post-it เพื่อเปลี่ยนสถานะ · หรือกดการ์ดแล้วเลือกสถานะ · งานที่เลยกำหนดจะติดป้าย “ล่าช้า” แต่ยังอยู่ในสถานะจริงของมัน</p>`;
+  }).join('')}</div><p class="muted small kb-hint">ลากการ์ด / Post-it เพื่อเปลี่ยนสถานะ · หรือกดการ์ดแล้วเลือกสถานะ · งานที่เลยวัน Target แต่ยังไม่เสร็จจะติดป้าย “เลยกำหนด” แต่ยังอยู่ในสถานะจริงของมัน</p>`;
 }
 function postitCard(t) {
   const m = member(t.assigneeId), st = postitOf(m), late = isDelayed(t);
   return `<article class="kcard postit pat-${st.pattern} ${late ? 'is-late' : ''}" style="--pc:${st.color}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
     <div class="pi-who">${avatar(m, 26)}<span>${esc(m?.name || '–')}</span></div>
     <div class="pi-title">${esc(t.title)}</div>
-    <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span>${advBtn(t)}</div></article>`;
+    <div class="pi-foot"><span class="badge st-${t.status}">${STATUS[t.status].th}</span>${late ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">เลยกำหนด</span>` : ''}<span class="grow"></span><span>${ico('clock', 12)} ${fmtD(taskEnd(t))}</span>${advBtn(t)}</div></article>`;
 }
 function kcard(t) {
   if (isPostit(t)) return postitCard(t);
@@ -49,8 +49,8 @@ function kcard(t) {
     <div class="kc-top"><div class="kc-chips">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : `<span class="pchip ram">${esc(t.ram?.area || 'RAM')}</span>`}${projGroupOf(t) ? `<span class="pchip" style="--c:${projGroupOf(t).color}">${esc(projGroupOf(t).name)}</span>` : ''}</div>${prioDot(t.priority)}</div>
     <b class="kc-title">${esc(t.title)}</b>
     <div class="kc-meta"><span class="${isDelayed(t) ? 'late' : 'muted'}">${ico('clock', 13)} ${fmtD(taskEnd(t))}</span>
-      ${risks.length ? `<span class="risk" title="ติดงานก่อนหน้าที่ยังไม่เสร็จ/ล่าช้า">${ico('alert', 13)}</span>` : ''}${t.private ? ico('lock', 13) : ''}
-      <span class="grow"></span>${isDelayed(t) ? '<span class="badge st-delayed">ล่าช้า</span>' : ''}${advBtn(t)}<span class="squad">${owners(t).map(id => avatar(member(id), 24)).join('')}</span></div></article>`;
+      ${risks.length ? `<span class="risk" title="ติดงานก่อนหน้าที่ยังไม่เสร็จ/เลยกำหนด">${ico('alert', 13)}</span>` : ''}${t.private ? `<span class="aud aud-me" title="${taskAudience(t).tip}">${ico('lock', 13)}<span class="sr">เฉพาะฉัน</span></span>` : ''}
+      <span class="grow"></span>${isDelayed(t) ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">เลยกำหนด</span>` : ''}${advBtn(t)}<span class="squad">${owners(t).map(id => avatar(member(id), 24)).join('')}</span></div></article>`;
 }
 function bindKanban(root) {
   let dragId = null;
@@ -114,7 +114,7 @@ function ganttHTML(tasks, zoom, hideDone, opts) {
       const a = taskStart(t), b = taskEnd(t), left = diffDays(min, a) * px, w = (diffDays(a, b) + 1) * px, col = (opts && opts.by === 'group' && sec.color) || (p ? p.color : '#d97706');
       rowIdx.set(t.id, { r, left, right: left + w });
       rows += `<div class="g-row"><div class="g-label clickable" style="width:${LW}px" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 22)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '–')} · ${t.duration} วัน</small></div></div>
-        <div class="g-track" style="width:${W}px"><div class="g-bar st-${t.status} ${isDelayed(t) ? 'late' : ''} ${depRisks(t).length ? 'risk' : ''}" style="left:${left}px;width:${w}px;--c:${col}" data-act="openTask" data-id="${t.id}" title="${esc(t.title)} · ${fmtRange(a, b)} · ${STATUS[t.status].th}${isDelayed(t) ? ' (ล่าช้า)' : ''}">
+        <div class="g-track" style="width:${W}px"><div class="g-bar st-${t.status} ${isDelayed(t) ? 'late' : ''} ${depRisks(t).length ? 'risk' : ''}" style="left:${left}px;width:${w}px;--c:${col}" data-act="openTask" data-id="${t.id}" title="${esc(t.title)} · ${fmtRange(a, b)} · ${STATUS[t.status].th}${isDelayed(t) ? ' (เลยกำหนด)' : ''}">
         <i class="hl"></i><span>${w > 80 ? esc(t.title) : ''}</span><i class="hr"></i></div></div></div>`; r++;
     });
   });
@@ -137,7 +137,7 @@ function ganttHTML(tasks, zoom, hideDone, opts) {
     <div class="g-today" style="left:${todayX}px;top:${HH - 14}px;height:${H - HH + 14}px"><span>วันนี้</span></div>
     <svg class="g-deps" width="${LW + W}" height="${H}"><defs><marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7z" fill="#94a3b8"/></marker><marker id="arrb" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7z" fill="#ef4444"/></marker></defs>${paths}</svg>
   </div></div>
-  <div class="legend gantt-legend"><span><i class="bar st-todo"></i>Not Started</span><span><i class="bar st-doing"></i>In Progress</span><span><i class="bar st-done"></i>Done</span><span><i class="bar late"></i>ล่าช้า</span><span><i class="bar risk"></i>อาจกระทบจากงานก่อนหน้า</span><span class="muted">▦ แถบเทา = เสาร์–อาทิตย์/วันหยุด</span></div>`;
+  <div class="legend gantt-legend"><span><i class="bar st-todo"></i>Not Started</span><span><i class="bar st-doing"></i>In Progress</span><span><i class="bar st-done"></i>Done</span><span><i class="bar late"></i>เลยกำหนด</span><span><i class="bar risk"></i>อาจกระทบจากงานก่อนหน้า</span><span class="muted">▦ แถบเทา = เสาร์–อาทิตย์/วันหยุด</span></div>`;
 }
 const zoomCtl = key => `<div class="seg-ctl sm">${[['day', 'วัน'], ['week', 'สัปดาห์'], ['month', 'เดือน']].map(([k, l]) => `<button class="${ST[key].zoom === k ? 'on' : ''}" data-act="setZoom" data-id="${key}:${k}">${l}</button>`).join('')}</div>`;
 ACT.setZoom = el => { const [k, z] = el.dataset.id.split(':'); ST[k].zoom = z; render(); };
@@ -268,7 +268,8 @@ async function posterData(p) {
   if (p.poster.data) return p.poster.data;   // demo / local mode keeps it inline
   const key = `${p.poster.id}@${p.poster.v}`; if (POSTERS.has(key)) return POSTERS.get(key);
   const pr = fetch('api/img?id=' + encodeURIComponent(p.poster.id), { headers: Store.headers() }).then(r => r.ok ? r.json() : null).then(j => j?.data || null).catch(() => null);
-  POSTERS.set(key, pr); const d = await pr; POSTERS.set(key, d); return d;
+  POSTERS.set(key, pr); const d = await pr; if (d) POSTERS.set(key, d); else POSTERS.delete(key);   // a failed load is retried next time
+  return d;
 }
 /* cover = poster (blurred backdrop + whole image) or, when there is none, a generated cover in the project colour */
 const coverHTML = (p, cls = '') => {
@@ -276,8 +277,10 @@ const coverHTML = (p, cls = '') => {
   const mono = (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || 'P').slice(0, 2)).toUpperCase();
   return `<div class="pcover ${cls} ${p.poster ? 'has-img' : ''}" style="--c:${p.color}" data-cover="${p.id}"><span class="pc-mono">${esc(mono)}</span></div>`;
 };
-function hydrateCovers(root) {
-  $$('[data-cover]', root).forEach(async el => {
+const COVER_IO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { COVER_IO.unobserve(e.target); loadCover(e.target); } }), { rootMargin: '300px' }) : null;
+function hydrateCovers(root) { $$('[data-cover]', root).forEach(el => { if (!project(el.dataset.cover)?.poster) return; if (COVER_IO) COVER_IO.observe(el); else loadCover(el); }); }   // fetch posters only as they come into view
+function loadCover(el) {
+  [el].forEach(async el => {
     const p = project(el.dataset.cover), d = await posterData(p); if (!d || !el.isConnected) return;
     el.style.setProperty('--img', `url("${d}")`); el.innerHTML = `<img src="${d}" alt="โปสเตอร์ ${esc(p.name)}" loading="lazy">`; el.classList.add('ready');
   });
@@ -334,10 +337,10 @@ V.projects = (root, id) => {
     (ps.length ? `<div class="pcards">${ps.map(p => {
       const s = projectStats(p), pm = member(p.pmId);
       return `<a class="pcard has-cover" href="#/projects/${p.id}" style="--c:${p.color}">${coverHTML(p)}
-        <div class="pc-top"><h3>${esc(p.name)}</h3>${s.delayed ? `<span class="badge st-delayed">${s.delayed} ล่าช้า</span>` : ''}</div>
+        <div class="pc-top"><h3>${esc(p.name)}</h3>${s.delayed ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">${s.delayed} เลยกำหนด</span>` : ''}</div>
         <p class="goal clip2">${esc(p.goal || 'ยังไม่ได้ระบุเป้าหมาย')}</p>
         <div class="pc-meta"><span>PM: ${personChip(pm, 20)}</span><span>${s.end ? fmtRange(s.start, s.end) : '–'}</span></div>
-        ${progressBar(s.pct, p.color)}<div class="pc-foot"><span>${s.done}/${s.total} งานเสร็จ · ${s.pct}%</span><span class="squad">${p.squad.slice(0, 6).map(id => avatar(member(id), 24)).join('')}${p.squad.length > 6 ? `<em>+${p.squad.length - 6}</em>` : ''}</span></div></a>`;
+        ${progressBar(s.pct, p.color)}<div class="pc-foot"><span>${s.unplanned ? 'ยังไม่ได้วางแผน · ยังไม่มีงาน' : `${s.done}/${s.total} งานเสร็จ · ${s.pct}%`}</span><span class="squad">${p.squad.slice(0, 6).map(id => avatar(member(id), 24)).join('')}${p.squad.length > 6 ? `<em>+${p.squad.length - 6}</em>` : ''}</span></div></a>`;
     }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', isAdmin() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : ''));
 };
 ACT.newProject = () => openProject(null);
@@ -355,10 +358,10 @@ function projectDetail(root, id) {
     const sq = S().groups.map(g => ({ g, ms: p.squad.map(member).filter(m => m && m.group === g.id) })).filter(x => x.ms.length);
     const upcoming = sortBy(S().tasks.filter(t => t.projectId === p.id && isActive(t)), t => taskEnd(t)).slice(0, 5);
     content = `<div class="two-col"><section class="card"><div class="card-h"><h3>เป้าหมาย Project</h3></div><p class="goal-full">${esc(p.goal || '—')}</p>
-      <dl class="facts"><div><dt>Project Manager</dt><dd>${personChip(pm)}</dd></div><div><dt>ช่วงเวลา</dt><dd>${s.end ? fmtRange(s.start, s.end) : '–'}</dd></div><div><dt>การนับวัน</dt><dd>${mode === 'working' ? 'วันทำงาน (ไม่รวมเสาร์–อาทิตย์/วันหยุดบริษัท)' : 'วันปฏิทิน'}${p.dayMode ? '' : ' <small class="muted">(ค่าเริ่มต้นของทีม)</small>'}</dd></div><div><dt>ความคืบหน้า</dt><dd>${progressBar(s.pct, p.color)}<small>${s.done}/${s.total} งาน · ${s.pct}%</small></dd></div></dl></section>
+      <dl class="facts"><div><dt>Project Manager</dt><dd>${personChip(pm)}</dd></div><div><dt>ช่วงเวลา</dt><dd>${s.end ? fmtRange(s.start, s.end) : '–'}</dd></div><div><dt>การนับวัน</dt><dd>${mode === 'working' ? 'วันทำงาน (ไม่รวมเสาร์–อาทิตย์/วันหยุดบริษัท)' : 'วันปฏิทิน'}${p.dayMode ? '' : ' <small class="muted">(ค่าเริ่มต้นของทีม)</small>'}</dd></div><div><dt>ความคืบหน้า</dt><dd>${s.unplanned ? '<small class="muted">ยังไม่ได้วางแผน — ยังไม่มีงานใน Project นี้</small>' : `${progressBar(s.pct, p.color)}<small>${s.done}/${s.total} งาน · ${s.pct}%</small>`}</dd></div></dl></section>
       <section class="card"><div class="card-h"><h3>Squad (${p.squad.length} คน)</h3>${can ? `<button class="btn btn-ghost btn-sm" data-act="editProject" data-id="${p.id}">จัด Squad</button>` : ''}</div>
       ${sq.map(x => `<div class="squad-g"><div>${groupChip(x.g)}</div><div class="squad-m">${x.ms.map(m => `<span class="person">${avatar(m, 26)}<span>${esc(m.name)}${m.id === p.pmId ? ' <span class="pm">PM</span>' : ''}</span></span>`).join('')}</div></div>`).join('') || '<p class="muted pad">ยังไม่มีสมาชิก</p>'}</section></div>
-      ${(p.taskGroups || []).length ? `<section class="card mt"><div class="card-h"><h3>ความคืบหน้าตามกลุ่มงาน</h3>${can ? `<button class="btn btn-ghost btn-sm" data-act="editGroups" data-id="${p.id}">จัดการกลุ่มงาน</button>` : ''}</div><div class="grp-prog">${groupTasks(S().tasks.filter(t => t.projectId === p.id && t.status !== 'cancelled'), p, 'group', true).map(g => { const d = g.tasks.filter(t => t.status === 'done').length, late = g.tasks.filter(isDelayed).length; return `<div class="gp"><div class="gp-h"><i style="background:${g.color}"></i><b>${esc(g.name)}</b>${late ? `<span class="badge st-delayed">${late} ล่าช้า</span>` : ''}</div>${progressBar(g.tasks.length ? Math.round(d / g.tasks.length * 100) : 0, g.color)}<small class="muted">${d}/${g.tasks.length} งาน</small></div>`; }).join('')}</div></section>` : ''}
+      ${(p.taskGroups || []).length ? `<section class="card mt"><div class="card-h"><h3>ความคืบหน้าตามกลุ่มงาน</h3>${can ? `<button class="btn btn-ghost btn-sm" data-act="editGroups" data-id="${p.id}">จัดการกลุ่มงาน</button>` : ''}</div><div class="grp-prog">${groupTasks(S().tasks.filter(t => t.projectId === p.id && t.status !== 'cancelled'), p, 'group', true).map(g => { const d = g.tasks.filter(t => t.status === 'done').length, late = g.tasks.filter(isDelayed).length; return `<div class="gp"><div class="gp-h"><i style="background:${g.color}"></i><b>${esc(g.name)}</b>${late ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">${late} เลยกำหนด</span>` : ''}</div>${progressBar(g.tasks.length ? Math.round(d / g.tasks.length * 100) : 0, g.color)}<small class="muted">${d}/${g.tasks.length} งาน</small></div>`; }).join('')}</div></section>` : ''}
       <section class="card mt"><div class="card-h"><h3>งานที่ใกล้ถึงกำหนด</h3></div>${upcoming.length ? `<ul class="list">${upcoming.map(t => `<li class="clickable" data-act="openTask" data-id="${t.id}">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '')}</small></div>${statusBadge(t)}<span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}<small>${fmtRel(taskEnd(t))}</small></span></li>`).join('')}</ul>` : '<p class="muted pad">ไม่มีงานค้าง</p>'}</section>`;
   } else if (f.tab === 'tasks') {
     content = projTools(p) + taskListHTML(p, f);
@@ -368,7 +371,7 @@ function projectDetail(root, id) {
     content = projTools(p, zoomCtl('proj')) + ganttHTML(tasks, f.zoom, false, { p, by: ['group', 'who', 'none'].includes(f.groupBy) ? f.groupBy : 'group' });
   }
   root.innerHTML = `<a class="back" href="#/projects">${ico('left', 16)} ${pageName('projects')}</a>
-    <div class="proj-head with-cover" style="--c:${p.color}"><button type="button" class="ph-cover" data-act="posterView" data-id="${p.id}" aria-label="${p.poster ? 'ดูโปสเตอร์' : can ? 'เพิ่มโปสเตอร์' : 'โปสเตอร์'}">${coverHTML(p, 'sm')}${can && !p.poster ? `<span class="ph-add">${ico('image', 14)} เพิ่มโปสเตอร์</span>` : ''}</button><div class="ph-text"><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.total} งาน · ${s.pct}% เสร็จ${s.delayed ? ` · <span class="late">${s.delayed} งานล่าช้า</span>` : ''}</p></div>
+    <div class="proj-head with-cover" style="--c:${p.color}"><button type="button" class="ph-cover" data-act="posterView" data-id="${p.id}" aria-label="${p.poster ? 'ดูโปสเตอร์' : can ? 'เพิ่มโปสเตอร์' : 'โปสเตอร์'}">${coverHTML(p, 'sm')}${can && !p.poster ? `<span class="ph-add">${ico('image', 14)} เพิ่มโปสเตอร์</span>` : ''}</button><div class="ph-text"><h1>${esc(p.name)}</h1><p>PM: ${esc(pm?.name || '–')} · ${s.unplanned ? 'ยังไม่ได้วางแผน (ยังไม่มีงาน)' : `${s.total} งาน · ${s.pct}% เสร็จ`}${s.delayed ? ` · <span class="late">${s.delayed} งานเลยกำหนด</span>` : ''}</p></div>
       <div class="head-actions">${can ? `<button class="btn btn-ghost" data-act="editGroups" data-id="${p.id}">${ico('layers', 16)} กลุ่มงาน</button><button class="btn btn-ghost" data-act="reschedule" data-id="${p.id}" title="เลื่อนงานที่ต้องทำหลังให้เริ่มต่อจากงานก่อนหน้า">${ico('swap', 16)} จัดตารางตามลำดับงาน</button><button class="btn btn-ghost" data-act="editProject" data-id="${p.id}">${ico('edit', 16)} แก้ไข</button>` : ''}</div></div>
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" class="${f.tab === k ? 'on' : ''}" data-act="boardTab" data-id="proj:${k}">${l}</button>`).join('')}</div>${content}`;
   if (f.tab === 'kanban') bindKanban(root); else if (f.tab === 'gantt') bindGantt(root); else if (f.tab === 'tasks') bindTaskList(root, p);
@@ -376,7 +379,7 @@ function projectDetail(root, id) {
 ACT.editProject = el => openProject(el.dataset.id);
 ACT.reschedule = async el => {
   const p = project(el.dataset.id);
-  if (!await confirmBox('ระบบจะเลื่อนวันเริ่มของงานที่ต้องทำหลังงานอื่น ให้เริ่มต่อจากงานก่อนหน้า (ไม่ดึงงานให้เร็วขึ้น และสมมติว่างานที่ล่าช้าจะเสร็จวันนี้) ดำเนินการต่อหรือไม่?', 'จัดตาราง')) return;
+  if (!await confirmBox('ระบบจะเลื่อนวันเริ่มของงานที่ต้องทำหลังงานอื่น ให้เริ่มต่อจากงานก่อนหน้า (ไม่ดึงงานให้เร็วขึ้น และสมมติว่างานที่เลยกำหนดจะเสร็จวันนี้) ดำเนินการต่อหรือไม่?', 'จัดตาราง')) return;
   const before = JSON.stringify(S().tasks);
   const n = reschedule(p.id); commit();
   n ? toast(`เลื่อนกำหนดการ ${n} รายการ`, 'ok', () => { S().tasks = JSON.parse(before); commit(); }) : toast('กำหนดการสอดคล้องกันอยู่แล้ว');

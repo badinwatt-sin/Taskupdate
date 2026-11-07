@@ -71,7 +71,10 @@ const Auth = {
 function showLogin(bootMsg) {
   return new Promise(async resolve => {
     let list = []; try { list = await Auth.members(); } catch (e) { }
-    const el = document.createElement('div'); el.id = 'login'; document.body.appendChild(el); document.body.classList.add('no-scroll');
+    const el = document.createElement('div'); el.id = 'login'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', 'เข้าสู่ระบบ TEAM Hub');
+    document.body.appendChild(el); document.body.classList.add('no-scroll'); setPageInert(true);
+    el.addEventListener('keydown', e => trapTab(e, el));
+    const done = id => { el.remove(); document.body.classList.remove('no-scroll'); setPageInert(false); resolve(id); };
     const tile = m => `<button class="lg-tile" data-id="${esc(m.id)}"><span class="avatar ${m.emoji ? 'emo' : ''}" style="--s:46px;background:${m.emoji ? 'color-mix(in srgb,' + m.color + ' 22%,#fff)' : m.color};${m.emoji ? 'box-shadow:0 0 0 2px ' + m.color : ''}">${esc(m.emoji || m.name.slice(0, 2))}</span><b>${esc(m.name)}</b></button>`;
     const demo = Store.mode === 'local';
     el.innerHTML = `<div class="lg-card"><div class="logo lg-logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></div>
@@ -90,21 +93,22 @@ function showLogin(bootMsg) {
       ${demo ? `<div class="note warn lg-demo">โหมดสาธิต: รหัสผ่านเก็บในเบราว์เซอร์นี้ ไม่ใช่ความปลอดภัยจริง · รหัสเริ่มต้นของทุกคนคือ <b>${esc(S().auth.defaultPassword)}</b></div>` : ''}${bootMsg ? `<div class="note lg-demo">${bootMsg}</div>` : ''}</div>`;
     let cur = null; const form = $('#lgForm', el), pw = $('#lgPw', el), err = $('#lgErr', el);
     el.addEventListener('click', e => { const t = e.target.closest('.lg-tile'); if (!t) return; cur = list.find(m => m.id === t.dataset.id); $('#lgPick', el).hidden = true; form.hidden = false; $('#lgName', el).textContent = cur.name; err.textContent = ''; pw.value = ''; pw.focus(); });
-    $('#lgBack', el).onclick = () => { form.hidden = true; $('#lgPick', el).hidden = false; };
+    $('#lgBack', el).onclick = () => { form.hidden = true; $('#lgPick', el).hidden = false; const t = cur && $(`.lg-tile[data-id="${cur.id}"]`, el); if (t) t.focus(); };   // back to the person you picked
+    setTimeout(() => { const t = $('.lg-tile', el); if (t && !matchMedia('(pointer:coarse)').matches) t.focus(); }, 30);
     const rec = $('#lgRec', el), forgot = $('#lgForgot', el);
     if (forgot) {
       forgot.onclick = () => { $('#lgPick', el).hidden = true; form.hidden = true; rec.hidden = false; forgot.parentElement.hidden = true; $('#rcCode', el).focus(); };
       $('#lgRecBack', el).onclick = () => { rec.hidden = true; $('#lgPick', el).hidden = false; forgot.parentElement.hidden = false; };
       rec.onsubmit = async e => {
         e.preventDefault(); const err = $('#rcErr', el); err.textContent = '';
-        try { await Auth.recover($('#rcCode', el).value, $('#rcWho', el).value, $('#rcPw', el).value); const id = await Auth.login($('#rcWho', el).value, $('#rcPw', el).value); el.remove(); document.body.classList.remove('no-scroll'); toast('ตั้งรหัสใหม่แล้ว — แนะนำให้ลบ HUB_RECOVERY_CODE ออกจาก Vercel'); resolve(id); }
+        try { await Auth.recover($('#rcCode', el).value, $('#rcWho', el).value, $('#rcPw', el).value); const id = await Auth.login($('#rcWho', el).value, $('#rcPw', el).value); toast('ตั้งรหัสใหม่แล้ว — แนะนำให้ลบ HUB_RECOVERY_CODE ออกจาก Vercel'); done(id); }
         catch (x) { err.textContent = x.message; }
       };
     }
     form.onsubmit = async e => {
-      e.preventDefault(); const go = $('#lgGo', el); go.disabled = true; err.textContent = '';
-      try { const id = await Auth.login(cur.id, pw.value); el.remove(); document.body.classList.remove('no-scroll'); resolve(id); }
-      catch (x) { err.textContent = x.message; pw.select(); } finally { go.disabled = false; }
+      e.preventDefault(); const go = $('#lgGo', el); if (go.disabled) return; go.disabled = true; go.setAttribute('aria-busy', 'true'); err.textContent = '';
+      try { const id = await Auth.login(cur.id, pw.value); done(id); }
+      catch (x) { err.textContent = /fetch|network|Failed/i.test(x.message) ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วกดเข้าสู่ระบบอีกครั้ง' : x.message; pw.select(); } finally { go.disabled = false; go.removeAttribute('aria-busy'); }
     };
   });
 }
@@ -120,7 +124,7 @@ function openAccount() {
       <dl class="acct-facts">
         <div><dt>ทีม / หน้าที่</dt><dd>${esc(g?.name || '–')}</dd></div>
         <div><dt>รายงานต่อ</dt><dd>${mgr ? esc(mgr.name) : '–'}</dd></div>
-        <div><dt>งานที่เปิดอยู่</dt><dd>${w.active} งาน${w.delayed ? ` · <span class="late">${w.delayed} ล่าช้า</span>` : ''}</dd></div>
+        <div><dt>งานที่เปิดอยู่</dt><dd>${w.active} งาน${w.delayed ? ` · <span class="late">${w.delayed} เลยกำหนด</span>` : ''}</dd></div>
         ${pms.length ? `<div><dt>ดูแล Project</dt><dd>${pms.map(p => esc(p.name)).join(', ')}</dd></div>` : ''}
       </dl>
       <div class="more-list">

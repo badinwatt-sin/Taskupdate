@@ -37,7 +37,7 @@ V.dashboard = root => {
   const mine = visibleTasks().filter(t => isOwner(t, m.id) && t.status !== 'cancelled');
   const ws = weekStartOf(0), we = addDays(ws, 6);
   const myWeek = [...new Set(mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws).concat(mine.filter(t => isActive(t) && taskEnd(t) < ws)))];
-  const H = weekHealth(myWeek, 0), hLabel = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
+  const H = weekHealth(myWeek, 0), hLabel = healthLabel(H);
   const focus = sortBy(mine.filter(t => isActive(t) && taskStart(t) <= t0), t => taskEnd(t));
   const doneToday = mine.filter(t => t.status === 'done' && t.doneAt === t0);
   const overdue = mine.filter(isDelayed).length;
@@ -78,13 +78,13 @@ V.dashboard = root => {
     const rows = scope.map(x => ({ x, w: workload(x.id) })).sort((p, q) => q.w.active - p.w.active);
     const attention = sortBy(live.filter(t => isActive(t) && taskEnd(t) <= addDays(t0, 7)), t => taskEnd(t)).slice(0, 5);
     teamHTML = `<div class="sec-row"><h2 class="sec-h2">ทีม${isAdmin() ? '' : 'ที่ดูแล'}</h2>${isAdmin() ? `<select data-f="dash.group" aria-label="หน้าที่">${groupOptions(f.group, 'ทุกหน้าที่')}</select>` : ''}</div>
-    <div class="kpi-row">${kpi(c.doing, 'กำลังทำ', 'doing')}${kpi(c.todo, 'ยังไม่เริ่ม')}${kpi(c.done, 'เสร็จแล้ว', 'done')}${kpi(c.delayed, 'ล่าช้า', c.delayed ? 'late' : '')}</div>
+    <div class="kpi-row">${kpi(c.doing, 'กำลังทำ', 'doing')}${kpi(c.todo, 'ยังไม่เริ่ม')}${kpi(c.done, 'เสร็จแล้ว', 'done')}${kpi(c.delayed, 'เลยกำหนด', c.delayed ? 'late' : '')}</div>
     <div class="dash-main">
       <section class="card flushy"><div class="card-h"><h3>ทีมกำลังทำอะไร</h3><small class="muted">แตะชื่อเพื่อดูแผนของคนนั้น</small></div><div class="trows">${rows.map(({ x, w }) => `<button type="button" class="trow" data-act="goTodo" data-id="${x.id}">
         <span class="av">${avatar(x, 34)}</span><span class="who"><b>${esc(x.name)}</b><small>${esc(group(x.group).short)}</small></span>
         <span class="now">${w.doing[0] ? esc(w.doing[0].title) + (w.doing.length > 1 ? ` <small>+${w.doing.length - 1}</small>` : '') : '<span class="muted">–</span>'}</span>
         <span class="nxt">${w.next ? `<span class="${isDelayed(w.next) ? 'late' : ''}">${fmtD(taskEnd(w.next))}</span> <small>${fmtRel(taskEnd(w.next))}</small>` : '<span class="muted">–</span>'}</span>
-        <span class="ld"><span class="load-dot ${lvl[w.level][1]}"></span>${w.active} งาน${w.delayed ? ` <span class="late small">· ${w.delayed} ล่าช้า</span>` : ''}</span></button>`).join('')}</div></section>
+        <span class="ld"><span class="load-dot ${lvl[w.level][1]}"></span>${w.active} งาน${w.delayed ? ` <span class="late small">· ${w.delayed} เลยกำหนด</span>` : ''}</span></button>`).join('')}</div></section>
       <div class="stack">${attention.length ? `<section class="card"><div class="card-h"><h3>ต้องจับตา</h3><small class="muted">ภายใน 7 วัน</small></div><ul class="list">${attention.map(t => `<li data-act="openTask" data-id="${t.id}" class="clickable">${avatar(member(t.assigneeId), 26)}<div class="grow"><b class="clip">${esc(t.title)}</b><small class="muted">${esc(member(t.assigneeId)?.name || '–')}</small></div><span class="due ${isDelayed(t) ? 'late' : ''}">${fmtD(taskEnd(t))}</span></li>`).join('')}</ul></section>` : `<section class="card"><div class="empty small-empty">${ico('check', 28)}<h4>ไม่มีงานต้องจับตา</h4><p>ทุกงานในทีมยังอยู่ในกำหนด</p></div></section>`}</div>
     </div>`;
   }
@@ -92,8 +92,8 @@ V.dashboard = root => {
   /* ---- projects strip ---- */
   const projs = visibleProjects().map(p => ({ p, s: projectStats(p) }));
   const projHTML = projs.length ? `<div class="sec-row"><h2 class="sec-h2">Projects</h2><a class="link" href="#/projects">ทั้งหมด</a></div>
-    <div class="pstrip">${projs.map(({ p, s }) => `<a class="pc2" href="#/projects/${p.id}" style="--c:${p.color}"><span class="pc2-top"><b class="clip2">${esc(p.name)}</b>${s.delayed ? `<span class="badge st-delayed">${s.delayed} ล่าช้า</span>` : ''}</span>
-      <span class="pc2-ring" style="--p:${s.pct}"><span>${s.pct}%</span></span><small class="muted">${s.done}/${s.total} งาน · ${s.end ? 'ถึง ' + fmtD(s.end) : '–'}</small><span class="squad">${p.squad.slice(0, 5).map(id => avatar(member(id), 22)).join('')}</span></a>`).join('')}</div>` : '';
+    <div class="pstrip">${projs.map(({ p, s }) => `<a class="pc2" href="#/projects/${p.id}" style="--c:${p.color}"><span class="pc2-top"><b class="clip2">${esc(p.name)}</b>${s.delayed ? `<span class="badge st-delayed" title="${OVERDUE_TIP}">${s.delayed} เลยกำหนด</span>` : ''}</span>
+      <span class="pc2-ring" style="--p:${s.pct}"><span>${s.unplanned ? '–' : s.pct + '%'}</span></span><small class="muted">${s.unplanned ? 'ยังไม่ได้วางแผน · ยังไม่มีงาน' : `${s.done}/${s.total} งาน · ${s.end ? 'ถึง ' + fmtD(s.end) : '–'}`}</small><span class="squad">${p.squad.slice(0, 5).map(id => avatar(member(id), 22)).join('')}</span></a>`).join('')}</div>` : '';
 
   /* ---- breakdown ---- */
   const by = (!team && ['group', 'offsite'].includes(f.by || 'group')) ? 'project' : (f.by || 'group');
@@ -107,7 +107,7 @@ V.dashboard = root => {
 
   root.innerHTML = hero + `<div class="home-grid">${focusCard}${nextCard}</div>` + teamHTML + projHTML + `
   <section class="card mt"><div class="card-h"><h3>สัดส่วนงาน${team ? 'ของทีม' : 'ของฉัน'}</h3><div class="seg-ctl sm">${byTabs}</div></div>
-    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span><i class="x"></i>ล่าช้า</span></div>${breakdown}</section>`;
+    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span title="${OVERDUE_TIP}"><i class="x"></i>เลยกำหนด</span></div>${breakdown}</section>`;
 };
 ACT.dashBy = el => { ST.dash.by = el.dataset.id; render(); };
 ACT.goTodo = el => { ST.todo.user = el.dataset.id; ST.todo.week = 0; location.hash = '#/todo'; };
@@ -265,7 +265,7 @@ function itemsOnDay(d) {
 }
 function calHeader(title) {
   const c = ST.cal;
-  return `<div class="cal-bar"><div class="seg-ctl"><button class="${c.mode === 'agenda' ? 'on' : ''}" data-act="calMode" data-id="agenda">รายการ</button><button class="${c.mode === 'month' ? 'on' : ''}" data-act="calMode" data-id="month">รายเดือน</button><button class="${c.mode === 'year' ? 'on' : ''}" data-act="calMode" data-id="year">ภาพรวมทั้งปี</button></div>
+  return `<div class="cal-bar"><div class="seg-ctl"><button class="${c.mode === 'agenda' ? 'on' : ''}" data-act="calMode" data-id="agenda" title="ดูเป็นรายการเรียงตามวัน — อ่านชื่อกิจกรรมได้ครบ">รายการตามวัน</button><button class="${c.mode === 'month' ? 'on' : ''}" data-act="calMode" data-id="month">รายเดือน</button><button class="${c.mode === 'year' ? 'on' : ''}" data-act="calMode" data-id="year">ภาพรวมทั้งปี</button></div>
     <div class="cal-nav"><button class="icon-btn" data-act="calPrev" aria-label="ก่อนหน้า">${ico('left')}</button><h2>${title}</h2><button class="icon-btn" data-act="calNext" aria-label="ถัดไป">${ico('right')}</button><button class="btn btn-ghost btn-sm" data-act="calToday">วันนี้</button></div>
     <div class="cal-opts"><label class="check"><input type="checkbox" data-f="cal.ram" ${c.ram ? 'checked' : ''}> Event Support (RAM/Other)</label></div></div>
     <div class="cat-filter" role="group" aria-label="หมวด"><span class="muted small">หมวด</span><button type="button" class="${!(c.cats || []).length ? 'on' : ''}" data-act="calCat" data-id="">ทั้งหมด</button>${EV_CATS.map(([k, l, col]) => `<button type="button" class="${(c.cats || []).includes(k) ? 'on' : ''}" style="--cc:${col}" data-act="calCat" data-id="${k}"><i></i>${l}</button>`).join('')}</div>`;

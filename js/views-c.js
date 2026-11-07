@@ -78,12 +78,15 @@ function weekHealth(list, off) {
   const dow = (new Date().getDay() + 6) % 7, expected = off < 0 ? 1 : off > 0 ? 0 : dow > 4 ? 1 : Math.min(1, (dow + .5) / 5);
   const pct = total ? done / total : 1;
   const soon = list.filter(t => t.status === 'todo' && off === 0 && taskEnd(t) <= addDays(today(), 1) && taskEnd(t) >= today()).length;
-  let level = 'green', msg = 'เป็นไปตามแผน';
+  let level = 'green', msg = 'เป็นไปตามแผน', behind = false;
   if (!total) return { level: 'none', msg: 'ยังไม่มีงานในแผนสัปดาห์นี้', total, done, late, pct: 0 };
-  if (late > 0 || (off <= 0 && pct < expected - .35)) { level = 'red'; msg = late ? `มีงานเลยกำหนด ${late} รายการ` : 'ความคืบหน้าช้ากว่าแผนมาก'; }
-  else if (soon > 0 || (off <= 0 && pct < expected - .15)) { level = 'yellow'; msg = soon ? `มี ${soon} งานครบกำหนดภายใน 1 วันแต่ยังไม่เริ่ม` : 'ความคืบหน้าช้ากว่าแผนเล็กน้อย'; }
-  return { level, msg, total, done, late, pct: Math.round(pct * 100) };
+  if (late > 0 || (off <= 0 && pct < expected - .35)) { level = 'red'; behind = !late; msg = late ? `มีงานเลยวัน Target แต่ยังไม่เสร็จ ${late} งาน` : `เสร็จ ${Math.round(pct * 100)}% แต่ ณ วันนี้ควรเสร็จราว ${Math.round(expected * 100)}%`; }
+  else if (soon > 0 || (off <= 0 && pct < expected - .15)) { level = 'yellow'; behind = !soon; msg = soon ? `มี ${soon} งานครบกำหนดภายใน 1 วันแต่ยังไม่เริ่ม` : `ช้ากว่าแผนเล็กน้อย — เสร็จ ${Math.round(pct * 100)}% (ควรราว ${Math.round(expected * 100)}%)`; }
+  return { level, msg, total, done, late, behind, pct: Math.round(pct * 100) };
 }
+/* plain label: “เลยกำหนด” is about dates, “ช้ากว่าแผน” is about progress — never mix them */
+const healthLabel = H => H.level === 'red' ? (H.late ? 'มีงานเลยกำหนด' : 'ช้ากว่าแผน') : { green: 'ตามแผน', yellow: 'ต้องระวัง', none: 'ยังไม่มีแผน' }[H.level];
+const HEALTH_TIP = `${OVERDUE_TIP} · ${BEHIND_TIP}`;
 V.todo = root => {
   const f = ST.todo, off = f.week || 0, ppl = scopeMembers();
   if (!f.user || !ppl.find(m => m.id === f.user)) f.user = me().id;
@@ -93,7 +96,7 @@ V.todo = root => {
   const inWeek = mine.filter(t => taskStart(t) <= we && taskEnd(t) >= ws);
   const carry = off === 0 ? mine.filter(t => isActive(t) && taskEnd(t) < ws) : [];
   const list = [...new Set(inWeek.concat(carry))];
-  const H = weekHealth(list, off), label = { green: 'ตามแผน', yellow: 'ต้องระวัง', red: 'ล่าช้า', none: 'ยังไม่มีแผน' }[H.level];
+  const H = weekHealth(list, off), label = healthLabel(H);
   const col = (st, th) => { const ts = sortBy(list.filter(t => t.status === st), t => taskEnd(t));
     return `<div class="kcol k-${st}"><div class="kcol-h"><b>${th}</b><em>${ts.length}</em></div><div class="kcol-body" data-drop="${st}">${ts.map(wcard).join('') || `<p class="kempty">${st === 'todo' && own ? 'ยังไม่มีงาน — กด “+ เพิ่มงาน”' : 'ลากงานมาวางที่นี่'}</p>`}</div></div>`; };
   const wcard = t => {
@@ -101,15 +104,15 @@ V.todo = root => {
     return `<article class="kcard wcard ${late ? 'is-late' : ''}" draggable="${canStatus(t)}" data-id="${t.id}" data-act="openTask" tabindex="0">
       <b class="kc-title">${esc(t.title)}</b>
       <div class="wc-dates"><span>${fmtD(taskStart(t))}</span><i></i><span class="${late ? 'late' : ''}">${fmtD(taskEnd(t))}</span><small class="muted">${late ? 'เลยกำหนด' : 'Start → Target'}</small></div>
-      ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ส่วนตัว</span>'}${t.private ? ico('lock', 12) : ''}<span class="grow"></span>${advBtn(t)}
+      ${t.assignedBy && t.assignedBy !== t.assigneeId ? `<div class="assigned-by">มอบหมายโดย ${esc(member(t.assignedBy)?.name || '–')}</div>` : ''}<div class="wc-foot">${p ? `<span class="pchip" style="--c:${p.color}">${esc(p.name)}</span>` : '<span class="muted small">ไม่ผูก Project</span>'}${audienceChip(t)}<span class="grow"></span>${advBtn(t)}
         ${full && own && t.status !== 'done' ? `<button type="button" class="mini-btn nextwk" data-act="nextWeek" data-id="${t.id}" title="เลื่อนแผนงานนี้ไปสัปดาห์หน้า">สัปดาห์หน้า ${ico('right', 13)}</button>` : ''}</div></article>`;
   };
   const chips = ppl.length > 1 ? `<div class="who-bar" role="tablist" aria-label="ดูแผนของ">${[me(), ...ppl.filter(m => m.id !== me().id)].map(m => `<button type="button" role="tab" class="who-chip ${m.id === f.user ? 'on' : ''}" aria-selected="${m.id === f.user}" data-act="planWho" data-id="${m.id}">${avatar(m, 26)}<span>${m.id === me().id ? 'ของฉัน' : esc(m.name)}</span></button>`).join('')}</div>` : '';
   root.innerHTML = pageHead(own ? pageName('todo') : `แผนของ ${who.name}`, own ? 'วางงานของสัปดาห์ แล้วเลื่อนการ์ดเมื่อคืบหน้า' : `คุณกำลังดูแผนของ ${esc(who.name)} · กด “+ มอบหมายงาน” เพื่อเพิ่มงานให้`) + chips + `
   <div class="week-bar"><div class="week-nav"><button class="icon-btn" data-act="weekGo" data-d="-1" aria-label="สัปดาห์ก่อน">${ico('left')}</button><h2>${fmtD(ws)} – ${fmtD(we)} ${parse(we).getFullYear() + 543}</h2><button class="icon-btn" data-act="weekGo" data-d="1" aria-label="สัปดาห์ถัดไป">${ico('right')}</button>${off !== 0 ? '<button class="btn btn-ghost btn-sm" data-act="weekGo" data-d="0">สัปดาห์นี้</button>' : '<span class="badge">สัปดาห์นี้</span>'}</div>
-    <div class="health h-${H.level}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
+    <div class="health h-${H.level}" title="${HEALTH_TIP}"><span class="dot"></span><div><b>${label}</b><small>${H.msg}</small></div><div class="hprog"><div class="progress"><i style="width:${H.pct}%"></i></div><small>${H.done}/${H.total} งานเสร็จ</small></div></div></div>
   <div class="kanban three">${col('todo', 'To do')}${col('doing', 'Doing')}${col('done', 'Done')}</div>
-  <p class="muted small kb-hint">กด “+ เพิ่มงาน” เพื่อเพิ่มงาน · งานจะขึ้น Kanban ของทีมอัตโนมัติ (ยกเว้นงานที่ตั้งเป็นส่วนตัว) · ลากการ์ด หรือกดปุ่มสถานะบนการ์ดเพื่อเลื่อน To do ⇄ Doing ⇄ Done · “สัปดาห์หน้า” ย้ายแผนงานไปสัปดาห์ถัดไป · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด</p>`;
+  <p class="muted small kb-hint">กด “+ เพิ่มงาน” เพื่อเพิ่มงาน · งานจะขึ้น Kanban ของทีมอัตโนมัติ (ยกเว้นงานที่ตั้งเป็น “เฉพาะฉัน”) · ลากการ์ด หรือกดปุ่มสถานะบนการ์ดเพื่อเลื่อน To do ⇄ Doing ⇄ Done · “สัปดาห์หน้า” ย้ายแผนงานไปสัปดาห์ถัดไป · งานค้างจากสัปดาห์ก่อนแสดงอยู่ในสัปดาห์นี้และติดป้ายเลยกำหนด</p>`;
   bindKanban(root);
 };
 /* ---------------- Assign Task (leaders / admin only) ---------------- */
@@ -324,12 +327,12 @@ V.team = root => {
     return `<article class="mcard"><div class="mc-top">${avatar(m, 46)}<div class="grow"><b>${esc(m.name)}${m.alias ? ` <small class="muted">(${esc(m.alias)})</small>` : ''}</b><small>${esc(m.position)}</small></div>
       ${(admin || m.id === me().id) ? `<button class="icon-btn" data-act="myStyle" data-id="${m.id}" title="ปรับแต่ง Post-it & Icon" aria-label="ปรับแต่งสไตล์">${ico('sparkles', 16)}</button>` : ''}${admin ? `<button class="icon-btn" data-act="editMember" data-id="${m.id}" aria-label="แก้ไข ${esc(m.name)}">${ico('edit', 16)}</button>` : ''}</div>
       <div class="mc-tags">${m.role === 'admin' ? '<span class="badge ev-confirmed">Admin</span>' : ''}${pms.map(p => `<span class="pm" title="${esc(p.name)}">PM · ${esc(p.name)}</span>`).join('')}</div>
-      ${admin ? `<div class="pwline" data-id="${m.id}"><span class="muted small">รหัสผ่านปัจจุบัน</span><code class="pwc">…</code></div>` : ''}<p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} ล่าช้า</span>` : '<span class="muted">ไม่มีงานล่าช้า</span>'}</div></article>`;
+      ${admin ? `<div class="pwline" data-id="${m.id}"><span class="muted small">รหัสผ่านปัจจุบัน</span><code class="pwc">…</code></div>` : ''}<p class="resp">${esc(m.resp || 'ยังไม่ได้ระบุหน้าที่')}</p>${m.managerId && member(m.managerId) ? `<small class="muted">รายงานต่อ ${esc(member(m.managerId).name)}</small>` : ''}<div class="mc-foot"><span>${w.active} งานเปิดอยู่</span>${w.delayed ? `<span class="late">${w.delayed} เลยกำหนด</span>` : '<span class="muted">ไม่มีงานเลยกำหนด</span>'}</div></article>`;
   };
   root.innerHTML = pageHead(pageName('team'), `ทีม สิทธิ์ และการตั้งค่า · สมาชิก ${S().members.length} คน · สิทธิ์ของคุณ: <b>${admin ? 'Admin (ดูภาพรวมทีม)' : isPM() ? 'Project Manager' : 'สมาชิก'}</b>`,
     admin ? `<button class="btn btn-ghost" data-act="setAllPwDialog">${ico('lock', 16)} ตั้งรหัสผ่านให้ทุกคน</button>` : '') + `
   <div class="tabs" role="tablist"><button class="${ST.team.tab === 'members' ? 'on' : ''}" data-act="teamTab" data-id="members">สมาชิก</button><button class="${ST.team.tab === 'org' ? 'on' : ''}" data-act="teamTab" data-id="org">สายบังคับบัญชา</button></div>
-  <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Event และ Offsite · งานที่ตั้งเป็น “ส่วนตัว” เห็นเฉพาะเจ้าของ</div>
+  <div class="note">${ico('lock', 14)} <b>สิทธิ์การมองเห็น:</b> Admin เห็นทุกอย่าง · หัวหน้าทีมเห็นงานของตนเองและลูกน้อง (Direct report) · สมาชิกเห็นงานของตนเองและ Project ที่ร่วมอยู่ · ทุกคนเห็น Event และ Offsite · งานที่ไม่ผูก Project แสดงเป็น Post-it ที่ทีมเห็นได้ · งานที่ตั้งเป็น “เฉพาะฉัน” แสดงเฉพาะเจ้าของ (ข้อมูลยังเก็บในฐานข้อมูลร่วมของทีม)</div>
   ${ST.team.tab === 'org' ? orgTree(admin) : S().groups.map(g => { const ms = S().members.filter(m => m.group === g.id); return ms.length ? `<h3 class="grp-h"><i style="background:${g.color}"></i>${esc(g.name)} <em>${ms.length}</em></h3><div class="mcards">${ms.map(memberCard).join('')}</div>` : ''; }).join('')}
   ${admin ? `<h2 class="sec-h">การตั้งค่า (Admin)</h2><div class="two-col">
     <section class="card"><div class="card-h"><h3>การนับวัน & วันหยุดบริษัท</h3></div>

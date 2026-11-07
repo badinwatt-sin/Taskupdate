@@ -538,3 +538,44 @@ input,select,textarea,button{font-family:inherit}
 .push-card .grow{flex:1 1 200px;min-width:0}.pc-acts{display:flex;gap:6px}
 .bell-modal .modal-body{padding-top:14px}
 @media (min-width:861px){ .bell-btn{margin-left:auto} .bell-btn + #addBtn{margin-left:8px} }
+
+/* ======================================================================
+   Touch: invisible hit areas of at least ~44×44 px — the visible size and look stay the same
+   ====================================================================== */
+@media (pointer:coarse){
+  :where(.icon-btn,.search-trigger,.bell-btn,.tb-user,.adv,.mini-btn,.who-chip,.tick,a.link,.btn-sm,.seg-ctl button,.cat-filter button,.chip-s,.pp-chip,.x,.link-btn,.cal-bar .btn){position:relative}
+  :where(.icon-btn,.search-trigger,.bell-btn)::after{content:"";position:absolute;inset:-4px}
+  :where(.tb-user)::after{content:"";position:absolute;inset:-6px}
+  :where(.adv,.mini-btn,.btn-sm,.seg-ctl button,.cat-filter button,.chip-s,.pp-chip,.cal-bar .btn)::after{content:"";position:absolute;inset:-6px 0}
+  :where(.who-chip)::after{content:"";position:absolute;inset:-4px 0}
+  :where(.tick)::after{content:"";position:absolute;inset:-11px}
+  :where(a.link,.link-btn)::after{content:"";position:absolute;inset:-12px -6px}
+  :where(.x)::after{content:"";position:absolute;inset:-12px}
+  label.check{padding-block:10px;margin-block:-10px}
+  .stepper{gap:6px}
+}
+/* the floating + button tucks into a round icon while you scroll down, so it covers less of the list */
+@media (max-width:860px){
+  .fab span{transition:opacity .15s}
+  body.fab-mini .fab{width:52px;padding:0;justify-content:center;gap:0}
+  body.fab-mini .fab span{display:none}
+}
+/* long words and text never push the page wider than the screen */
+.view{overflow-wrap:anywhere}
+.view .tbl{overflow-wrap:normal}
+/* search window: scope note + grouped results */
+.gscope{margin:6px 2px 4px}
+.gsec{margin-top:10px}.gsec-h{display:block;font-weight:700;margin:0 4px 4px;color:var(--muted)}
+.gr[aria-disabled="true"]{cursor:default;opacity:.75}
+/* who can see a task */
+.aud{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.aud .ico{flex:none}
+.aud-line{margin:-4px 0 0;font-size:12.5px;color:var(--text);display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.aud-line .ico{align-self:center}
+@media (max-width:860px) and (orientation:landscape) and (max-height:520px){ body.fab-mini .fab{width:40px} }
+/* on-screen keyboard: the window follows the visible area; the tab bar and + step aside */
+@media (max-width:860px){
+  .modal-back{top:var(--vvt,0);bottom:auto;height:var(--vvh,100%)}
+  .modal{max-height:min(94dvh,calc(var(--vvh,100dvh) - 6px))}
+  body.kb-open .tabbar,body.kb-open .fab{display:none!important}
+}
