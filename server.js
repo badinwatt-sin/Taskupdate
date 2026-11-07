@@ -16,6 +16,7 @@ const store = {
   async getAuth() { return read(AUTH); }, async saveAuth(a) { write(AUTH, a); },
   async getBlob(k) { try { return fs.readFileSync(path.join(DIR, 'img', k + '.txt'), 'utf8'); } catch (e) { return null; } },
   async getPosts() { const d = read(POSTS) || { seq: 0, entries: [] }; return d; },
+  async getPostsVer() { return (read(POSTS) || { seq: 0 }).seq; },
   async addPost(e) {   // single process: read-modify-write is safe here
     const d = read(POSTS) || { seq: 0, entries: [] };
     if (e.cid) { const dup = d.entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { seq: d.seq, entry: dup }; }

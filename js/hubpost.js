@@ -104,10 +104,12 @@ function hpBadge() {
 /* polling: fast while the board is on screen, slow otherwise */
 function hpSchedule() {
   clearTimeout(HubPost.timer);
-  const on = ['hub', 'dashboard'].includes(route().name);
-  HubPost.timer = setTimeout(async () => { if (!document.hidden && Store.state) { if (await HubPost.load()) hpDraw(); } hpSchedule(); }, on ? 12000 : 60000);
+  const on = route().name === 'hub';
+  if (!on) return;   // elsewhere the regular 90-second sync carries the “new posts” signal (hpNotice)
+  HubPost.timer = setTimeout(async () => { if (!document.hidden && Store.state) { if (await HubPost.load()) hpDraw(); } hpSchedule(); }, 30000);
 }
-document.addEventListener('visibilitychange', async () => { if (!document.hidden && Store.state && HubPost.loaded) { if (await HubPost.load()) hpDraw(); } });
+async function hpNotice(ver) { if (HubPost.local() || !HubPost.loaded || String(ver) === String(HubPost.seq)) return; if (await HubPost.load()) hpDraw(); }
+document.addEventListener('visibilitychange', async () => { if (!document.hidden && Store.state && HubPost.loaded && route().name === 'hub') { if (await HubPost.load()) hpDraw(); } });
 
 /* ---------- page ---------- */
 V.hub = root => {

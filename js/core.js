@@ -138,7 +138,7 @@ const Store = {
     if (!loaded) { this.state = seed(); if (this.mode === 'server') await this.push(true); else this.save(); }
     this.snap = null;   // the first save after load only records the baseline
     this.migrate();
-    if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => { if (!document.hidden) this.poll(); }, 60000); }
+    if (this.mode === 'server') { clearInterval(this.pollT); this.pollT = setInterval(() => { if (!document.hidden) this.poll(); }, 90000); }   // free-tier friendly: one small request every 90 s while the app is on screen
     this.setSync();
     if (!this.hooked) {
       this.hooked = true;
@@ -176,6 +176,7 @@ const Store = {
     if (this.pending || !this.token) return;
     try {
       const r = await fetch('api/state?rev=' + this.rev, { cache: 'no-store', headers: this.headers() });
+      const pv = r.headers.get('X-Posts-Ver'); if (pv != null && window.hpNotice) hpNotice(pv);   // new Hub Posts? (no extra request)
       if (r.status === 304) return; if (r.status === 401) return Auth.expired();
       const j = await r.json();
       if (j.state && j.rev !== this.rev) { this.rev = j.rev; this.state = j.state; this.migrate(); if (window.takeSnap) takeSnap(); AEX.onRemote && AEX.onRemote(); }
