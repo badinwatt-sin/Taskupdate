@@ -705,3 +705,14 @@ input,select,textarea,button{font-family:inherit}
 .hp-imgs.n1 .hp-img,.hp-imgs.compact .hp-img{aspect-ratio:var(--ar);max-height:min(420px,60vh)}
 .hp-imgs.compact{max-width:none}.hp-imgs.compact .hp-img{max-height:min(320px,45vh)}
 .hp-imgs{background:transparent}
+/* Hub Post pictures (Safari-safe): the picture sizes itself — scaled down to fit, never cropped, never stretched.
+   No percentage heights (Safari does not resolve them inside a button), the box takes the picture's own size. */
+.hp-imgs .hp-img,.hp-imgs.n1 .hp-img,.hp-imgs.compact .hp-img,.hp-imgs:not(.n1) .hp-img,.hp-imgs.n3 .hp-img:first-child{aspect-ratio:auto;height:auto;max-height:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.hp-imgs .hp-img-in{display:block;width:auto;height:auto}
+.hp-imgs .hp-img-in:empty{width:100%;aspect-ratio:var(--ar);max-height:min(420px,60vh)}   /* space held while the picture loads */
+.hp-imgs .hp-img-in img,.hp-imgs.n1 .hp-img-in img{display:block;width:auto;height:auto;max-width:100%;max-height:min(420px,60vh);object-fit:contain;margin:0 auto}
+.hp-imgs.compact .hp-img-in img,.hp-imgs.compact .hp-img-in:empty{max-height:min(320px,45vh)}
+.hp-imgs:not(.n1):not(.compact) .hp-img-in img,.hp-imgs:not(.n1):not(.compact) .hp-img-in:empty{max-height:200px}
+.hp-imgs .hp-img-in{max-width:100%}
+.hp-imgs.n3{grid-template-rows:auto}.hp-imgs.n3 .hp-img:first-child{grid-row:auto}
+.hp-imgs.n3{grid-template-columns:1fr 1fr}
