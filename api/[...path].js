@@ -22,6 +22,15 @@ const store = {
     const entries = (list || []).map(x => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
     return { entries };
   },
+  async usage() {   // sizes of the stored values (Redis adds a little overhead per key)
+    const [state, auth, plen] = await Promise.all([cmd(['STRLEN', 'tmh:state']), cmd(['STRLEN', 'tmh:auth']), cmd(['LLEN', 'tmh:posts'])]);
+    const list = plen ? await cmd(['LRANGE', 'tmh:posts', 0, -1]) : [];
+    const keys = []; let cur = '0';
+    do { const [next, batch] = await cmd(['SCAN', cur, 'MATCH', 'tmh:img:*', 'COUNT', 500]); cur = String(next); keys.push(...batch); } while (cur !== '0' && keys.length < 5000);
+    const blobs = await Promise.all(keys.map(async k => ({ id: k.slice(8), bytes: +(await cmd(['STRLEN', k])) || 0 })));
+    return { state: +state || 0, auth: +auth || 0, posts: { bytes: (list || []).reduce((n, x) => n + Buffer.byteLength(x), 0), count: +plen || 0 }, blobs, backend: 'redis' };
+  },
+  async trimPosts(keep) { const before = +(await cmd(['LLEN', 'tmh:posts'])) || 0; await cmd(['LTRIM', 'tmh:posts', -keep, -1]); await cmd(['INCR', 'tmh:postver']); return { removed: Math.max(0, before - keep) }; },
   async getPostsVer() { return +(await cmd(['GET', 'tmh:postver'])) || 0; },   // bumped after each entry is in the list
   async addPost(e) {   // INCR + RPUSH are atomic, so concurrent posts all land
     if (e.cid) { const { entries } = await this.getPosts(); const dup = entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { entry: dup, dup: true }; }

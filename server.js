@@ -22,6 +22,13 @@ const store = {
     if (e.cid) { const dup = d.entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { seq: d.seq, entry: dup, dup: true }; }
     d.seq++; e.id = 'pst_' + d.seq; d.entries.push(e); d.entries = d.entries.slice(-1500); write(POSTS, d); return { seq: d.seq, entry: e };
   },
+  async usage() {   // bytes on disk per part
+    const size = f => { try { return fs.statSync(f).size; } catch (e) { return 0; } }, d = path.join(DIR, 'img');
+    let blobs = []; try { blobs = fs.readdirSync(d).filter(f => f.endsWith('.txt')).map(f => ({ id: f.slice(0, -4), bytes: size(path.join(d, f)) })); } catch (e) { }
+    const posts = read(POSTS) || { entries: [] };
+    return { state: size(DATA), auth: size(AUTH), posts: { bytes: size(POSTS), count: posts.entries.length }, blobs, backend: 'file' };
+  },
+  async trimPosts(keep) { const d = read(POSTS) || { seq: 0, entries: [] }; const before = d.entries.length; d.entries = d.entries.slice(-keep); d.seq++; write(POSTS, d); return { removed: before - d.entries.length }; },
   async setBlob(k, v) { const d = path.join(DIR, 'img'); fs.mkdirSync(d, { recursive: true }); if (v == null) { try { fs.unlinkSync(path.join(d, k + '.txt')); } catch (e) { } } else fs.writeFileSync(path.join(d, k + '.txt'), v); },
 };
 const hub = createHub(store, { log: a => console.log(`\n  Initial password for every member: ${a.default}\n  (Admin can change it, and set per-person passwords, in Team & Access)\n`) });

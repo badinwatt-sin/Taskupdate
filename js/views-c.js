@@ -351,10 +351,11 @@ V.team = root => {
     <section class="card mt"><div class="card-h"><h3>รหัสผ่านเข้าใช้งาน (Admin เท่านั้น)</h3></div>
       <p class="muted small mb">กำหนดรหัสเริ่มต้นหรือรหัสรายบุคคลให้สมาชิกเข้าใช้งานครั้งแรก สมาชิกเปลี่ยนรหัสของตัวเองได้ที่เมนู “Account” และ Admin เห็นรหัสปัจจุบันของทุกคนที่นี่เพื่อแจ้งเมื่อมีคนลืม</p>
       <div id="accessBox"><p class="muted small">กำลังโหลด…</p></div></section>
+    ${storageCardHTML()}
     <section class="card mt"><div class="card-h"><h3>ข้อมูลและการสำรอง</h3></div>
       <p class="muted small">โหมดจัดเก็บ: <b>${Store.mode === 'server' ? 'ซิงค์กับเซิร์ฟเวอร์ (ทีมใช้ข้อมูลชุดเดียวกัน)' : 'บันทึกในเบราว์เซอร์เครื่องนี้เท่านั้น — รัน “node server.js” เพื่อแชร์ทั้งทีม'}</b></p>
       <div class="btn-row"><button class="btn btn-ghost" data-act="exportBackup">${ico('download', 16)} สำรองข้อมูล (JSON)</button><label class="btn btn-ghost">${ico('upload', 16)} นำเข้าข้อมูล<input type="file" id="importIn" accept=".json" hidden></label><button class="btn btn-ghost" data-act="startClean">เริ่มต้นใหม่ (ล้างงานตัวอย่าง เก็บรายชื่อทีม)</button><button class="btn btn-danger-ghost" data-act="resetDemo">รีเซ็ตเป็นข้อมูลตัวอย่าง</button></div></section>` : ''}`;
-  loadAccessTable(); fillCardPasswords();
+  loadAccessTable(); fillCardPasswords(); if (admin) loadStorage();
   const imp = $('#importIn'); if (imp) imp.onchange = () => {
     const file = imp.files[0]; if (!file) return;
     const r = new FileReader(); r.onload = async () => {
