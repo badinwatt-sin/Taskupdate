@@ -22,7 +22,7 @@ function render() {
   document.body.dataset.route = r.name;
   view.className = 'view v-' + r.name + (key !== lastRoute ? ' enter' : '');
   V[r.name](view, r.id);
-  renderTabbar(r); renderAdd(r); renderBell();
+  renderTabbar(r); renderAdd(r); renderBell(); hpBadge(); hpSchedule();
   const tu = $('#tbUser'); if (tu) tu.innerHTML = avatar(m, 32);
   document.title = pageName(r.name) + ' · TEAM Hub';
   if (key !== lastRoute) { window.scrollTo(0, 0); lastRoute = key; document.body.classList.remove('nav-open'); } else window.scrollTo(0, y);
@@ -36,7 +36,7 @@ window.addEventListener('hashchange', render);
    Project = visibleProjects() · Event = every event (everyone sees the calendar) · Offsite = every log (everyone sees Offsite)
    สมาชิก = everyone's name; opening a plan is limited to people in your scope.
    Not searched: attachments, Poster drafts, notifications. */
-const SEARCH_SCOPE = 'ค้นหาใน: งานที่คุณมีสิทธิ์เห็น · Project · Event · Offsite · รายชื่อสมาชิก — ไม่รวมไฟล์แนบ, Poster และการแจ้งเตือน';
+const SEARCH_SCOPE = 'ค้นหาใน: งานที่คุณมีสิทธิ์เห็น · Project · Event · Offsite · Hub Post · รายชื่อสมาชิก — ไม่รวมไฟล์แนบ, Poster และการแจ้งเตือน';
 const SEARCH_MAX = 8;
 function openSearch() {
   modal({
@@ -55,6 +55,7 @@ function openSearch() {
         add('Project', visibleProjects().filter(p => hit(p.name, p.goal, member(p.pmId)?.name)), p => ['Project', p.name, `PM: ${member(p.pmId)?.name || '–'}`, 'goProject', p.id]);
         add('Event', sortBy(S().events.filter(e => hit(e.name, e.venue, catLabel(e.cat), e.note)), e => e.start).reverse(), e => ['Event', e.name, `${fmtRange(e.start, e.end)}${e.venue ? ' · ' + e.venue : ''} · ${(EV_STATUS[e.status] || EV_STATUS.planning).th}`, 'openEvent', e.id]);
         add('Offsite', sortBy((S().offsite || []).filter(o => hit(o.title, o.area, o.note, offNames(o))), o => o.start).reverse(), o => ['Offsite', o.title, `${fmtRange(o.start, o.end)} · ${o.area || '–'} · ${offNames(o) || '–'}`, 'openOffsite', o.id]);
+        add('Hub Post', HubPost.posts().filter(p => hit(p.text, member(p.by)?.name, ...p.replies.map(r => r.text))), p => ['โพสต์', (p.text || '').slice(0, 80), `${member(p.by)?.name || '–'} · ${hpAgo(p.at)}${p.replies.length ? ' · ' + p.replies.length + ' ความเห็น' : ''}`, 'hpGoSearch', p.id]);
         if (FEATURES.meetings) add('ประชุม', S().meetings.filter(x => hit(x.title, x.summary)), x => ['ประชุม', x.title, fmtDY(x.date), 'goMeeting', x.id]);
         add('สมาชิก', S().members.filter(x => hit(x.name, x.alias, x.position)), x => ['สมาชิก', x.name, inScope(x.id) ? `${x.position || ''} · ดูแผนงาน` : `${x.position || ''} · ดูแผนได้เฉพาะคนในทีมของคุณ`, inScope(x.id) ? 'goTodo' : '', x.id]);
         out.innerHTML = sec.length ? sec.map(g => `<div class="gsec"><small class="gsec-h">${g.name} <span class="muted">${g.total > SEARCH_MAX ? `แสดง ${SEARCH_MAX} จาก ${g.total} — พิมพ์ให้เจาะจงขึ้น` : g.total + ' รายการ'}</span></small>${g.rows.map(r => `<button type="button" class="gr" ${r[3] ? `data-act="${r[3]}"` : 'aria-disabled="true"'} data-id="${esc(r[4])}" data-close-search><span class="badge">${r[0]}</span><div class="grow"><b>${esc(r[1])}</b><small>${esc(r[2])}</small></div></button>`).join('')}</div>`).join('')
@@ -131,6 +132,7 @@ async function bootApp() {
     if (!id) id = await showLogin();
   }
   AEX.meId = id; takeSnap(); if (Store.mode === 'server') swReady();
+  HubPost.load().then(hpDraw);
   AEX.onRemote = () => { if (!modalStack.length) render(); };
   if (!member(AEX.meId)) AEX.meId = S().members[0].id;
   render();

@@ -151,7 +151,7 @@ const Store = {
   async bootstrap() { this.state = seed(); this.migrate(); await this.push(true); this.hasState = true; },
   migrate() {
     const st = this.state; st.projects.forEach(p => { p.taskGroups ||= []; }); st.offsite ||= []; st.settings.eventEditors ||= []; st.meetings ||= []; st.events ||= []; st.notices ||= []; st.noticeSeen ||= {};
-    if (this.mode === 'local') st.auth ||= { defaultPassword: 'welcome1', pw: {} };   // demo-only: server mode keeps passwords out of the shared data
+    if (this.mode === 'local') { st.auth ||= { defaultPassword: 'welcome1', pw: {} }; st.posts ||= []; }   // demo mode keeps Hub Post in the local state   // demo-only: server mode keeps passwords out of the shared data
     else delete st.auth;
   },
   save() {

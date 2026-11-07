@@ -48,6 +48,7 @@ function pageAdd(r) {
     case 'calendar': return canManageEvents() ? { label: 'เพิ่ม Event', fn: () => openEvent(null) } : null;
     case 'board': { const q = quickActions().find(x => x[0] === 'ptask'); return q ? { label: 'เพิ่มงาน', fn: q[5] } : null; }
     case 'support': return { label: 'บันทึก Offsite', fn: () => openOffsite(null) };
+    case 'hub': return { label: 'เขียนโพสต์', fn: () => { const t = $('#hpCompose textarea'); if (t) { t.scrollIntoView({ block: 'center' }); t.focus(); } } };
     case 'poster': return null;   // the page has its own “เริ่มใหม่”; a floating button would cover the export bar
     case 'team': return isAdmin() ? { label: 'เพิ่มสมาชิก', fn: () => openMember(null) } : null;
   }

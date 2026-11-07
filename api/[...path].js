@@ -17,6 +17,18 @@ const store = {
   async getAuth() { const v = await cmd(['GET', 'tmh:auth']); return v ? JSON.parse(v) : null; },
   async saveAuth(a) { await cmd(['SET', 'tmh:auth', JSON.stringify(a)]); },
   async getBlob(k) { return await cmd(['GET', 'tmh:img:' + k]); },
+  async getPosts() {
+    const list = await cmd(['LRANGE', 'tmh:posts', 0, -1]);
+    const entries = (list || []).map(x => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+    const max = Math.max(0, ...entries.map(e => +String(e.id).slice(4) || 0));
+    return { seq: max + ':' + entries.length, entries };   // version = what is actually in the list (an INCR'd id can land a moment later)
+  },
+  async addPost(e) {   // INCR + RPUSH are atomic, so concurrent posts all land
+    if (e.cid) { const { entries } = await this.getPosts(); const dup = entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { entry: dup }; }
+    const seq = +(await cmd(['INCR', 'tmh:postseq'])); e.id = 'pst_' + seq;
+    await cmd(['RPUSH', 'tmh:posts', JSON.stringify(e)]); await cmd(['LTRIM', 'tmh:posts', -1500, -1]);
+    return { entry: e };
+  },
   async setBlob(k, v) { await cmd(v == null ? ['DEL', 'tmh:img:' + k] : ['SET', 'tmh:img:' + k, v]); },
 };
 const hub = createHub(store);

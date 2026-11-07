@@ -52,12 +52,22 @@ V.dashboard = root => {
     return `<li class="${done ? 'is-done' : ''}"><button class="tick ${done ? 'on' : ''}" data-act="toggleDone" data-id="${t.id}" aria-label="${done ? 'ยกเลิกเสร็จ' : 'ทำเครื่องหมายเสร็จ'}" ${canStatus(t) ? '' : 'disabled'}>${done ? ico('check', 14) : ''}</button>
       <div class="grow clickable" data-act="openTask" data-id="${t.id}"><b class="clip">${esc(t.title)}</b><small class="muted">${p ? esc(p.name) : KINDS[t.source] || 'งาน'}${done ? '' : ` · <span class="${isDelayed(t) ? 'late' : ''}">${fmtRel(taskEnd(t))}</span>`}</small></div>${done ? '' : advBtn(t)}</li>`; };
 
+  /* shortcut panel: the four places people open most, each with a live hint */
+  const myDoing = visibleTasks().filter(t => isOwner(t, m.id) && t.status === 'doing').length;
+  const offMonth = S().offsite.filter(o => o.start.slice(0, 7) <= t0.slice(0, 7) && o.end.slice(0, 7) >= t0.slice(0, 7)).length;
+  const evDays = nextEv ? Math.max(0, diffDays(t0, nextEv.start)) : null;
+  const navTiles = [
+    ['#/todo', 'check', pageName('todo'), focus.length ? `${focus.length} งานวันนี้` : 'ไม่มีงานค้าง'],
+    ['#/calendar', 'calendar', pageName('calendar'), evDays == null ? 'ยังไม่มี Event' : evDays === 0 ? 'มี Event วันนี้' : `Event อีก ${evDays} วัน`],
+    ['#/board', 'board', 'Kanban', myDoing ? `${myDoing} งานกำลังทำ` : 'ดูงานทุก Project', 'dashKanban'],
+    ['#/support', 'inbox', pageName('support'), offMonth ? `${offMonth} รายการเดือนนี้` : 'ยังไม่มีเดือนนี้'],
+  ];
   const hero = `<section class="hero">
     <div class="hero-main"><span class="hero-date">วัน${TH_DOW_FULL[now.getDay()]}ที่ ${now.getDate()} ${TH_MON_FULL[now.getMonth()]} ${now.getFullYear() + 543}</span>
-      <h1>${greet}, ${esc(m.name)}</h1>
-      <p>${focus.length ? `วันนี้มี <b>${focus.length}</b> งานให้โฟกัส${overdue ? ` · <b class="hl-late">${overdue}</b> งานเลยกำหนด` : ''}` : (doneToday.length ? `เคลียร์งานวันนี้ครบแล้ว ${doneToday.length} งาน` : 'วันนี้ยังไม่มีงานค้าง')}</p></div>
+      <h1><span class="nw">${greet},</span> <span class="nw">${esc(m.name)}</span></h1>
+      <p>${focus.length ? `<span class="nw">วันนี้มี <b>${focus.length}</b> งานให้โฟกัส</span>${overdue ? ` · <span class="nw"><b class="hl-late">${overdue}</b> งานเลยกำหนด</span>` : ''}` : (doneToday.length ? `เคลียร์งานวันนี้ครบแล้ว ${doneToday.length} งาน` : 'วันนี้ยังไม่มีงานค้าง')}</p></div>
     <a class="hero-ring h-${H.level}" href="#/todo" style="--p:${H.pct}" aria-label="ความคืบหน้าสัปดาห์นี้ ${H.pct} เปอร์เซ็นต์"><span class="ring-in"><b>${H.pct}%</b><span>สัปดาห์นี้</span></span><small>${hLabel} · ${H.done}/${H.total}</small></a>
-    <div class="hero-actions">${quickActions().slice(0, 4).map(([k, i, t, s2, c]) => `<button type="button" class="hq" data-act="quick" data-id="${k}">${ico(i, 16)}<span>${t}</span></button>`).join('')}</div>
+    <nav class="hero-nav" aria-label="ไปที่หน้า">${navTiles.map(([href, i, l, st, act]) => `<a class="hn" href="${href}"${act ? ` data-act="${act}"` : ''}><span class="hn-i">${ico(i, 18)}</span><span class="hn-t"><b>${l}</b><small>${st}</small></span></a>`).join('')}</nav>
   </section>`;
 
   const focusCard = `<section class="card"><div class="card-h"><h3>วันนี้ของฉัน</h3><a class="link" href="#/todo">${pageName('todo')}</a></div>
@@ -107,9 +117,11 @@ V.dashboard = root => {
 
   root.innerHTML = hero + `<div class="home-grid">${focusCard}${nextCard}</div>` + teamHTML + projHTML + `
   <section class="card mt"><div class="card-h"><h3>สัดส่วนงาน${team ? 'ของทีม' : 'ของฉัน'}</h3><div class="seg-ctl sm">${byTabs}</div></div>
-    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span title="${OVERDUE_TIP}"><i class="x"></i>เลยกำหนด</span></div>${breakdown}</section>`;
+    <div class="legend inline"><span><i class="d"></i>เสร็จแล้ว</span><span><i class="a"></i>กำลังดำเนินการ</span><span title="${OVERDUE_TIP}"><i class="x"></i>เลยกำหนด</span></div>${breakdown}</section>` + hpDashHTML();
+  if (!HubPost.loaded) HubPost.load().then(hpDraw);
 };
 ACT.dashBy = el => { ST.dash.by = el.dataset.id; render(); };
+ACT.dashKanban = () => { ST.board.tab = 'kanban'; };   // the link itself navigates
 ACT.goTodo = el => { ST.todo.user = el.dataset.id; ST.todo.week = 0; location.hash = '#/todo'; };
 
 /* ===================== OFFSITE & EVENT SUPPORT LOG ===================== */

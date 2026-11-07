@@ -12,11 +12,12 @@ const PAGE = {   // route: [name, Thai gloss, icon]
   calendar: ['Calendar', 'Events และวันหยุด', 'calendar'],
   board: ['Board', 'Gantt และ Kanban ทุก Project', 'board'],
   support: ['Offsite', 'งานนอกสถานที่ / สนับสนุน Event', 'inbox'],
+  hub: ['Hub Post', 'โพสต์และข้อความในทีม', 'chat'],
   poster: ['Poster', 'สร้างสื่อตาม CI องค์กร', 'image'],
   team: ['Team', 'ทีม สิทธิ์ และการตั้งค่า', 'users'],
   meetings: ['Meetings', 'สรุปประชุมและ Action Items', 'mic'],
 };
-const MENU_ORDER = ['dashboard', 'todo', 'projects', 'calendar', 'board', 'support', 'poster', 'team'];   // sidebar order
+const MENU_ORDER = ['dashboard', 'todo', 'projects', 'calendar', 'board', 'support', 'hub', 'poster', 'team'];   // sidebar order
 const TAB_ROUTES = ['dashboard', 'todo', 'projects', 'calendar'];                                 // phone tab bar (+ "More")
 const ADMIN_ONLY = ['team', 'poster'];   // pages only Admin can see or open
 const pageName = k => PAGE[k]?.[0] || k;
@@ -31,7 +32,7 @@ const ACTION = {
   newProject: ['New Project', 'สร้าง Project และจัด Squad'],
   more: ['More', 'เมนูทั้งหมด'],
   account: ['Account', 'โปรไฟล์ · รหัสผ่าน · ออกจากระบบ'],
-  search: ['Search', 'งาน Project Event สมาชิก'],
+  search: ['Search', 'งาน Project Event Offsite โพสต์ สมาชิก'],
   theme: ['Theme', 'สว่าง มืด หรืออัตโนมัติ'],
   style: ['Post-it & Icon', 'สีและไอคอนประจำตัว'],
 };
