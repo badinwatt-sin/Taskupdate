@@ -24,7 +24,7 @@ const store = {
   },
   async getPostsVer() { return +(await cmd(['GET', 'tmh:postver'])) || 0; },   // bumped after each entry is in the list
   async addPost(e) {   // INCR + RPUSH are atomic, so concurrent posts all land
-    if (e.cid) { const { entries } = await this.getPosts(); const dup = entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { entry: dup }; }
+    if (e.cid) { const { entries } = await this.getPosts(); const dup = entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { entry: dup, dup: true }; }
     const seq = +(await cmd(['INCR', 'tmh:postseq'])); e.id = 'pst_' + seq;
     await cmd(['RPUSH', 'tmh:posts', JSON.stringify(e)]); await cmd(['LTRIM', 'tmh:posts', -1500, -1]); await cmd(['INCR', 'tmh:postver']);
     return { entry: e };

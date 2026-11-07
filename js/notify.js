@@ -149,7 +149,13 @@ async function paintPushCard(box) {
     on: ['ok', 'เปิดการแจ้งเตือนบนเครื่องนี้แล้ว', `<button type="button" class="btn btn-ghost btn-sm" data-push="test">ทดสอบ</button><button type="button" class="btn btn-ghost btn-sm" data-push="off">ปิด</button>`],
   }[s];
   box.className = 'push-card ' + msg[0];
-  box.innerHTML = `<span class="pc-ico">${ico('bell', 18)}</span><div class="grow"><b>แจ้งเตือนบนอุปกรณ์</b><small>${msg[1]}</small></div><div class="pc-acts">${msg[2]}</div>`;
+  box.innerHTML = `<span class="pc-ico">${ico('bell', 18)}</span><div class="grow"><b>แจ้งเตือนบนอุปกรณ์</b><small>${msg[1]}</small></div><div class="pc-acts">${msg[2]}</div>`
+    + (s === 'on' ? `<label class="pc-pref"><span>${ico('chat', 14)} Hub Post</span><select data-push-pref aria-label="แจ้งเตือน Hub Post"><option value="all">ทุกโพสต์ใหม่ + คนตอบฉัน</option><option value="replies">เฉพาะคนตอบโพสต์ที่ฉันร่วมคุย</option><option value="off">ไม่แจ้งเตือน Hub Post</option></select></label>` : '');
+  const pref = $('[data-push-pref]', box);
+  if (pref) {
+    fetch('api/push-prefs', { headers: Store.headers() }).then(r => r.ok ? r.json() : null).then(j => { if (j) pref.value = j.hub; }).catch(() => { });
+    pref.onchange = async () => { pref.disabled = true; try { const r = await fetch('api/push-prefs', { method: 'POST', headers: Store.headers(true), body: JSON.stringify({ hub: pref.value }) }); if (!r.ok) throw new Error(); toast('บันทึกการตั้งค่าแจ้งเตือน Hub Post แล้ว'); } catch (e) { toast('บันทึกไม่สำเร็จ — ลองอีกครั้ง', 'error'); } finally { pref.disabled = false; } };
+  }
   box.onclick = async e => {
     const b = e.target.closest('[data-push]'); if (!b) return; b.disabled = true;
     try {

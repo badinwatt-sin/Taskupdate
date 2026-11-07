@@ -19,7 +19,7 @@ const store = {
   async getPostsVer() { return (read(POSTS) || { seq: 0 }).seq; },
   async addPost(e) {   // single process: read-modify-write is safe here
     const d = read(POSTS) || { seq: 0, entries: [] };
-    if (e.cid) { const dup = d.entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { seq: d.seq, entry: dup }; }
+    if (e.cid) { const dup = d.entries.find(x => x.cid === e.cid && x.by === e.by); if (dup) return { seq: d.seq, entry: dup, dup: true }; }
     d.seq++; e.id = 'pst_' + d.seq; d.entries.push(e); d.entries = d.entries.slice(-1500); write(POSTS, d); return { seq: d.seq, entry: e };
   },
   async setBlob(k, v) { const d = path.join(DIR, 'img'); fs.mkdirSync(d, { recursive: true }); if (v == null) { try { fs.unlinkSync(path.join(d, k + '.txt')); } catch (e) { } } else fs.writeFileSync(path.join(d, k + '.txt'), v); },

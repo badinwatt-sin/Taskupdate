@@ -631,3 +631,5 @@ input,select,textarea,button{font-family:inherit}
 @media (pointer:coarse){ :where(.hp-react){position:relative} :where(.hp-react)::after{content:"";position:absolute;inset:-6px -2px} }
 .hero h1 .nw,.hero p .nw{white-space:nowrap}
 @media (max-width:400px){ .hero h1{font-size:23px} }
+.push-card .pc-pref{flex-basis:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--line);font-size:13px;font-weight:600}
+.push-card .pc-pref span{display:inline-flex;align-items:center;gap:6px}.push-card .pc-pref select{flex:1;min-width:200px}
