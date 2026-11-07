@@ -19,6 +19,7 @@ const BRAND_W = { 400: 600, 500: 600, 600: 600, 700: 600, 800: 900, 900: 900 }; 
    Status: confirmed = AXA Blue (solid) · planning = Blue Tint 2 · done = grey (quiet, already past). */
 const EXP_THEMES = {
   ciBand: { label: 'CI Corporate', bg: '#FFFFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#999999', card: '#FFFFFF', edge: '#E6E6E6', line: '#EDEEF3', chip: '#E2EFFF', accent: '#00008F', ci: 'band', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
+  ciEvent: { label: 'CI Event', bg: '#6574F8', bg2: '#00008F', ink: '#0C0E45', sub: '#4A4D6B', mute: '#999999', card: '#FFFFFF', edge: '#FFFFFF', line: '#EDEEF3', chip: '#E2EFFF', accent: '#00008F', ci: 'typo', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },   // typographic key visual: the year as a road
   ciTint: { label: 'CI Soft', bg: '#E2EFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#8A8FA8', card: '#FFFFFF', edge: '#FFFFFF', line: '#E9EDF7', chip: '#E2EFFF', accent: '#00008F', ci: 'tint', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
   ciDeep: { label: 'CI Deep', bg: '#00008F', bg2: '#0C0E45', ink: '#FFFFFF', sub: '#E2EFFF', mute: '#8F93C8', card: 'rgba(255,255,255,.06)', edge: 'rgba(226,239,255,.16)', line: 'rgba(226,239,255,.12)', chip: 'rgba(226,239,255,.12)', accent: '#E2EFFF', ci: 'deep', dark: true, clean: true, solidBars: true, hues: ['#E2EFFF'], st: { confirmed: '#FFFFFF', planning: '#6574F8', done: '#5A5E99' } },
   ciWhite: { label: 'CI Minimal', bg: '#FFFFFF', ink: '#0C0E45', sub: '#4A4D6B', mute: '#999999', card: '#FFFFFF', edge: '#E6E6E6', line: '#EDEEF3', chip: '#F3F4F8', accent: '#00008F', ci: 'white', clean: true, solidBars: true, hues: ['#00008F'], st: { confirmed: '#00008F', planning: '#6574F8', done: '#999999' } },
@@ -115,6 +116,7 @@ function expBackdrop(k, mark, hue) {
   if (th.ci) {   // CI: flat colour or the approved AXA Blue → Blue Tint 3 gradient; a blue band holds the header
     if (th.bg2) { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, th.bg); gr.addColorStop(1, th.bg2); g.fillStyle = gr; g.fillRect(0, 0, W, H); }
     if (th.ci === 'band') { const bh = H > W ? 236 : 248; g.fillStyle = '#00008F'; g.fillRect(0, 0, W, bh); }
+    if (th.ci === 'typo') typoArt(k);
     return;
   }
   if (th.art) return artBackdrop(k, mark, hue);
@@ -200,6 +202,49 @@ function artBackdrop(k, mark, hue) {
   g.fillStyle = '#B5D2FF'; g.shadowColor = '#6FA8FF'; g.shadowBlur = 14; g.beginPath(); g.arc(R - 520 * sc + 110 * sc, 70 * sc, 5, 0, Math.PI * 2); g.fill(); g.restore();
   grain(k, .09);
 }
+/* ---------- CI Event: typographic key visual ----------
+   Art direction: the date IS the picture. The year stands upright on the horizon in white Publico;
+   a white road runs from it toward the reader with the next words set along it in AXA Blue (true
+   perspective, so the near letters grow); the road starts right at the base of the number.
+   Everything else stays quiet: white cards, AXA Blue type, red only as a signal. */
+const typoPanel = k => k.H > k.W ? { x: 0, y: 0, w: k.W, h: 640 } : { x: 0, y: 0, w: 620, h: k.H };
+function typoArt(k) {
+  const { g, W, H } = k, P = typoPanel(k), port = H > W, t = k.typo || { up: String(new Date().getFullYear()), road: 'EVENTS' };
+  g.save(); g.beginPath(); g.rect(P.x, P.y, P.w, P.h); g.clip();
+  // geometry: horizon + road
+  const upSize = port ? 170 : 168, xc = port ? W - 300 : P.w / 2 + 10, yH = port ? 370 : 650;
+  const wt = port ? 120 : 132, wb = port ? 820 : 980, yb = P.h + 4, cxb = xc - (port ? 170 : 150);
+  // road source: white strip, text along it (reads bottom → top), AXA Blue
+  const sw = 420, sh = Math.round(sw * (yb - yH) / wt * .55), src = document.createElement('canvas'); src.width = sw; src.height = sh;
+  const sg = src.getContext('2d'); sg.fillStyle = '#FFFFFF'; sg.fillRect(0, 0, sw, sh);
+  sg.save(); sg.translate(sw / 2, sh / 2); sg.rotate(-Math.PI / 2); sg.fillStyle = '#00008F'; sg.textAlign = 'center'; sg.textBaseline = 'middle';
+  let fs = sw * .92; const fam = typeof sdStack === 'function' ? sdStack('head') : EXP_FONT; sg.font = `700 ${fs}px ${fam}`;
+  const tw = sg.measureText(t.road).width; if (tw > sh * .9) { fs *= sh * .9 / tw; sg.font = `700 ${fs}px ${fam}`; }
+  sg.fillText(t.road, -sh * .04, sw * .04); sg.restore();
+  // perspective-correct mapping, row by row
+  for (let y = yH; y < yb; y += 1) {
+    const f = (y - yH) / (yb - yH), f2 = (y + 1 - yH) / (yb - yH), w = wt + (wb - wt) * f, w2 = wt + (wb - wt) * f2, cx = xc + (cxb - xc) * f;
+    const v = (1 / wt - 1 / w) / (1 / wt - 1 / wb), v2 = (1 / wt - 1 / w2) / (1 / wt - 1 / wb);
+    g.drawImage(src, 0, v * sh, sw, Math.max(.5, (v2 - v) * sh), cx - w / 2, y, w, 1.4);
+  }
+  // the year, upright on the horizon; the road opens through it
+  k.font(800, upSize); g.fillStyle = '#FFFFFF'; g.textAlign = 'center'; g.fillText(t.up, xc, yH + 2);   // the road runs out of the number's base
+  g.restore(); g.textAlign = 'left';
+}
+function typoHeader(k, { kicker, title, small, sub, evs }) {
+  const { g, W, H, th } = k, P = typoPanel(k), port = H > W, X = port ? 60 : 56;
+  if (EXP_LOGO.white || EXP_LOGO.color) { const lg = EXP_LOGO.white || EXP_LOGO.color, lh = 62; g.drawImage(lg, X, 52, lg.width * lh / lg.height, lh); }
+  let y = port ? 184 : 196, maxW = port ? 520 : P.w - X * 2;
+  g.fillStyle = EXP_RED; g.fillRect(X, y - 7, 28, 3); k.font(600, 14); g.fillStyle = '#E2EFFF'; if ('letterSpacing' in g) g.letterSpacing = '2px'; g.fillText(k.fit(kicker, maxW - 40), X + 40, y); if ('letterSpacing' in g) g.letterSpacing = '0px';
+  if (k.typo && title.endsWith(' ' + k.typo.up)) title = title.slice(0, -k.typo.up.length - 1);   // the number is already the picture
+  let ts = 56; k.font(800, ts); while (g.measureText(title).width > maxW && ts > 30) { ts -= 2; k.font(800, ts); }
+  y += ts + 22; g.fillStyle = '#FFFFFF'; g.fillText(title, X - 2, y);
+  if (small) { y += 34; k.font(500, 22); g.fillStyle = '#E2EFFF'; g.fillText(small, X, y); }
+  y += 34; k.font(500, 17); g.fillStyle = '#E2EFFF'; k.wrap(sub, maxW).forEach(l => { g.fillText(l, X, y); y += 24; });
+  y += 8; k.font(600, 15); let ix = X;
+  ['confirmed', 'planning', 'done'].forEach(st => { const n = evs.filter(e => e.status === st).length, tx = `${n} ${EXP_ST[st][1]}`; g.fillStyle = st === 'confirmed' ? '#FFFFFF' : st === 'planning' ? '#B9C1FF' : '#999999'; g.beginPath(); g.arc(ix + 5, y - 5, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = '#FFFFFF'; g.fillText(tx, ix + 16, y); ix += g.measureText(tx).width + 36; });
+  return port ? { x: 60, y: P.h + 28, w: W - 120, h: H - P.h - 28 - 76 } : { x: P.w + 24, y: 56, w: W - P.w - 24 - 56, h: H - 56 - 76 };
+}
 const isLight = hex => { const n = parseInt(hex.replace('#', ''), 16); return (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 165; };   // pick dark text on light fills
 function hexA(hex, a) {
   const h = hex.replace('#', ''), n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -209,6 +254,7 @@ function hexA(hex, a) {
 function expHeader(k, { kicker, title, small, sub, evs, hue, compact }) {
   const { g, W, th } = k, X = compact ? 60 : 72, R = W - X;
   g.textAlign = 'left';
+  if (th.ci === 'typo') return typoHeader(k, { kicker, title, small, sub, evs });
   if (th.ci) return ciHeader(k, { kicker, title, small, sub, evs, compact, X, R });
   if (th.clean) return cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R });
   if (th.metal) { const mg = g.createLinearGradient(X, 0, X + 34, 0); mg.addColorStop(0, th.accent); mg.addColorStop(1, '#B5D2FF'); g.fillStyle = mg; } else g.fillStyle = hue || th.accent;
@@ -307,6 +353,7 @@ function cleanHeader(k, { kicker, title, small, sub, evs, compact, X, R }) {
 }
 function expFooter(k, X) {
   const { g, W, H, th } = k, fy = H - 34;
+  if (th.ci === 'typo') { X = H > W ? 60 : typoPanel(k).w + 24; let lx = X; k.font(500, 15); Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = st === 'confirmed' ? '#FFFFFF' : st === 'planning' ? '#B9C1FF' : '#999999'; g.beginPath(); g.arc(lx + 6, fy - 5, 5, 0, Math.PI * 2); g.fill(); g.fillStyle = '#E2EFFF'; g.fillText(l, lx + 18, fy); lx += g.measureText(l).width + 44; }); g.textAlign = 'right'; g.fillStyle = '#E2EFFF'; g.fillText(`Krungthai-AXA Life Insurance · Agency Experience · Version ${expVersion()}`, W - (H > W ? 60 : 56), fy); g.textAlign = 'left'; return; }
   if (th.ci) { g.strokeStyle = th.line; g.lineWidth = 1; g.beginPath(); g.moveTo(X, fy - 30); g.lineTo(W - X, fy - 30); g.stroke(); }
   let lx = X; k.font(500, 16);
   Object.entries(EXP_ST).forEach(([st, [, l]]) => { g.fillStyle = stc(th, st); if (th.clean) { g.beginPath(); g.arc(lx + 6, fy - 5, 5, 0, Math.PI * 2); } else k.rr(lx, fy - 13, 16, 16, 5); g.fill(); g.fillStyle = th.sub; g.fillText(l, lx + 24, fy); lx += g.measureText(l).width + 54; });
@@ -316,12 +363,14 @@ function expFooter(k, X) {
 /* ---------- year: 12 month cards, names wrap in full, type auto-fits ---------- */
 function drawYear(cv, { year, theme, portrait }) {
   const L = EXP_LAYOUTS[portrait ? 'year-p' : 'year-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k;
+  k.typo = { up: String(year), road: `EVENTS ${year + 543}` };
   expBackdrop(k, String(year));
   const evs = expEvents(`${year}-01-01`, `${year}-12-31`), by = Array.from({ length: 12 }, () => []);
   evs.forEach(e => { const s = e.start < `${year}-01-01` ? `${year}-01-01` : e.start; by[+s.slice(5, 7) - 1].push(e); });
   const X = portrait ? 60 : 72;
   const top = expHeader(k, { kicker: EXP_CATS.length ? `${expCatText().toUpperCase()}  —  AGENCY EXPERIENCE TEAM` : 'AGENCY EXPERIENCE TEAM', title: `Event Calendar ${year}`, small: `พ.ศ. ${year + 543}`, sub: `ปฏิทินงานสำคัญประจำปี${EXP_CATS.length ? ' · ' + expCatText() : ''} · ${evs.length} งาน`, evs, compact: portrait });
-  const cols = portrait ? 3 : 6, rows = portrait ? 4 : 2, gap = 16, cw = (W - 2 * X - gap * (cols - 1)) / cols, ch = (H - top - 80 - gap * (rows - 1)) / rows;
+  const box = typeof top === 'object' ? top : { x: X, y: top, w: W - 2 * X, h: H - top - 80 }, typo = typeof top === 'object';
+  const cols = portrait ? 3 : typo ? 4 : 6, rows = portrait ? 4 : typo ? 3 : 2, gap = typo ? 14 : 16, cw = (box.w - gap * (cols - 1)) / cols, ch = (box.h - gap * (rows - 1)) / rows;
   const headH = 84, padX = 18, inner = ch - headH - 16;
   // measure one month's list at scale s
   const dwOf = (e, s) => { k.font(700, 14 * s); return Math.max(40 * s, g.measureText(dayShort(e)).width + 14 * s) + (th.clean ? 4 * s : 0); };
@@ -347,7 +396,7 @@ function drawYear(cv, { year, theme, portrait }) {
   const fitOf = list => { if (uni) return uni; for (let s = 1.1; s >= .55; s -= .05) for (const v of [true, false]) if (measure(list, s, v, false) <= inner) return [s, v, false]; return [.55, false, false]; };
   const now = new Date();
   by.forEach((list, m) => {
-    const cx = X + (m % cols) * (cw + gap), cy = top + Math.floor(m / cols) * (ch + gap), hue = hueOf(th, m), isNow = year === now.getFullYear() && m === now.getMonth();
+    const cx = box.x + (m % cols) * (cw + gap), cy = box.y + Math.floor(m / cols) * (ch + gap), hue = hueOf(th, m), isNow = year === now.getFullYear() && m === now.getMonth();
     k.card(cx, cy, cw, ch);
     // month badge + names
     if (!th.clean) { g.fillStyle = hexA(hue, list.length ? .16 : .08); k.rr(cx + padX, cy + 20, 46, 46, 14); g.fill(); }
@@ -393,20 +442,22 @@ function drawYear(cv, { year, theme, portrait }) {
       ly += h + 10 * S;
     }
   });
-  expFooter(k, X);
+  expFooter(k, typo && portrait ? box.x : X);
   return evs.length;
 }
 
 /* ---------- month: calendar grid (bars) + full details list ---------- */
 function drawMonth(cv, { year, month, theme, portrait, posters }) {
   const L = EXP_LAYOUTS[portrait ? 'month-p' : 'month-l'], th = EXP_THEMES[theme], k = expKit(cv, L.W, L.H, th), { g, W, H } = k, hue = hueOf(th, month);
+  k.typo = { up: pad2(month + 1), road: EXP_MON_EN[month].toUpperCase() };
   expBackdrop(k, pad2(month + 1), hue);
   const days = new Date(year, month + 1, 0).getDate(), mFrom = `${year}-${pad2(month + 1)}-01`, mTo = `${year}-${pad2(month + 1)}-${pad2(days)}`;
   const evs = expEvents(mFrom, mTo), X = portrait ? 60 : 72;
   const top = expHeader(k, { kicker: `EVENT CALENDAR · ${EXP_MON_EN[month].toUpperCase()} ${year}${EXP_CATS.length ? ' · ' + expCatText().toUpperCase() : ''}`, title: `${TH_MON_FULL[month]} ${year + 543}`, small: '', sub: `${EXP_MON_EN[month]} ${year} · ${evs.length ? evs.length + ' งาน' : 'ไม่มีงานในเดือนนี้'}`, evs, hue, compact: portrait });
   // geometry
-  const gx = X, gy = top, gw = portrait ? W - 2 * X : 1080, gh = portrait ? 700 : H - top - 80;
-  const lx = portrait ? X : gx + gw + 28, ly0 = portrait ? gy + gh + 24 : top, lw = portrait ? W - 2 * X : W - X - lx, lh = portrait ? H - ly0 - 80 : gh;
+  const box = typeof top === 'object' ? top : { x: X, y: top, w: W - 2 * X, h: H - top - 80 }, typo = typeof top === 'object';
+  const gx = box.x, gy = box.y, gw = portrait ? box.w : typo ? Math.round(box.w * .62) : 1080, gh = portrait ? (typo ? Math.round(box.h * .56) : 700) : box.h;
+  const lx = portrait ? box.x : gx + gw + (typo ? 20 : 28), ly0 = portrait ? gy + gh + (typo ? 20 : 24) : box.y, lw = portrait ? box.w : box.x + box.w - lx, lh = portrait ? box.y + box.h - ly0 : gh;
   // ---- calendar grid
   k.card(gx, gy, gw, gh, 24);
   const off = new Date(year, month, 1).getDay(), weeks = Math.ceil((off + days) / 7), dowH = 46, cw = gw / 7, chh = (gh - dowH - 8) / weeks;
@@ -494,7 +545,7 @@ function drawMonth(cv, { year, month, theme, portrait, posters }) {
 async function openCalExport() {
   const now = new Date();
   EXP_CATS = [...(ST.cal.cats || [])];
-  const st = { layout: 'year-l', theme: 'ciBand', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
+  const st = { layout: 'year-l', theme: 'ciEvent', year: ST.cal.y || now.getFullYear(), month: ST.cal.mode === 'month' && ST.cal.m != null ? ST.cal.m : now.getMonth() };
   try { if (typeof sdFontFiles === 'function') await sdFontFiles(); } catch (e) { }
   await expLoadLogos();
   try { await Promise.all([...['800 70px', '700 20px', '600 17px', '500 14px'].map(f => document.fonts.load(`${f} ${EXP_FONT}`)), ...['900 70px', '400 20px'].map(f => document.fonts.load(`${f} ${BRAND_HEAD}`)), ...['600 17px', '900 17px'].map(f => document.fonts.load(`${f} ${BRAND_BODY}`))]); } catch (e) { }
