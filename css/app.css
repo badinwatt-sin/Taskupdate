@@ -459,8 +459,11 @@ input,select,textarea,button{font-family:inherit}
 .poster-edit{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.poster-edit #pjCover{width:200px;flex:none}.pe-btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .poster-full{display:block;max-width:100%;max-height:72vh;margin:0 auto;border-radius:12px}
 
-/* ---------- brand fonts (used by the calendar export) ---------- */
+/* ---------- brand fonts (calendar export, CI Poster) ---------- */
+@font-face{font-family:"Source Sans Pro";src:local("Source Sans Pro Light"),local("SourceSansPro-Light"),url("../fonts/SourceSansPro-Light.ttf") format("truetype");font-weight:300;font-display:swap}
+@font-face{font-family:"Source Sans Pro";src:local("Source Sans Pro Regular"),local("SourceSansPro-Regular"),url("../fonts/SourceSansPro-Regular.ttf") format("truetype");font-weight:400;font-display:swap}
 @font-face{font-family:"Source Sans Pro";src:local("Source Sans Pro Semibold"),local("SourceSansPro-Semibold"),url("../fonts/SourceSansPro-Semibold.ttf") format("truetype");font-weight:600;font-display:swap}
+@font-face{font-family:"Source Sans Pro";src:local("Source Sans Pro Bold"),local("SourceSansPro-Bold"),url("../fonts/SourceSansPro-Bold.ttf") format("truetype");font-weight:700;font-display:swap}
 @font-face{font-family:"Source Sans Pro";src:local("Source Sans Pro Black"),local("SourceSansPro-Black"),url("../fonts/SourceSansPro-Black.ttf") format("truetype");font-weight:900;font-display:swap}
 /* Publico is licensed per user — only used when installed on this computer; otherwise Source Serif 4 */
 @font-face{font-family:"Brand Serif";src:local("Publico Black"),local("Publico-Black"),local("Publico Headline Black"),local("PublicoHeadline-Black");font-weight:900}
