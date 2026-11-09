@@ -729,6 +729,14 @@ input,select,textarea,button{font-family:inherit}
 .pp-chip em{flex:none}
 .sp-m .pill span,.squad-m .person{white-space:normal;overflow-wrap:anywhere}
 .triad{grid-template-columns:repeat(3,minmax(0,1fr))}
+.weekly-controls,.weekly-actions{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.weekly-controls>.grow{flex:1 1 320px}
+.weekly-actions{max-width:100%}
+.weekly-actions .field{min-width:130px}
+.weekly-output h2{font-size:20px;overflow-wrap:anywhere}
+.weekly-output h3{font-size:15px}
+.weekly-bullets{margin:8px 0 0;padding-left:22px;line-height:1.65}
+.weekly-bullets li+li{margin-top:6px}
 
 /* A 16px minimum prevents iOS focus zoom without disabling pinch-to-zoom.
    The important rule also covers the compact controls in Poster Studio. */

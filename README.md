@@ -36,6 +36,14 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 - ไฟล์แนบเก็บในข้อมูลโดยตรง (≤ 1 MB/ไฟล์) — ไฟล์ใหญ่ให้ใส่เป็น Link
 - วันหยุดบริษัทตัวอย่างปรับได้ที่ ทีมและการตั้งค่า (Admin)
 
+## Weekly Update — Management weekly update (Admin)
+- เมนู **Weekly Update** ใช้ได้เฉพาะ Admin ทั้งหน้าจอและ API
+- กด **ให้ AI สรุปงาน** เพื่อเรียบเรียง bullet points ตามกลุ่มหน้าที่ทีม เช่น Event, Creative, Multimedia และ Communication: ความคืบหน้าสัปดาห์นี้ แผนสัปดาห์หน้า และประเด็นติดตาม
+- ใช้สัปดาห์จันทร์–อาทิตย์ตามเวลาประเทศไทย รวมงานค้างและงานที่ปิดในสัปดาห์นี้ ไม่รวมงาน “เฉพาะฉัน” หรืองานยกเลิก งานสองผู้รับผิดชอบนับครั้งเดียวตามกลุ่มหน้าที่ของผู้รับผิดชอบหลัก
+- เลือกภาษาไทย / English และ **คัดลอกสรุป** เพื่อนำไปใช้ต่อได้ ตรวจข้อเท็จจริงในฉบับร่างก่อนส่ง
+- ใช้การเชื่อม Gemini / Claude ที่ Admin ตั้งไว้ใน **Poster → CI Control** ข้อมูลมาจากงานที่บันทึกแล้วใน My Plan และ Projects; โหมดสาธิตไม่เรียก AI
+- ทดสอบช่วงวันที่ สิทธิ์ API และการเรียก AI แบบจำลอง: `npm test`
+
 ## Poster — CI Poster Builder
 สร้าง Communications Poster เองได้เร็ว บน Template มาตรฐานและ CI องค์กร (เมนู **Poster**) — ภาษาภาพตามแนวทาง Health Content Education 2026
 1. เลือก Template — Announcement · Event & Invitation · Campaign · How-to & Tips · Recognition — และขนาด Square 1:1 (1080×1080) · Portrait 4:5 (1080×1350) · Story 9:16 (1080×1920, เว้นขอบบน/ล่างให้ UI ของแอป) · Landscape 16:9 (1920×1080)

@@ -2,3 +2,4 @@ data/
 server.js
 .git
 node_modules
+tests/
