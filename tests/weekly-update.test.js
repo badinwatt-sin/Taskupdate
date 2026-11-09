@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const { buildWeeklySnapshot, periodOf, bangkokToday, taskDates } = require('../lib/weekly-data');
-const { generateWeeklyUpdate, validateOutput } = require('../lib/weekly-ai');
+const { generateWeeklyUpdate, validateOutput, summaryModels } = require('../lib/weekly-ai');
 const { createHub } = require('../lib/hub');
 
 const task = (id, extra = {}) => ({ id, title: id, assigneeId: 'creative', start: '2026-11-09', duration: 1, status: 'todo', priority: 'med', source: 'personal', ...extra });
@@ -103,7 +103,7 @@ test('a valid summary taking longer than 22 seconds is allowed to finish', async
   const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11');
   const { MockLanguageModelV4 } = await import('ai/test');
   const started = Promise.withResolvers();
-  t.mock.timers.enable({ apis: ['setTimeout'] });
+  mockTimeouts(t);
   const model = new MockLanguageModelV4({ doGenerate: async () => {
     started.resolve();
     await new Promise(resolve => setTimeout(resolve, 23000));
@@ -115,6 +115,17 @@ test('a valid summary taking longer than 22 seconds is allowed to finish', async
   const report = await pending;
   assert.equal(report.result.groups.length, snapshot.groups.length);
 });
+
+function mockTimeouts(t) {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
+  // AbortSignal.timeout uses a native timer, so advance it with the same clock
+  // as the delayed provider response rather than waiting in real time.
+  t.mock.method(AbortSignal, 'timeout', ms => {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), ms);
+    return controller.signal;
+  });
+}
 
 async function testApi(t, options = {}) {
   const state = fixture();
@@ -141,9 +152,61 @@ test('Gemini adapter sends structured source data and Claude fallback handles pr
     }
     return new Response(JSON.stringify({ id: 'msg_test', type: 'message', role: 'assistant', model: 'claude-haiku-5-5', content: [{ type: 'text', text: JSON.stringify(summary(snapshot)) }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 10, output_tokens: 30 } }), { headers: { 'Content-Type': 'application/json' } });
   };
-  const report = await generateWeeklyUpdate(snapshot, { geminiKey: 'test-gemini', aiKey: 'test-anthropic', fetch });
+  const report = await generateWeeklyUpdate(snapshot, { geminiKey: 'test-gemini', aiKey: 'test-anthropic', geminiModels: ['gemini-3.8-flash'], fetch });
   assert.equal(report.provider, 'claude'); assert.equal(calls.length, 2);
   assert.ok(calls[0].url.includes('gemini-3.8-flash') && calls[1].url.includes('anthropic.com'));
+});
+
+const googleResponse = snapshot => new Response(JSON.stringify({ candidates: [{ content: { role: 'model', parts: [{ text: JSON.stringify(summary(snapshot)) }] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 30, totalTokenCount: 40 } }), { headers: { 'Content-Type': 'application/json' } });
+
+test('summaries prefer an accessible Flash Lite model instead of an overloaded newest model', async () => {
+  const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11'), calls = [];
+  const models = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'];
+  assert.deepEqual(summaryModels(models), ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-3.7-flash']);
+  const report = await generateWeeklyUpdate(snapshot, { geminiKey: 'test-key', geminiModels: models, fetch: async url => { calls.push(String(url)); return googleResponse(snapshot); } });
+  assert.equal(report.model, 'gemini-3.5-flash-lite');
+  assert.equal(calls.length, 1);
+  assert.equal(report.result.groups.length, snapshot.groups.length);
+});
+
+test('Gemini 503 errors move to the next accessible model with the same source facts', async () => {
+  const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11'), calls = [];
+  const report = await generateWeeklyUpdate(snapshot, { geminiKey: 'test-key', geminiModels: ['gemini-3.8-flash', 'gemini-3.7-flash'], fetch: async (url, options) => {
+    calls.push(String(url));
+    assert.ok(!options.body.includes('private-secret'));
+    if (calls.length === 1) return new Response(JSON.stringify({ error: { code: 503, message: 'Model overloaded', status: 'UNAVAILABLE' } }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+    return googleResponse(snapshot);
+  } });
+  assert.equal(calls.length, 2);
+  assert.equal(report.model, 'gemini-3.7-flash');
+});
+
+test('a stalled model leaves time for a fallback instead of consuming the whole request', async t => {
+  const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11'), calls = [], started = Promise.withResolvers();
+  mockTimeouts(t);
+  const pending = generateWeeklyUpdate(snapshot, { geminiKey: 'test-key', geminiModels: ['gemini-3.8-flash', 'gemini-3.5-flash-lite'], fetch: async (url, options) => {
+    calls.push(String(url));
+    if (calls.length === 1) { started.resolve(); return new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })); }
+    return googleResponse(snapshot);
+  } });
+  await started.promise;
+  t.mock.timers.tick(20000);
+  const report = await pending;
+  assert.equal(calls.length, 2);
+  assert.equal(report.model, 'gemini-3.8-flash');
+});
+
+test('an unsupported native JSON schema retries JSON mode with the explicit output contract', async () => {
+  const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11'), bodies = [];
+  const report = await generateWeeklyUpdate(snapshot, { geminiKey: 'test-key', geminiModels: ['gemini-3.5-flash-lite'], fetch: async (url, options) => {
+    const body = JSON.parse(options.body); bodies.push(body);
+    if (bodies.length === 1) return new Response(JSON.stringify({ error: { code: 400, message: 'responseJsonSchema schema unsupported', status: 'INVALID_ARGUMENT' } }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    assert.equal(body.generationConfig.responseJsonSchema, undefined);
+    assert.ok(options.body.includes('Return JSON matching this schema'));
+    return googleResponse(snapshot);
+  } });
+  assert.equal(report.provider, 'gemini');
+  assert.equal(bodies.length, 2);
 });
 
 test('API denies unauthenticated and non-Admin callers, including direct POST', async t => {
