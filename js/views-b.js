@@ -341,7 +341,7 @@ V.projects = (root, id) => {
         <p class="goal clip2">${esc(p.goal || 'ยังไม่ได้ระบุเป้าหมาย')}</p>
         <div class="pc-meta"><span>PM: ${personChip(pm, 20)}</span><span>${s.end ? fmtRange(s.start, s.end) : '–'}</span></div>
         ${progressBar(s.pct, p.color)}<div class="pc-foot"><span>${s.unplanned ? 'ยังไม่ได้วางแผน · ยังไม่มีงาน' : `${s.done}/${s.total} งานเสร็จ · ${s.pct}%`}</span><span class="squad">${p.squad.slice(0, 6).map(id => avatar(member(id), 24)).join('')}${p.squad.length > 6 ? `<em>+${p.squad.length - 6}</em>` : ''}</span></div></a>`;
-    }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', isAdmin() ? `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>` : ''));
+    }).join('')}</div>` : empty('folder', 'ยังไม่มี Project', 'สร้าง Project แรกเพื่อเริ่มจัด Squad และวางแผนงาน', `<button class="btn btn-primary" data-act="newProject">${ico('plus', 16)} ${ACTION.newProject[0]}</button>`));
 };
 ACT.newProject = () => openProject(null);
 const _vProjects = V.projects; V.projects = (root, id) => { _vProjects(root, id); hydrateCovers(root); };

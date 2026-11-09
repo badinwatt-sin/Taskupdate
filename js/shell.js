@@ -21,7 +21,7 @@ function quickActions() {   // [key, icon, title, subtitle, color, action]
   if (canAssign()) a.push(['assign', 'users', A.assign[0], A.assign[1], '#ff9500', () => openAssign()]);
   a.push(['off', 'inbox', A.logOffsite[0], A.logOffsite[1], '#34c759', () => openOffsite(null)]);
   if (canManageEvents()) a.push(['event', 'calendar', A.newEvent[0], A.newEvent[1], '#ff2d55', () => openEvent(null)]);
-  if (isAdmin() || isPM()) a.push(['proj', 'layers', A.newProject[0], A.newProject[1], '#af52de', () => openProject(null)]);
+  a.push(['proj', 'layers', A.newProject[0], A.newProject[1], '#af52de', () => openProject(null)]);
   return a;
 }
 function openQuickCreate() {
@@ -43,7 +43,7 @@ function pageAdd(r) {
     }
     case 'projects': {
       if (r.id) { const p = project(r.id); return p ? { label: 'เพิ่มงาน', fn: () => ACT.newTask({ dataset: { pid: p.id } }) } : null; }
-      return (isAdmin() || isPM()) ? { label: 'New Project', fn: () => openProject(null) } : null;
+      return { label: 'New Project', fn: () => openProject(null) };
     }
     case 'calendar': return canManageEvents() ? { label: 'เพิ่ม Event', fn: () => openEvent(null) } : null;
     case 'board': { const q = quickActions().find(x => x[0] === 'ptask'); return q ? { label: 'เพิ่มงาน', fn: q[5] } : null; }

@@ -136,7 +136,7 @@ function openTask(taskOrId, preset, opts = {}) {
         $('#attachBox', m.el).hidden = src !== 'project';
         const gs = f.elements.groupId, gcur = gs.value || t.groupId || '', gl = (pid && project(pid)?.taskGroups) || [];
         $('#grpBox', m.el).hidden = !gl.length; gs.innerHTML = opt('', '— ไม่ระบุกลุ่ม —', gcur) + gl.map(g => opt(g.id, g.name, gcur)).join('');   // To-Do items: no links / files
-        let pool = isAdmin() ? S().members : [me(), ...assignablePeople().filter(x => x.id !== me().id)];
+        let pool = isAdmin() ? S().members : [me(), ...S().members.filter(x => x.id !== me().id)];
         const pj = pid && project(pid);
         if (pj && canManageProject(pj)) pool = [...new Map([...pool, ...[pj.pmId, ...pj.squad].map(member).filter(Boolean)].map(x => [x.id, x])).values()];
         pick.forEach(id => { if (!pool.find(x => x.id === id) && member(id)) pool = [...pool, member(id)]; });
