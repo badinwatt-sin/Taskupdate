@@ -113,8 +113,8 @@
 .burst{position:fixed;z-index:500;pointer-events:none;width:0;height:0}
 .burst i{position:absolute;width:8px;height:8px;border-radius:2px;left:-4px;top:-4px;animation:burst .85s cubic-bezier(.15,.75,.3,1) forwards}
 @keyframes burst{to{transform:translate(var(--dx),var(--dy)) rotate(280deg) scale(.6);opacity:0}}
-.tick.on{animation:pop .35s ease}
-@keyframes pop{40%{transform:scale(1.25)}}
+.tick.on{animation:tick-pop .35s ease}
+@keyframes tick-pop{40%{transform:scale(1.25)}}
 
 /* ---------- agenda calendar ---------- */
 .agenda{display:flex;flex-direction:column;gap:10px}
@@ -146,7 +146,7 @@
   .search-trigger{flex:none;margin-left:auto;width:42px;height:42px;padding:0;justify-content:center;border-radius:50%}
   .search-trigger span,.search-trigger kbd{display:none}
   #addBtn{display:none}
-  .view{padding:18px max(14px,env(safe-area-inset-left,0px)) calc(170px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-right,0px))}
+  .view{padding:18px max(14px,env(safe-area-inset-right,0px)) calc(170px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
   .tabbar{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:60;padding:6px;border-radius:26px;
     background:var(--glass2);-webkit-backdrop-filter:blur(34px) saturate(200%);backdrop-filter:blur(34px) saturate(200%);box-shadow:var(--shadow-l)}
   .tabbar a,.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:7px 0 6px;border:0;border-radius:18px;background:none;color:var(--muted);font:inherit;font-size:11px;font-weight:600;position:relative;transition:color .15s,background .15s}
@@ -204,7 +204,6 @@
 /* keep long titles from widening the page on phones */
 @media (max-width:860px){
   .home-grid,.dash-main,.week-bar,.two-col,.support-top,.meet-grid,.todo-grid{grid-template-columns:minmax(0,1fr)}
-  .home-grid>*,.dash-main>*,.stack>*{min-width:0}
   .week-nav{justify-content:space-between}.week-nav h2{min-width:0;font-size:16px;flex:1}
   .health{flex-wrap:wrap}.hprog{min-width:0;flex:1 1 140px}
 }
@@ -716,3 +715,47 @@ input,select,textarea,button{font-family:inherit}
 .hp-imgs .hp-img-in{max-width:100%}
 .hp-imgs.n3{grid-template-rows:auto}.hp-imgs.n3 .hp-img:first-child{grid-row:auto}
 .hp-imgs.n3{grid-template-columns:1fr 1fr}
+
+/* Keep intrinsic content inside its column, including Safari's date controls. */
+.main,.view,.modal,.modal-body,.pcard,.pc-top h3,.sp-m,.squad-m,.home-grid>*,.dash-main>*,.stack>*{min-width:0}
+.modal header,.modal footer{flex-shrink:0}
+.modal header h3{min-width:0;overflow-wrap:anywhere}
+.modal header .icon-btn{flex:none}
+.modal-body{overflow-wrap:anywhere;scroll-padding-block:12px}
+.pc-foot{flex-wrap:wrap;gap:8px}
+.pc-meta>span,.pc-meta .person,.pc-meta .person>span{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.pp-chip,.pill,.pill span{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.pp-chip>span:not(.avatar){min-width:0;white-space:normal}
+.pp-chip em{flex:none}
+.sp-m .pill span,.squad-m .person{white-space:normal;overflow-wrap:anywhere}
+.triad{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+/* A 16px minimum prevents iOS focus zoom without disabling pinch-to-zoom.
+   The important rule also covers the compact controls in Poster Studio. */
+@media (max-width:860px),(pointer:coarse){
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{font-size:max(16px,1em)!important}
+  .t-title{font-size:18px!important}
+}
+@media (max-width:860px){
+  .topbar{margin-left:max(10px,env(safe-area-inset-left,0px));margin-right:max(10px,env(safe-area-inset-right,0px))}
+  .tb-brand{min-width:0}.tb-brand b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tb-brand .logo,.tb-user{flex:none}
+  .tabbar{left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px))}
+  .modal-back{padding:max(6px,env(safe-area-inset-top,0px)) env(safe-area-inset-right,0px) max(6px,env(safe-area-inset-bottom,0px)) env(safe-area-inset-left,0px)}
+  .modal,.modal.wide{max-width:100%;max-height:min(94dvh,100%)}
+  #login{padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));align-items:safe center}
+  .lg-card{min-width:0}
+}
+@media (max-width:600px){
+  .triad{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .triad>.field:last-child{grid-column:1/-1}
+  .cal-nav{width:100%;min-width:0;gap:4px}
+  .cal-nav h2{flex:1;min-width:0;font-size:18px}
+  .cal-nav>.icon-btn,.cal-nav>.btn{flex:none}
+  .sp-g,.squad-g{flex-direction:column;gap:6px}
+  .sp-g>div:first-child,.squad-g>div:first-child{width:auto;max-width:100%;padding-top:0}
+  .sp-m,.squad-m{width:100%}
+  .squad-m .person,.pill,.pill span{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+  .pc-top{flex-wrap:wrap}
+  .modal header,.modal-body,.modal footer{padding-inline:16px}
+}

@@ -227,7 +227,7 @@ em.lv-high{color:var(--red)}em.lv-ok{color:var(--green)}em.lv-low{color:var(--bl
 .ms-row{display:grid;grid-template-columns:150px 1fr auto auto;gap:8px;align-items:center}
 
 /* ---------- projects ---------- */
-.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:16px}
 .pcard{display:block;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:var(--radius);padding:18px;color:var(--text);box-shadow:var(--shadow);transition:.15s}
 .pcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-l)}
 .pc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.pc-top h3{font-size:17px}

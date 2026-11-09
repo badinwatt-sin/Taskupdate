@@ -222,13 +222,20 @@ document.addEventListener('input', e => {
   const vv = window.visualViewport; if (!vv) return;
   const root = document.documentElement;
   const sync = () => {
-    const kb = Math.max(0, innerHeight - vv.height - vv.offsetTop);
-    root.style.setProperty('--vvh', vv.height + 'px'); root.style.setProperty('--vvt', vv.offsetTop + 'px');
-    document.body.classList.toggle('kb-open', kb > 120);
+    const scale = vv.scale || 1, f = document.activeElement;
+    const editing = f && (f.isContentEditable || f.matches('input,textarea,select')) && !f.disabled && !f.readOnly;
+    // Pinching shrinks the visual viewport too; leave native zoom/pan in charge.
+    if (Math.abs(scale - 1) < .01) {
+      root.style.setProperty('--vvh', vv.height + 'px'); root.style.setProperty('--vvt', vv.offsetTop + 'px');
+    }
+    const kb = Math.max(0, innerHeight - (vv.height + vv.offsetTop) * scale);
+    document.body.classList.toggle('kb-open', !!editing && kb > 120);
   };
   vv.addEventListener('resize', sync); vv.addEventListener('scroll', sync); sync();
   document.addEventListener('focusin', e => {
     const f = e.target; if (!f.matches || !f.matches('input,textarea,select,[contenteditable]')) return;
+    sync();
     setTimeout(() => { try { f.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (x) { } }, 300);   // after the keyboard has opened
   });
+  document.addEventListener('focusout', () => requestAnimationFrame(sync));
 })();
