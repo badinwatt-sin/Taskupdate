@@ -99,6 +99,23 @@ test('AI SDK structured generation receives facts and enforces exact groups and 
   assert.throws(() => validateOutput(missing, snapshot));
 });
 
+test('a valid summary taking longer than 22 seconds is allowed to finish', async t => {
+  const snapshot = buildWeeklySnapshot(fixture(), '2026-11-11');
+  const { MockLanguageModelV4 } = await import('ai/test');
+  const started = Promise.withResolvers();
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const model = new MockLanguageModelV4({ doGenerate: async () => {
+    started.resolve();
+    await new Promise(resolve => setTimeout(resolve, 23000));
+    return { content: [{ type: 'text', text: JSON.stringify(summary(snapshot)) }], finishReason: { unified: 'stop' }, usage: { inputTokens: { total: 10 }, outputTokens: { total: 30 } }, warnings: [] };
+  } });
+  const pending = generateWeeklyUpdate(snapshot, { model });
+  await started.promise;
+  t.mock.timers.tick(23000);
+  const report = await pending;
+  assert.equal(report.result.groups.length, snapshot.groups.length);
+});
+
 async function testApi(t, options = {}) {
   const state = fixture();
   const auth = { default: 'test-only', users: {}, people: state.members, sessions: { admin: { id: 'admin', at: Date.now() }, staff: { id: 'creative', at: Date.now() } }, ...(options.auth || {}) };

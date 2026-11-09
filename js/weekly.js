@@ -1,6 +1,6 @@
 'use strict';
 /* Admin-only Management Weekly Update. AI reads the saved team snapshot on the server. */
-const Weekly = { meta: null, report: null, language: 'th', loading: false, fetching: false, error: '', rev: null };
+const Weekly = { meta: null, report: null, language: 'th', loading: false, fetching: false, error: '', failedAction: null, rev: null };
 const weeklyRefresh = () => { if (isAdmin() && route().name === 'weekly') V.weekly($('#view')); };
 const weeklyDates = w => `${fmtDY(w.start)} – ${fmtDY(w.end)}`;
 const weeklyBullets = items => `<ul class="weekly-bullets">${items.map(s => `<li>${esc(s)}</li>`).join('')}</ul>`;
@@ -35,7 +35,7 @@ V.weekly = root => {
     </section>
     ${local ? '<div class="note mt">เปิดฟีเจอร์นี้ผ่านเว็บไซต์ที่เชื่อมข้อมูลทีม เพื่อให้ AI อ่านงานล่าสุดของทีมได้</div>' : ''}
     ${w.fetching || w.loading ? `<p class="muted mt" role="status">${w.loading ? 'AI กำลังเรียบเรียง bullet points สำหรับผู้บริหาร…' : 'กำลังตรวจงานของทีม…'}</p>` : ''}
-    ${w.error ? `<div class="note warn mt" role="alert">${esc(w.error)} <button type="button" class="link-btn" data-act="weeklyReload">ลองใหม่</button></div>` : ''}
+    ${w.error ? `<div class="note warn mt" role="alert">${esc(w.error)} <button type="button" class="link-btn" data-act="weeklyRetry">ลองใหม่</button></div>` : ''}
     ${!local && meta && !meta.aiConnected ? '<div class="note warn mt">ยังไม่ได้เชื่อม AI · Admin เชื่อม Gemini หรือ Claude ได้ที่ Poster → CI Control</div>' : ''}
     ${meta?.counts.unscheduled ? `<p class="muted small mt">มี ${meta.counts.unscheduled} งานที่ยังไม่มีช่วงวันที่ที่ใช้ได้ จึงยังไม่รวมในสรุปนี้</p>` : ''}
     ${!w.fetching && meta && !meta.counts.tasks ? empty('check', 'ยังไม่มีงานในช่วงนี้', 'เมื่อมีงานในสองสัปดาห์นี้ หรืองานค้างที่ต้องติดตาม จะสรุปให้ได้ที่นี่') : ''}
@@ -56,10 +56,11 @@ async function weeklyLoad() {
   if (!isAdmin() || Weekly.fetching || Weekly.loading || Store.mode !== 'server') return;
   Weekly.fetching = true; Weekly.error = ''; weeklyRefresh();
   try { Weekly.meta = await weeklyRequest('GET'); Weekly.rev = Store.rev; }
-  catch (e) { Weekly.error = e.message || 'โหลดข้อมูลไม่สำเร็จ'; }
+  catch (e) { Weekly.error = e.message || 'โหลดข้อมูลไม่สำเร็จ'; Weekly.failedAction = 'load'; }
   finally { Weekly.fetching = false; weeklyRefresh(); }
 }
 ACT.weeklyReload = () => { Weekly.rev = null; weeklyLoad(); };
+ACT.weeklyRetry = () => Weekly.failedAction === 'generate' ? ACT.weeklyGenerate() : weeklyLoad();
 ACT.weeklyGenerate = async () => {
   const w = Weekly; if (!isAdmin() || w.loading || w.fetching || Store.mode !== 'server') return;
   w.loading = true; w.error = ''; weeklyRefresh();
@@ -69,7 +70,7 @@ ACT.weeklyGenerate = async () => {
     w.meta = { ...report, aiConnected: w.meta?.aiConnected }; w.rev = Store.rev;
     if (report.result) w.report = report;
     else w.report = null;
-  } catch (e) { w.error = e.message || 'AI สรุปไม่สำเร็จ กรุณาลองใหม่'; }
+  } catch (e) { w.error = e.message || 'AI สรุปไม่สำเร็จ กรุณาลองใหม่'; w.failedAction = 'generate'; }
   finally { w.loading = false; weeklyRefresh(); }
 };
 ACT.weeklyCopy = async () => {
