@@ -236,3 +236,25 @@
 }
 .sd-fontmany{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
 .sd-fontmany-out{margin-top:8px}.sd-fontmany-out p{margin:4px 0}
+
+/* ---------- brief from PowerPoint ---------- */
+.sb-box{margin-top:10px}
+.sb-idle{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px dashed var(--line2);border-radius:12px}
+.sb-idle .btn{flex:none}.sb-idle span{flex:1 1 220px;min-width:0;line-height:1.45}
+.sb-on{display:flex;flex-direction:column;gap:10px;padding:12px;border:1px solid var(--accent);border-radius:12px;background:var(--accent-l)}
+.sb-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.sb-h b{display:flex;align-items:center;gap:6px;min-width:0;font-size:14px;overflow-wrap:anywhere}
+.sb-slides{flex-wrap:wrap}
+.sb-pics{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.sb-th{display:flex;flex-direction:column;gap:4px;border:1px solid var(--line2);border-radius:10px;padding:5px;background:var(--surface)}
+.sb-th.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.sb-th img{width:100%;height:76px;object-fit:contain;border-radius:6px;background:repeating-conic-gradient(#eef1f6 0 25%,#fff 0 50%) 0 0/12px 12px}
+.sb-th.sb-bg img{object-fit:cover}
+.sb-th div{display:flex;flex-direction:column;gap:3px}
+.sb-th button{border:1px solid var(--line2);border-radius:7px;background:var(--surface);font-size:11.5px;font-weight:600;padding:5px 4px;min-height:30px;color:var(--text)}
+.sb-th.on button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.sb-text summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--accent);min-height:30px;display:flex;align-items:center}
+.sb-text pre{margin:6px 0 0;padding:8px 10px;border-radius:8px;background:var(--surface);font:inherit;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;max-height:180px;overflow:auto}
+.sb-go{align-self:flex-start}
+#sdStep1.sb-drop{outline:2px dashed var(--accent);outline-offset:3px}
+@media (max-width:520px){.sb-go{align-self:stretch;justify-content:center}.sb-pics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (pointer:coarse){.sb-th button{min-height:38px}}
