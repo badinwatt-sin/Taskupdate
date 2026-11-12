@@ -64,7 +64,7 @@ function prBuild(b, design, format) {
     const cutout = b.pr.photo.cutout;
     const photoY = feature ? start : result.detailsY;
     const available = end - photoY;
-    const photoH = Math.max(100 * u, feature ? available : Math.min(available, 590 * u));
+    const photoH = Math.max(100 * u, feature ? available : Math.min(available, 410 * u));
     if (feature && cutout) {
       c.add({ t: 'shape', role: 'studioLight', kind: 'studioLight', x: photoX - 20 * u, y: photoY, w: photoW + 40 * u, h: photoH, fill: '#6574F8' });
     } else {
