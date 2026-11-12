@@ -6,7 +6,7 @@
 .pr-form input[type=file] { width:100%; font-size:.84rem; }
 .pr-form input[type=file]::file-selector-button { margin-right:8px; }
 .pr-form #prAdobeRow[hidden] { display:none; }
-.pr-form #prAdobeInfo:empty, .pr-form #prStatus:empty { display:none; }
+.pr-form #prAdobeInfo:empty, .pr-form #prStatus:empty, .pr-form #prDeckStatus:empty { display:none; }
 .pr-adobe-express { display:grid; gap:4px; }
 .pr-adobe-express a { width:fit-content; text-decoration:underline; text-underline-offset:2px; }
 .pr-result { display:grid; gap:14px; }

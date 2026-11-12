@@ -10,14 +10,14 @@ const PR_FIELDS = [
 const PR_TYPES = { event: 'Prime Clinic / Event Invitation', recognition: 'Prime Recognition' };
 let prState;
 
-function prExtract(source, ai, requestedType) {
+function prExtract(source, ai, requestedType, fromPowerPoint = false) {
   const local = sdLocalBrief(source);
   const tags = {
     headline: 'หัวข้อ(?:หลัก|เรื่อง)?|headline',
     sub: 'ข้อความรอง|subtitle',
     person: 'ชื่อบุคคล|ชื่อวิทยากร|วิทยากร|ผู้ได้รับรางวัล|ผู้รับรางวัล|speaker|recipient',
     date: 'วันที่|date', time: 'เวลา|time', venue: 'สถานที่|venue',
-    cta: 'cta|ข้อความชวนให้ลงมือทำ', note: 'เงื่อนไข|หมายเหตุ|note',
+    cta: 'cta|ข้อความชวนให้ลงมือทำ|ลงทะเบียน|สมัคร', note: 'เงื่อนไข|หมายเหตุ|note',
   };
   const explicit = key => source.match(new RegExp('^(?:' + tags[key] + ')\\s*[:：]\\s*([^\\n]+)', 'im'))?.[1].trim() || '';
   const exact = value => typeof value === 'string' && source.includes(value.trim()) ? value.trim() : '';
@@ -37,13 +37,17 @@ function prExtract(source, ai, requestedType) {
   const kicker = kind === 'recognition' ? 'Prime Recognition' : /\bprime clinic\b/i.test(source) ? 'Prime Clinic' : 'KTAXA Prime';
   const photoFirst = /เน้น(?:ภาพ|รูป)(?:คน|บุคคล|วิทยากร)?|โทน(?:สี)?(?:น้ำเงินเข้ม|royal blue)|portrait[- ]led/i.test(source);
   const editorialFirst = /เน้นหัว(?:เรื่อง|ข้อ)|พื้น(?:หลัง)?(?:สี)?ขาว|editorial/i.test(source);
-  const first = photoFirst || (!editorialFirst && kind === 'recognition') ? 'pr-portrait' : 'pr-editorial';
+  const ranked = ai?.designs?.[0];
+  const preferPortrait = fromPowerPoint && ['feature', 'circles'].includes(ranked);
+  const first = photoFirst || (!editorialFirst && (preferPortrait || kind === 'recognition')) ? 'pr-portrait' : 'pr-editorial';
+  const direction = fromPowerPoint && Array.isArray(ai?.review)
+    ? String(ai.review.find(item => item?.by === 'design')?.note || '').slice(0, 240) : '';
   return {
     ...sdEmptyBrief(), kind, headline: [head], kicker,
     sub, date, time, venue: explicit('venue') || exact(ai?.venue) || exact(local.venue),
-    cta: explicit('cta') || exact(local.cta), note: explicit('note') || exact(local.note) || pbBrand().footer || '',
+    cta: explicit('cta') || exact(local.cta) || exact(ai?.cta), note: explicit('note') || exact(local.note) || exact(ai?.note) || pbBrand().footer || '',
     emph: -1, designs: [first, ...Object.keys(PR_LAYOUTS).filter(id => id !== first)],
-    by: ai ? 'ai' : 'auto', pr: { person },
+    by: ai ? 'ai' : 'auto', pr: { person, direction, fromPowerPoint },
   };
 }
 
@@ -108,14 +112,14 @@ async function prProcessPhoto(file, useAdobe, signal) {
   return { photo: original, message: '' };
 }
 
-async function prAskAI(source, format, signal) {
+async function prAskAI(source, format, signal, fromPowerPoint) {
   if (Store.mode !== 'server') return null;
   try {
     const response = await fetch('api/ai-brief', {
       method: 'POST', headers: Store.headers(true), signal,
       body: JSON.stringify({
         text: source, format, today: today(),
-        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.',
+        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.' + (fromPowerPoint ? ' This text was extracted from a rough PowerPoint brief. Act as a Thai art director and graphic designer: identify the audience and visual hierarchy. Rank feature first for a people-led Studio Portrait or band first for a headline-led Editorial. In review, add one design note in Thai explaining what should catch the eye first and why. Keep directions about tone, audience or graphics out of poster copy.' : ''),
       }),
     });
     return response.ok ? (await response.json()).result || null : null;
@@ -136,6 +140,15 @@ V['pr-master'] = root => {
     <div class="pr-grid">
       <form class="card pr-form" id="prForm">
         <h3>บรีฟโปสเตอร์</h3>
+        <label class="field"><span>นำเข้าบรีฟจาก PowerPoint <small>(ไม่บังคับ)</small></span><input type="file" id="prDeck" accept=".pptx"><small class="muted">เลือกไฟล์ .pptx ขนาดไม่เกิน 20 MB</small></label>
+        <div id="prDeckOptions" hidden>
+          <div class="form-grid">
+            <label class="field"><span>สไลด์ที่ใช้เป็นบรีฟ</span><select id="prDeckSlide"></select></label>
+            <label class="field"><span>รูปบุคคลจากสไลด์</span><select id="prDeckPhoto"></select></label>
+          </div>
+          <button type="button" class="btn btn-sm btn-ghost" id="prDeckApply">ใช้สไลด์นี้</button>
+        </div>
+        <p class="small muted" id="prDeckStatus" role="status"></p>
         <label class="field"><span>รายละเอียดที่ต้องการสื่อสาร</span><textarea id="prText" rows="8" required maxlength="8000" placeholder="พิมพ์หัวข้อ วัน เวลา ชื่อบุคคล และสิ่งที่อยากให้คนทำต่อ">${esc(state.text)}</textarea></label>
         <button type="button" class="btn btn-sm btn-ghost" id="prExample">ใช้บรีฟตัวอย่าง</button>
         <div class="form-grid">
@@ -155,6 +168,7 @@ V['pr-master'] = root => {
       <section class="card pr-result" id="prResult" aria-label="ตัวอย่างโปสเตอร์"></section>
     </div></div>`;
   const app = $('#prMaster', root), form = $('#prForm', app);
+  prBindPowerPoint(app, state);
   if (state.message) prStatus(app, state.message);
   $('#prText', app).oninput = e => { state.text = e.target.value; };
   $('#prType', app).onchange = e => { state.type = e.target.value; };
@@ -163,7 +177,7 @@ V['pr-master'] = root => {
     state.reviewed = false;
     if (state.brief) prResult(app, state);
   };
-  $('#prExample', app).onclick = () => { $('#prText', app).value = state.text = PR_EXAMPLE; };
+  $('#prExample', app).onclick = () => { state.fromPowerPoint = false; $('#prText', app).value = state.text = PR_EXAMPLE; };
   $('#prPhoto', app).onchange = e => {
     const file = e.target.files[0];
     if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 15e6)) {
@@ -192,13 +206,13 @@ V['pr-master'] = root => {
     try {
       const useAdobe = !$('#prAdobeRow', app).hidden && $('#prAdobe', app).checked;
       const [ai, { photo, message }] = await Promise.all([
-        prAskAI(source, state.format, request.signal),
+        prAskAI(source, state.format, request.signal, state.fromPowerPoint),
         prProcessPhoto(state.file, useAdobe, request.signal),
       ]);
       if (request.signal.aborted || prState !== state) { prReleasePhoto(photo); return; }
       if (state.photo?.src !== SDOC.brief?.pr?.photo?.src) prReleasePhoto(state.photo);
       state.photo = photo;
-      state.brief = prExtract(source, ai, state.type);
+      state.brief = prExtract(source, ai, state.type, state.fromPowerPoint);
       state.brief.pr.photo = photo;
       state.design = state.brief.designs[0];
       state.reviewed = false;
@@ -283,6 +297,7 @@ function prResult(app, state) {
     return;
   }
   root.innerHTML = `<h3>เลือกแบบโปสเตอร์</h3>
+    ${b.pr.direction ? `<p class="small muted">ทิศทางภาพจาก AI · ${esc(b.pr.direction)}</p>` : ''}
     <div class="pr-options">${b.designs.map(d => `<button type="button" data-design="${d}" aria-pressed="${d === state.design}"><canvas aria-label="${PR_LAYOUTS[d][0]}" role="img"></canvas><b>${PR_LAYOUTS[d][0]}</b></button>`).join('')}</div>
     <details class="pr-copy" open><summary>ตรวจและแก้ข้อความ</summary><div class="form-grid">${PR_FIELDS.map(([key, title, max]) => {
       const value = key === 'headline' ? b.headline.join(' ') : key === 'person' ? b.pr.person : b[key];
