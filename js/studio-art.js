@@ -75,11 +75,20 @@ function saProp(g, key, x, y, w, h) {
   g.save(); g.translate(x + w / 2 - (x0 + x1) / 2 * s, y + h / 2 - (y0 + y1) / 2 * s); g.scale(s, s); P[2](g); g.restore();
 }
 /* decor shapes (drawn into the layer box) */
-const SA_SHAPES = { rect: 'สี่เหลี่ยม', arch: 'ซุ้มโค้ง', slab: 'แถบเฉียง', frame: 'กรอบ', tiles: 'โมเสก', wave: 'คลื่น', stripes: 'ลายเส้นเฉียง', quarter: 'มุมโค้ง', plus: 'กากบาท', tile: 'การ์ดมีเงา', circle: 'วงกลม', blob: 'รูปทรงอิสระ', sparkle: 'ประกาย', dots: 'จุด', ring: 'วงแหวน', line: 'เส้น' };
+const SA_SHAPES = { studioLight: 'แสงสตูดิโอ', rect: 'สี่เหลี่ยม', arch: 'ซุ้มโค้ง', slab: 'แถบเฉียง', frame: 'กรอบ', tiles: 'โมเสก', wave: 'คลื่น', stripes: 'ลายเส้นเฉียง', quarter: 'มุมโค้ง', plus: 'กากบาท', tile: 'การ์ดมีเงา', circle: 'วงกลม', blob: 'รูปทรงอิสระ', sparkle: 'ประกาย', dots: 'จุด', ring: 'วงแหวน', line: 'เส้น' };
 function saShape(g, L) {
   const { x, y, w, h } = L, c = L.fill || '#E2EFFF';
   g.save(); g.globalAlpha = L.alpha == null ? 1 : L.alpha; g.fillStyle = c; g.strokeStyle = c;
-  if (L.kind === 'circle') { g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 6.3); g.fill(); }
+  if (L.kind === 'studioLight') {
+    g.translate(x + w / 2, y + h * .48);
+    g.scale(w / 2, h * .52);
+    const light = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    light.addColorStop(0, c + 'b8');
+    light.addColorStop(.52, c + '62');
+    light.addColorStop(1, c + '00');
+    g.fillStyle = light;
+    g.fillRect(-1, -1, 2, 2);
+  } else if (L.kind === 'circle') { g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 6.3); g.fill(); }
   else if (L.kind === 'ring') { g.lineWidth = Math.max(2, Math.min(w, h) * .08); g.beginPath(); g.ellipse(x + w / 2, y + h / 2, w / 2 - g.lineWidth / 2, h / 2 - g.lineWidth / 2, 0, 0, 6.3); g.stroke(); }
   else if (L.kind === 'blob') {
     g.beginPath(); g.moveTo(x + w * .52, y);

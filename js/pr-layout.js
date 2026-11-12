@@ -1,8 +1,8 @@
 'use strict';
 
 const PR_LAYOUTS = {
-  'pr-portrait': ['เน้นภาพบุคคล', 'ภาพด้านขวาและข้อความบนพื้นน้ำเงินเข้ม'],
-  'pr-editorial': ['เน้นหัวเรื่อง', 'หัวเรื่องเต็มหน้ากว้างและรายละเอียดด้านล่าง'],
+  'pr-portrait': ['Studio Portrait', 'ฉากน้ำเงินไล่แสงและภาพวิทยากร'],
+  'pr-editorial': ['Editorial', 'พื้นสว่าง หัวเรื่องใหญ่ และภาพครึ่งตัว'],
 };
 Object.assign(SD_DESIGNS, PR_LAYOUTS);
 
@@ -37,8 +37,8 @@ function prBuild(b, design, format) {
     put('sub', b.sub, textW, 38, ink, 400, 24);
     put('person', b.pr.person, textW, b.kind === 'recognition' ? 56 : 44, ink, 700, 22);
     if (b.date || b.time || b.venue) {
-      layers.push({ t: 'shape', role: 'factRule', kind: 'rect', x: left, y, w: 58 * u, h: 4 * u, fill: dark ? '#E2EFFF' : '#00008F' });
-      y += 26 * u;
+      layers.push({ t: 'shape', role: 'factRule', kind: 'rect', x: left, y, w: 72 * u, h: 5 * u, fill: dark ? '#E2EFFF' : '#00008F' });
+      y += 31 * u;
     }
     put('date', b.date, textW, 39, ink, 600, 5);
     put('time', b.time, textW, 37, ink, 400, 5);
@@ -61,11 +61,21 @@ function prBuild(b, design, format) {
   }
 
   if (b.pr.photo) {
+    const cutout = b.pr.photo.cutout;
     const photoY = feature ? start : result.detailsY;
-    const photoH = Math.max(100 * u, end - photoY);
-    c.add({ t: 'shape', role: 'photoPanel', kind: 'round', x: photoX, y: photoY, w: photoW, h: photoH, fill: '#E2EFFF', r: .06 });
-    c.add({ t: 'img', role: 'hero', src: b.pr.photo.src, x: photoX, y: photoY, w: photoW, h: photoH, r: .055,
-      contain: !!b.pr.photo.cutout, cropX: b.pr.cropX, cropY: b.pr.photo.cutout ? 1 : b.pr.cropY });
+    const available = end - photoY;
+    const photoH = Math.max(100 * u, feature ? available : Math.min(available, 590 * u));
+    if (feature && cutout) {
+      c.add({ t: 'shape', role: 'studioLight', kind: 'studioLight', x: photoX - 20 * u, y: photoY, w: photoW + 40 * u, h: photoH, fill: '#6574F8' });
+    } else {
+      c.add({ t: 'shape', role: 'photoPanel', kind: cutout && photoH > photoW / 2 ? 'arch' : 'rect',
+        x: photoX, y: photoY, w: photoW, h: photoH, fill: '#E2EFFF', r: .045 });
+    }
+    c.add({ t: 'img', role: 'hero', src: b.pr.photo.src, x: photoX, y: photoY, w: photoW, h: photoH,
+      r: feature && cutout ? 0 : .045, contain: feature && cutout, cropX: b.pr.cropX,
+      cropY: b.pr.cropY ?? (cutout ? (feature ? 1 : .16) : .38),
+      exposure: b.pr.exposure ?? (feature ? 1.08 : 1.03), contrast: b.pr.contrast ?? 1.04,
+      subjectShadow: feature && cutout });
   }
   result.layers.forEach(c.add);
   return { bg: dark ? { ...SD_THEMES.deep.bg } : { c1: '#FFFFFF' }, layers: c.L, scale: result.scale,
