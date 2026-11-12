@@ -75,7 +75,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- Poster Studio is Admin-only and heavy (~half of all script bytes): load it on demand ---------- */
-const POSTER_KIT = ['js/vendor/qrcode.min.js', 'js/poster-art.js', 'js/poster-form.js', 'js/poster-notes.js', 'js/poster.js', 'js/studio-art.js', 'js/studio-kit.js', 'js/studio-fonts.js', 'js/studio-layout.js', 'js/studio-ci.js', 'js/studio-pro.js', 'js/studio.js'];
+const POSTER_KIT = ['js/vendor/qrcode.min.js', 'js/poster-art.js', 'js/poster-form.js', 'js/poster-notes.js', 'js/poster.js', 'js/studio-art.js', 'js/studio-kit.js', 'js/studio-fonts.js', 'js/studio-layout.js', 'js/studio-ci.js', 'js/studio-pro.js', 'js/studio.js', 'js/studio-edit.js'];
 function loadPosterKit() {
   if (!loadPosterKit.p) loadPosterKit.p = new Promise((res, rej) => {
     POSTER_KIT.forEach((src, i) => { const s = document.createElement('script'); s.src = src; s.async = false;   // download in parallel, run in order

@@ -85,7 +85,7 @@
 .sd-draft img{width:100%;border-radius:6px;background:#fff}
 .sd-draft b{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sd-draft small{color:var(--muted);font-size:11.5px}
 .sd-draft .icon-btn{position:absolute;top:12px;right:12px;background:var(--surface)}
-@media (max-width:1280px){
+@media (max-width:1640px){
   .sd{grid-template-columns:minmax(300px,360px) minmax(0,1fr)}
   .sd-right{grid-column:2;position:static;display:grid;grid-template-columns:1fr 1fr;gap:16px}
   .sd-center{position:sticky}
@@ -178,3 +178,59 @@
 .sd-qa-row li.note::marker{color:var(--accent)}.sd-qa-row li.error{color:var(--red)}
 .sd-ci.ok,.sd-ci.warn,.sd-ci.bad{background:var(--surface2);color:var(--text)}
 .sd-bgs img{height:90px;object-fit:cover;border-radius:6px}
+
+/* ---------- direct editing: quick bar, typing on the poster ---------- */
+.se-quick{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;height:50px;padding:6px 8px;margin-bottom:10px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}
+.se-quick[data-mode=sel]{border-color:var(--accent);background:var(--accent-l)}
+.se-quick::-webkit-scrollbar{display:none}.se-quick>*{flex:none}
+.se-quick>.se-hint{display:block;flex:1 1 0;min-width:0;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.se-hint .ico{margin-right:4px}
+.se-quick>.se-grow{flex:1 1 0;min-width:4px}
+.se-name{font-size:13.5px;white-space:nowrap}
+.se-font{max-width:210px;min-width:0;height:36px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);padding:0 8px;font-size:14px}
+.se-seg{display:inline-flex;border:1px solid var(--line2);border-radius:9px;overflow:hidden;background:var(--surface);flex:none}
+.se-seg button{min-width:38px;height:36px;padding:0 9px;border:0;background:none;font-size:13.5px;font-weight:600;color:var(--text);display:inline-flex;align-items:center;justify-content:center}
+.se-seg button+button{border-left:1px solid var(--line2)}
+.se-seg button.on{background:var(--accent);color:#fff}
+.se-btn{height:36px;min-width:36px;padding:0 9px;border:1px solid var(--line2);border-radius:9px;background:var(--surface);color:var(--text);display:inline-flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;flex:none}
+.se-btn.se-del{color:var(--red)}.se-btn.se-done{background:var(--text);color:var(--bg);border-color:var(--text)}
+.se-sw{display:inline-flex;gap:5px;flex:none}
+.se-sw button{width:26px;height:26px;border-radius:50%;border:0;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,40,.25);padding:0}
+.se-sw button.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent)}
+.se-quick .btn.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.se-inline{position:absolute;z-index:3;box-sizing:border-box;margin:0;padding:6px 8px;border:2px solid #2D6BFF;border-radius:8px;background:rgba(255,255,255,.97);color:#0B0B45;font-family:"IBM Plex Sans Thai",sans-serif;line-height:1.3;resize:none;overflow:hidden;box-shadow:0 8px 26px rgba(0,0,60,.28);user-select:text;-webkit-user-select:text;touch-action:auto;field-sizing:content}
+/* the page scrolls with a finger on the poster until something is selected */
+.sd-wrap,.sd-ov{touch-action:pan-y}
+.sd-wrap.has-sel,.sd-wrap.has-sel .sd-ov{touch-action:none}
+
+/* ---------- responsive pass ---------- */
+@media (pointer:coarse){
+  .sd-h{width:20px;height:20px}.sd-h-e,.sd-h-w{width:14px;height:30px}.sd-h-n,.sd-h-s{width:30px;height:14px}
+  .sd-x{width:38px;height:38px;top:-46px}
+  .se-quick{height:58px}.se-seg button,.se-btn,.se-font{height:42px}.se-seg button{min-width:44px}.se-sw button{width:32px;height:32px}
+  #sdRoot .seg-chips button{min-height:40px}
+}
+@media (max-width:1640px) and (min-width:901px){
+  .sd-wrap{max-width:min(100%,calc((100vh - 330px) * var(--ar,1)))}
+}
+@media (max-width:900px){
+  #sdStep1{order:0}.sd-center{order:1}.sd-right{order:2}#sdBrief{order:3}   /* the tools for the selected piece sit right under the poster */
+  .sd-wrap{max-width:min(100%,calc(64vh * var(--ar,1)))}
+  .sd-stagecard{padding:10px}
+  .sd-toolbar{gap:2px;margin-bottom:8px}.sd-toolbar .small{font-size:12px}
+  .se-quick{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:6;box-shadow:0 4px 14px rgba(0,0,40,.10)}
+  .se-quick[data-mode=sel]>.se-grow{flex:0 0 4px}
+  .se-font{max-width:170px}
+  .sd-export{flex-direction:column;align-items:stretch}.sd-export .btn-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.sd-export .btn-row .btn{justify-content:center}
+  #sdRoot input,#sdRoot select,#sdRoot textarea{font-size:16px}   /* no zoom-on-focus on iPhone */
+  #sdRoot .page-head .head-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px}#sdRoot .page-head .head-actions .btn{justify-content:center;padding-left:6px;padding-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sd-kit{max-height:300px}
+}
+@media (max-width:520px){
+  .se-quick[data-mode=idle]>.se-hint,.se-quick[data-mode=idle]>.se-grow{display:none}
+  .se-quick[data-mode=idle] .btn{flex:1 1 0;justify-content:center}
+  .sd-tpls{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .sd-fmts button{flex:1 1 calc(50% - 6px);justify-content:center}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .sd-wrap{max-width:min(100%,calc(78vh * var(--ar,1)))}
+}
