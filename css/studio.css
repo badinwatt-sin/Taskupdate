@@ -258,3 +258,23 @@
 #sdStep1.sb-drop{outline:2px dashed var(--accent);outline-offset:3px}
 @media (max-width:520px){.sb-go{align-self:stretch;justify-content:center}.sb-pics{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (pointer:coarse){.sb-th button{min-height:38px}}
+
+/* ---------- AXA Prime posters ---------- */
+.sd-wrap[data-fmt=a4]{--ar:.707}.sd-wrap[data-fmt=wide]{--ar:3.167}
+#sdRoot.sp-on #sdStep1,#sdRoot.sp-on #sdBrief{display:none}
+.sp-card{order:0}
+.sp-mode{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:var(--surface2)}
+.sp-mode button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px;border:0;border-radius:9px;background:none;font-weight:600;font-size:14px;color:var(--muted)}
+.sp-mode button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,40,.14)}
+.sp-mode img{height:22px;width:auto}
+.sp-card h3{margin-top:16px}
+.sp-series{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sp-series button{display:flex;flex-direction:column;gap:4px;text-align:left;border:1px solid var(--line2);border-radius:12px;padding:6px;background:var(--surface);min-width:0}
+.sp-series i{display:block;aspect-ratio:1;border-radius:8px;background-size:cover,cover;background-position:center,center;background-color:#00228E}
+.sp-series b{font-size:12.5px;line-height:1.25;overflow-wrap:anywhere}.sp-series small{font-size:11px;line-height:1.3;color:var(--muted)}
+.sp-series button:hover{border-color:var(--accent)}
+.sp-series button.on{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);background:var(--accent-l)}
+.sp-need{margin-top:8px}
+.sp-paste textarea{width:100%;margin-bottom:8px}
+.sp-form .sp-pair{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:8px}
+@media (max-width:420px){.sp-series b{font-size:11.5px}.sp-series small{display:none}}
