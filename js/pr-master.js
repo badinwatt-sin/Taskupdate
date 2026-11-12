@@ -288,7 +288,7 @@ function prResult(app, state) {
       const value = key === 'headline' ? b.headline.join(' ') : key === 'person' ? b.pr.person : b[key];
       return `<label class="field"><span>${title}</span><input data-pr-field="${key}" maxlength="${max}" value="${esc(value)}"></label>`;
     }).join('')}</div>
-    ${b.pr.photo && (!b.pr.photo.cutout || state.design === 'pr-editorial') ? '<div class="form-grid"><label class="field"><span>จัดตำแหน่งรูปแนวนอน</span><input type="range" min="0" max="1" step=".05" value="' + (b.pr.cropX ?? .5) + '" data-crop="cropX"></label><label class="field"><span>จัดตำแหน่งรูปแนวตั้ง</span><input type="range" min="0" max="1" step=".05" value="' + (b.pr.cropY ?? (b.pr.photo.cutout ? .16 : .38)) + '" data-crop="cropY"></label></div>' : ''}
+    ${b.pr.photo && (!b.pr.photo.cutout || state.design === 'pr-editorial') ? '<div class="form-grid"><label class="field"><span>จัดตำแหน่งรูปแนวนอน</span><input type="range" min="0" max="1" step=".05" value="' + (b.pr.cropX ?? .5) + '" data-crop="cropX"></label><label class="field"><span>จัดตำแหน่งรูปแนวตั้ง</span><input type="range" min="0" max="1" step=".05" value="' + (b.pr.cropY ?? (b.pr.photo.cutout ? 0 : .38)) + '" data-crop="cropY"></label></div>' : ''}
     ${b.pr.photo ? `<div class="form-grid">
       <label class="field"><span>ความสว่างของรูป</span><input type="range" min=".8" max="1.25" step=".01" value="${b.pr.exposure ?? (state.design === 'pr-portrait' ? 1.08 : 1.03)}" data-crop="exposure"></label>
       <label class="field"><span>คอนทราสต์ของรูป</span><input type="range" min=".85" max="1.25" step=".01" value="${b.pr.contrast ?? 1.04}" data-crop="contrast"></label>

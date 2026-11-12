@@ -73,7 +73,7 @@ function prBuild(b, design, format) {
     }
     c.add({ t: 'img', role: 'hero', src: b.pr.photo.src, x: photoX, y: photoY, w: photoW, h: photoH,
       r: feature && cutout ? 0 : .045, contain: feature && cutout, cropX: b.pr.cropX,
-      cropY: b.pr.cropY ?? (cutout ? (feature ? 1 : .16) : .38),
+      cropY: b.pr.cropY ?? (cutout ? (feature ? 1 : 0) : .38),
       exposure: b.pr.exposure ?? (feature ? 1.08 : 1.03), contrast: b.pr.contrast ?? 1.04,
       subjectShadow: feature && cutout });
   }
