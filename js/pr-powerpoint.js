@@ -6,7 +6,7 @@ const PR_PPTX_NS = {
   rel: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
 };
 const PR_PPTX_MAX = 20e6;
-const PR_PPTX_IMAGES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
+const PR_PPTX_IMAGES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
 const prNodes = (root, ns, tag) => [...root.getElementsByTagNameNS(ns, tag)];
 
 function prCheckPptxZip(buffer) {
@@ -57,7 +57,7 @@ async function prReadPptx(file) {
   };
   const main = 'ppt/presentation.xml', deck = xml(main);
   if (!deck) throw new Error('ไม่พบสไลด์ในไฟล์ .pptx');
-  const deckRels = rels(main);
+  const deckRels = rels(main), imageFiles = new Map();
   const slides = prNodes(deck, PR_PPTX_NS.presentation, 'sldId').map((id, index) => {
     const path = deckRels.get(id.getAttributeNS(PR_PPTX_NS.rel, 'id'));
     const slide = path && xml(path);
@@ -66,23 +66,45 @@ async function prReadPptx(file) {
     const text = paragraphs.map(p => prNodes(p, PR_PPTX_NS.drawing, 't').map(t => t.textContent).join('').trim()).filter(Boolean).join('\n');
     const slideRels = rels(path);
     const sources = prNodes(slide, PR_PPTX_NS.drawing, 'blip').map(blip => slideRels.get(blip.getAttributeNS(PR_PPTX_NS.rel, 'embed')));
-    const images = [...new Set(sources.filter(Boolean))].flatMap(src => {
+    const unique = [...new Set(sources.filter(Boolean))];
+    const images = unique.flatMap(src => {
       const type = PR_PPTX_IMAGES[src.split('.').at(-1).toLowerCase()], data = parts.get(src);
-      return type && data?.length && data.length <= 15e6 ? [new File([data], src.split('/').at(-1), { type })] : [];
+      if (!type || !data?.length || data.length > 15e6) return [];
+      if (!imageFiles.has(src)) imageFiles.set(src, new File([data], src.split('/').at(-1), { type }));
+      return [imageFiles.get(src)];
     });
-    return { number: index + 1, text, images };
+    return { number: index + 1, text, images,
+      hasOtherVisuals: images.length !== unique.length || prNodes(slide, PR_PPTX_NS.presentation, 'graphicFrame').length > 0
+        || prNodes(slide, PR_PPTX_NS.presentation, 'cxnSp').length > 0
+        || prNodes(slide, PR_PPTX_NS.presentation, 'sp').some(shape => !prNodes(shape, PR_PPTX_NS.drawing, 't').some(t => t.textContent.trim())),
+    };
   });
-  if (!slides.some(s => s.text || s.images.length)) throw new Error('ไม่พบข้อความหรือรูป JPG, PNG หรือ WebP ในสไลด์');
+  if (!slides.some(s => s.text || s.images.length)) throw new Error('ไม่พบข้อความหรือรูป JPG, PNG, WebP หรือ GIF ในสไลด์');
   return slides;
 }
 
 function prBindPowerPoint(app, state) {
   const input = $('#prDeck', app), picker = $('#prDeckSlide', app), pane = $('#prDeckOptions', app);
   const photos = $('#prDeckPhoto', app), apply = $('#prDeckApply', app), status = $('#prDeckStatus', app);
+  const assets = $('#prDeckAssets', app), warning = $('#prDeckVisualWarning', app);
   let revision = 0;
   const slide = () => state.deck?.slides[Number(picker.value)];
   const refreshPhotos = () => {
     const item = slide();
+    assets.replaceChildren();
+    warning.hidden = !item?.hasOtherVisuals;
+    item?.images.forEach((file, index) => {
+      const label = document.createElement('label');
+      const image = new Image(), url = URL.createObjectURL(file);
+      const cleanup = () => URL.revokeObjectURL(url);
+      image.onload = cleanup; image.onerror = cleanup; image.src = url;
+      image.alt = 'รูป ' + (index + 1) + ' จากสไลด์';
+      const field = document.createElement('input');
+      field.type = 'checkbox'; field.value = String(index);
+      field.setAttribute('aria-label', 'วางรูป ' + (index + 1) + ' ในโปสเตอร์');
+      label.append(image, field, 'วางรูปนี้');
+      assets.append(label);
+    });
     photos.replaceChildren(new Option('ใช้รูปที่แนบอยู่', ''));
     item?.images.forEach((file, index) => photos.add(new Option('รูป ' + (index + 1) + ' · ' + file.name, String(index))));
     photos.disabled = !item?.images.length;
@@ -130,8 +152,10 @@ function prBindPowerPoint(app, state) {
       $('#prPhoto', app).value = '';
       $('#prPhotoName', app).textContent = photo.name + ' · จากสไลด์ ' + item.number;
     }
+    state.slideImages = [...new Set(state.deck.slides.flatMap(slide => slide.images))];
+    state.supportingFiles = [...assets.querySelectorAll('input:checked')].map(input => item.images[Number(input.value)]).filter(file => file !== state.file);
     state.fromPowerPoint = true;
-    status.textContent = 'นำเข้าจากสไลด์ ' + item.number + ' แล้ว · ตรวจบรีฟก่อนกดสร้างโปสเตอร์';
+    status.textContent = 'นำเข้าจากสไลด์ ' + item.number + ' แล้ว · พบ ' + item.images.length + ' รูป · ตรวจบรีฟก่อนกดสร้างโปสเตอร์';
   };
   showDeck();
 }

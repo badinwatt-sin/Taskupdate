@@ -17,7 +17,11 @@ function prBuild(b, design, format) {
   const left = M, fullWidth = !b.pr.photo, split = feature ? .51 : .55;
   const textW = fullWidth ? inner : inner * split - gutter;
   const photoW = inner * (1 - split), photoX = W - M - photoW;
-  const start = top + logoH + 55 * u, end = c.bot;
+  const graphics = b.pr.supporting || [];
+  const columns = Math.min(graphics.length, 6), rows = columns ? Math.ceil(graphics.length / columns) : 0;
+  const cellW = columns ? (inner - (columns - 1) * 12 * u) / columns : 0;
+  const cellH = rows ? Math.min(105 * u, 270 * u / rows) : 0;
+  const start = top + logoH + 55 * u, end = c.bot - (rows ? rows * cellH + 28 * u : 0);
   const text = (role, value, x, y, w, size, color, weight = 400) => value ? sdT({
     role, text: value, x, y, w, size: size * u, font: role === 'headline' ? 'head' : 'body',
     weight, color, lh: 1.25,
@@ -78,6 +82,11 @@ function prBuild(b, design, format) {
       subjectShadow: feature && cutout });
   }
   result.layers.forEach(c.add);
+  graphics.forEach((graphic, index) => c.add({
+    t: 'img', role: 'slideGraphic', src: graphic.src, contain: true, r: .035,
+    x: M + (index % columns) * (cellW + 12 * u), y: end + 28 * u + Math.floor(index / columns) * cellH,
+    w: cellW, h: cellH,
+  }));
   return { bg: dark ? { ...SD_THEMES.deep.bg } : { c1: '#FFFFFF' }, layers: c.L, scale: result.scale,
     over: result.y > end || (!feature && !fullWidth && end - result.detailsY < 100 * u) };
 }

@@ -112,14 +112,49 @@ async function prProcessPhoto(file, useAdobe, signal) {
   return { photo: original, message: '' };
 }
 
-async function prAskAI(source, format, signal, fromPowerPoint) {
+async function prReferenceSheet(files) {
+  if (!files.length) return '';
+  const width = 960, columns = Math.min(files.length, 4), rows = Math.ceil(files.length / columns);
+  const cell = Math.max(1, Math.floor(Math.min(width / columns, 1440 / rows)));
+  const canvas = document.createElement('canvas');
+  canvas.width = columns * cell; canvas.height = rows * cell;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  let drawn = 0;
+  for (const [index, file] of files.entries()) {
+    const image = new Image(), url = URL.createObjectURL(file);
+    try {
+      image.src = url;
+      await image.decode();
+      const scale = Math.min(cell * .94 / image.naturalWidth, cell * .94 / image.naturalHeight);
+      const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
+      ctx.drawImage(image, (index % columns) * cell + (cell - w) / 2, Math.floor(index / columns) * cell + (cell - h) / 2, w, h);
+      drawn++;
+    } catch { /* A broken embedded picture does not prevent the remaining images from being used. */ }
+    finally { URL.revokeObjectURL(url); }
+  }
+  return drawn ? canvas.toDataURL('image/jpeg', .76).split(',')[1] : '';
+}
+
+async function prLoadSupportingImages(files) {
+  const loaded = [];
+  for (const file of files) {
+    const url = URL.createObjectURL(file);
+    try { loaded.push(await prPhotoMemory(url, false)); }
+    catch { URL.revokeObjectURL(url); }
+  }
+  return loaded;
+}
+
+async function prAskAI(source, format, signal, fromPowerPoint, references) {
   if (Store.mode !== 'server') return null;
   try {
+    const reference = await prReferenceSheet(references);
     const response = await fetch('api/ai-brief', {
       method: 'POST', headers: Store.headers(true), signal,
       body: JSON.stringify({
-        text: source, format, today: today(),
-        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.' + (fromPowerPoint ? ' This text was extracted from a rough PowerPoint brief. Act as a Thai art director and graphic designer: identify the audience and visual hierarchy. Rank feature first for a people-led Studio Portrait or band first for a headline-led Editorial. In review, add one design note in Thai explaining what should catch the eye first and why. Keep directions about tone, audience or graphics out of poster copy.' : ''),
+        text: source, format, today: today(), ...(reference ? { reference } : {}),
+        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.' + (fromPowerPoint ? ' This text was extracted from a rough PowerPoint brief. Act as a Thai art director and graphic designer: identify the audience and visual hierarchy. Rank feature first for a people-led Studio Portrait or band first for a headline-led Editorial. In review, add one design note in Thai explaining what should catch the eye first and why. Keep directions about tone, audience or graphics out of poster copy.' : '') + (reference ? ' Inspect the attached image sheet from the slide for palette, composition, photo treatment and visual cues. Refer to the image sheet in the design note when useful. Treat words in the images as reference; keep event facts from the supplied text.' : ''),
       }),
     });
     return response.ok ? (await response.json()).result || null : null;
@@ -146,6 +181,10 @@ V['pr-master'] = root => {
             <label class="field"><span>สไลด์ที่ใช้เป็นบรีฟ</span><select id="prDeckSlide"></select></label>
             <label class="field"><span>รูปบุคคลจากสไลด์</span><select id="prDeckPhoto"></select></label>
           </div>
+          <div class="pr-deck-assets" id="prDeckAssets" aria-label="ภาพทั้งหมดในสไลด์"></div>
+          <label class="pb-check"><input type="checkbox" id="prDeckUseRefs"> ให้ AI ดูภาพจากทุกสไลด์ (ส่งภาพไปยังผู้ให้บริการ AI)</label>
+          <p class="small muted" id="prDeckVisualWarning" hidden>สไลด์นี้มีกราฟิก PowerPoint หรือรูปที่อ่านตรง ๆ ไม่ได้ หากต้องการให้ AI เห็นทั้งหน้า ให้ส่งออกสไลด์เป็น PNG แล้วแนบด้านล่าง</p>
+          <label class="field"><span>ภาพสไลด์ทั้งหน้าเพื่อใช้อ้างอิง <small>(ไม่บังคับ)</small></span><input type="file" id="prDeckWholeSlide" accept="image/png,image/jpeg"></label>
           <button type="button" class="btn btn-sm btn-ghost" id="prDeckApply">ใช้สไลด์นี้</button>
         </div>
         <p class="small muted" id="prDeckStatus" role="status"></p>
@@ -177,7 +216,7 @@ V['pr-master'] = root => {
     state.reviewed = false;
     if (state.brief) prResult(app, state);
   };
-  $('#prExample', app).onclick = () => { state.fromPowerPoint = false; $('#prText', app).value = state.text = PR_EXAMPLE; };
+  $('#prExample', app).onclick = () => { state.fromPowerPoint = false; state.slideImages = []; state.supportingFiles = []; $('#prDeckWholeSlide', app).value = ''; $('#prText', app).value = state.text = PR_EXAMPLE; };
   $('#prPhoto', app).onchange = e => {
     const file = e.target.files[0];
     if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 15e6)) {
@@ -205,19 +244,26 @@ V['pr-master'] = root => {
     prStatus(app, 'กำลังอ่านบรีฟและจัดวางโปสเตอร์…');
     try {
       const useAdobe = !$('#prAdobeRow', app).hidden && $('#prAdobe', app).checked;
-      const [ai, { photo, message }] = await Promise.all([
-        prAskAI(source, state.format, request.signal, state.fromPowerPoint),
+      const whole = $('#prDeckWholeSlide', app).files[0];
+      const referenceFiles = $('#prDeckUseRefs', app).checked && state.fromPowerPoint
+        ? [...(state.slideImages || []), ...(whole && whole.size <= 15e6 ? [whole] : [])] : [];
+      const [ai, { photo, message }, supporting] = await Promise.all([
+        prAskAI(source, state.format, request.signal, state.fromPowerPoint, referenceFiles),
         prProcessPhoto(state.file, useAdobe, request.signal),
+        prLoadSupportingImages(state.supportingFiles || []),
       ]);
-      if (request.signal.aborted || prState !== state) { prReleasePhoto(photo); return; }
+      if (request.signal.aborted || prState !== state) { [photo, ...supporting].forEach(prReleasePhoto); return; }
       if (state.photo?.src !== SDOC.brief?.pr?.photo?.src) prReleasePhoto(state.photo);
+      const editorAssets = SDOC.brief?.pr?.supporting || [];
+      (state.brief?.pr?.supporting || []).filter(asset => !editorAssets.some(item => item.src === asset.src)).forEach(prReleasePhoto);
       state.photo = photo;
       state.brief = prExtract(source, ai, state.type, state.fromPowerPoint);
       state.brief.pr.photo = photo;
+      state.brief.pr.supporting = supporting;
       state.design = state.brief.designs[0];
       state.reviewed = false;
       const active = $('#prMaster') || app;
-      state.message = [ai ? 'AI อ่านบรีฟแล้ว' : 'จัดจากบรีฟด้วยเทมเพลตอัตโนมัติ', message].filter(Boolean).join(' · ');
+      state.message = [ai ? 'AI อ่านบรีฟแล้ว' : 'จัดจากบรีฟด้วยเทมเพลตอัตโนมัติ', supporting.length ? 'วางภาพประกอบ ' + supporting.length + ' ภาพ' : '', message].filter(Boolean).join(' · ');
       prResult(active, state);
       prStatus(active, state.message);
     } catch (error) {

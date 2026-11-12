@@ -20,3 +20,8 @@
 .pr-copy summary { cursor:pointer; font-weight:700; margin-bottom:9px; }
 .pr-copy .field { min-width:0; }
 @media(max-width:900px) { .pr-grid { grid-template-columns:1fr; } }
+
+.pr-deck-assets { display:grid; grid-template-columns:repeat(auto-fit,minmax(85px,1fr)); gap:8px; margin:8px 0; }
+.pr-deck-assets label { font-size:.8rem; min-width:0; }
+.pr-deck-assets img { display:block; width:100%; height:60px; object-fit:contain; border:1px solid var(--line,#d5dff0); border-radius:5px; }
+.pr-deck-assets:empty { display:none; }
