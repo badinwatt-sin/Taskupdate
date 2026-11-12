@@ -276,7 +276,7 @@ function sdDrawQr(k, L, draw) {
 }
 function sdDrawImg(k, L, draw) {
   if (!draw) return; const g = k.g, im = pbImg(L.src); g.save(); k.rr(L.x, L.y, L.w, L.h, Math.min(L.w, L.h) * (L.r || 0)); g.clip();
-  if (im) { const s = Math.max(L.w / im.width, L.h / im.height), w = im.width * s, h = im.height * s; g.drawImage(im, L.x + (L.w - w) / 2, L.y + (L.h - h) / 2, w, h); } else { g.fillStyle = '#E2EFFF'; g.fillRect(L.x, L.y, L.w, L.h); }
+  if (im) { const s = L.contain ? Math.min(L.w / im.width, L.h / im.height) : Math.max(L.w / im.width, L.h / im.height), w = im.width * s, h = im.height * s; g.drawImage(im, L.x + (L.w - w) * (L.cropX ?? .5), L.y + (L.h - h) * (L.cropY ?? .5), w, h); } else { g.fillStyle = '#E2EFFF'; g.fillRect(L.x, L.y, L.w, L.h); }
   g.restore();
 }
 function sdDrawChar(k, L, draw) {
@@ -678,6 +678,7 @@ function sdFit(b, design, fk) {
   return r;
 }
 function sdBuild(b, design, fk) {   // art direction per format: keep type readable — drop secondary copy before shrinking the type
+  if (b.pr && PR_LAYOUTS[design]) return prBuild(b, design, fk);
   const tries = [[b, '']], min = SD_MIN_SCALE[fk] || .86;
   if (b.sub && b.points.length) tries.push([{ ...b, sub: '' }, 'ซ่อนข้อความสรุปในขนาดนี้ เพื่อให้ตัวอักษรใหญ่อ่านง่าย']);
   if (b.points.some(p => p.body)) tries.push([{ ...b, sub: b.points.length ? '' : b.sub, points: b.points.map(p => ({ ...p, body: '' })) }, 'ซ่อนคำอธิบายย่อยในขนาดนี้ เพื่อให้ตัวอักษรใหญ่อ่านง่าย']);

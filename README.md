@@ -57,3 +57,12 @@ node server.js        # เปิด http://localhost:3000 — ข้อมู�
 - **CI Control** (Admin): โลโก้คู่ Krungthai-AXA มุมซ้ายบน (ไฟล์สีสำหรับพื้นสว่าง + ไฟล์ขาว/ขอบขาวสำหรับพื้นเข้มและรูป รับ SVG/PNG — อัปโหลดไฟล์ทางการจากทีม Brand; repo นี้ไม่เก็บไฟล์โลโก้) สีที่อนุมัติ (ค่าเริ่มต้นตามไฟล์ Logo_Font_CI_Guidelines: AXA Blue #00008F · AXA Red #FF1721 · Blue Tint 1/2/3 #E2EFFF/#6574F8/#0C0E45 · Red Tint 1 #FFEAEA) ชื่อองค์กร และข้อความกำกับท้าย — เก็บใน `settings.brand` ใช้ร่วมกันทั้งทีม
 - ฉบับร่างเก็บในเบราว์เซอร์ของแต่ละคน (ล่าสุด 20 งาน)
 - QR Code: `js/vendor/qrcode.min.js` — qrcode-generator โดย Kazuhiko Arase (MIT)
+
+## PR Master
+
+Admin เปิด **PR Master** ใน TEAM Hub เพื่อพิมพ์บรีฟ แนบรูปบุคคล และสร้างโปสเตอร์ **Prime Clinic / Event Invitation** หรือ **Prime Recognition** แบบเน้นรูปและแบบเน้นหัวเรื่อง ขนาด 4:5 และ 1:1 แก้ชื่อ วัน เวลา สถานที่ CTA และครอปภาพได้ก่อนดาวน์โหลด PNG/JPG หรือเปิดเป็นเลเยอร์ใน Poster Studio
+
+- ใช้การเชื่อม Gemini/Claude เดิมใน **Poster → CI Control** หาก AI ไม่พร้อม ระบบจัดวางจากบรีฟและให้แก้ข้อมูลเองได้ บรีฟหลายบรรทัดใส่หัวข้อกำกับได้ เช่น `วิทยากร:` และ `วันที่:`
+- ใช้โลโก้ Krungthai-AXA และ AXA Prime จากชุดแบรนด์เดิม รวมถึง Publico, Source Sans Pro และ DB Helvethaica X ตาม CI ให้ Admin ติดตั้งหรืออัปโหลดฟอนต์ที่องค์กรมีสิทธิ์ใช้ผ่าน CI Control เมื่อข้อมูลหรือ CI ยังมีจุดที่ต้องตรวจ ระบบให้ดาวน์โหลดฉบับร่างที่มีป้าย DRAFT
+- เปิดการตัดพื้นหลังอัตโนมัติด้วย Photoshop API v2 โดยตั้งค่า `PR_ADOBE_CLIENT_ID` และ `PR_ADOBE_CLIENT_SECRET` จาก Adobe Developer Console และ `PR_MASTER_PUBLIC_ORIGIN` เป็น origin HTTPS ของ TEAM Hub ที่ Adobe เข้าถึงได้ เช่น `https://team-hub.example.com` เส้นทาง `/api/pr-photo/…` ใช้ลิงก์ลงลายเซ็นอายุสั้นสำหรับรับส่งรูปชั่วคราว ระหว่างงานบน Vercel ใช้ Upstash เดิมพร้อม TTL หาก Adobe ไม่พร้อมหรือประมวลผลล้มเหลว แอปใช้รูปต้นฉบับ
+- รูปจากเครื่องและรูปตัดพื้นหลังอยู่ในแท็บที่กำลังทำงาน ภาพจะต้องแนบใหม่เมื่อเปิดฉบับร่างที่บันทึกไว้หลังรีโหลดเว็บ
