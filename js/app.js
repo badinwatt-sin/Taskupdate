@@ -75,7 +75,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------- Poster Studio is Admin-only and heavy (~half of all script bytes): load it on demand ---------- */
-const POSTER_KIT = ['js/vendor/qrcode.min.js', 'js/poster-art.js', 'js/poster-form.js', 'js/poster-notes.js', 'js/poster.js', 'js/studio-art.js', 'js/studio-kit.js', 'js/studio-fonts.js', 'js/studio-layout.js', 'js/studio-ci.js', 'js/studio-pro.js', 'js/studio.js', 'js/studio-edit.js'];
+const POSTER_KIT = ['js/vendor/qrcode.min.js', 'js/poster-art.js', 'js/poster-form.js', 'js/poster-notes.js', 'js/poster.js', 'js/studio-art.js', 'js/studio-kit.js', 'js/studio-fonts.js', 'js/studio-layout.js', 'js/studio-ci.js', 'js/studio-pro.js', 'js/studio.js', 'js/studio-edit.js', 'js/pr-layout.js', 'js/pr-master.js'];
 function loadPosterKit() {
   if (!loadPosterKit.p) loadPosterKit.p = new Promise((res, rej) => {
     POSTER_KIT.forEach((src, i) => { const s = document.createElement('script'); s.src = src; s.async = false;   // download in parallel, run in order
@@ -84,10 +84,11 @@ function loadPosterKit() {
   });
   return loadPosterKit.p;
 }
-V.poster = root => {   // placeholder until the studio scripts arrive (they replace V.poster)
+V.poster = V['pr-master'] = root => {   // replaced when the shared studio scripts arrive
+  const name = route().name;
   root.innerHTML = '<div class="loading" role="status">กำลังเปิด Poster Studio…</div>';
-  loadPosterKit().then(() => { if (route().name === 'poster') render(); })
-    .catch(e => { if (route().name === 'poster') root.innerHTML = `<div class="card" role="alert"><h3>${esc(e.message)}</h3><p class="muted mt">ตรวจการเชื่อมต่อแล้วลองใหม่</p><p class="mt"><button class="btn btn-primary" data-act="posterRetry">ลองใหม่</button></p></div>`; });
+  loadPosterKit().then(() => { if (route().name === name) render(); })
+    .catch(e => { if (route().name === name) root.innerHTML = `<div class="card" role="alert"><h3>${esc(e.message)}</h3><p class="muted mt">ตรวจการเชื่อมต่อแล้วลองใหม่</p><p class="mt"><button class="btn btn-primary" data-act="posterRetry">ลองใหม่</button></p></div>`; });
 };
 ACT.posterRetry = () => render();
 

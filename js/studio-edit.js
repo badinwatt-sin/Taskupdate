@@ -34,7 +34,15 @@ const SE_MEM = new Map();   // 'mem:id' → object URL (gone when the tab closes
 const _pbImgBase = pbImg;
 pbImg = function (src) { return _pbImgBase(typeof src === 'string' && src.startsWith('mem:') ? (SE_MEM.get(src) || '') : src); };
 const seIsMem = L => L && L.t === 'img' && typeof L.src === 'string' && L.src.startsWith('mem:');
-const seStripDoc = d => (d && Array.isArray(d.layers) && d.layers.some(seIsMem)) ? { ...d, layers: d.layers.filter(L => !seIsMem(L)) } : d;
+function seStripDoc(d) {
+  if (!d || !Array.isArray(d.layers)) return d;
+  const pr = d.brief?.pr;
+  if (pr?.photo?.src.startsWith('mem:')) {
+    const { photo, ...rest } = pr;
+    return { ...d, brief: { ...d.brief, pr: rest }, layers: d.layers.filter(L => !seIsMem(L)) };
+  }
+  return d.layers.some(seIsMem) ? { ...d, layers: d.layers.filter(L => !seIsMem(L)) } : d;
+}
 const _sdLsSet = sdLS.set;
 sdLS.set = (k, v) => _sdLsSet(k, k === 'cur' ? seStripDoc(v) : k === 'drafts' && Array.isArray(v) ? v.map(d => d && d.doc ? { ...d, doc: seStripDoc(d.doc) } : d) : v);   // device pictures are never written to storage
 async function sePickPhoto() {   // → { src: 'mem:…', w, h } once the picture is decoded
@@ -53,7 +61,7 @@ ACT.seAddPhoto = async () => {
 };
 const _sdAddBase = ACT.sdAdd;
 ACT.sdAdd = el => (el.dataset.id || '').startsWith('img:') ? ACT.seAddPhoto() : _sdAddBase(el);
-ACT.sdImgSwap = async () => { const L = sdSel(); if (!L) return; const p = await sePickPhoto(); if (!p) return; sdPush(); L.src = p.src; L.h = L.w * p.h / p.w; SDOC.edited = true; sdChanged(); };
+ACT.sdImgSwap = async () => { const L = sdSel(); if (!L) return; const p = await sePickPhoto(); if (!p) return; sdPush(); L.src = p.src; if (L.role === 'hero' && SDOC.brief?.pr) { L.contain = false; SDOC.brief.pr.photo = p; } else L.h = L.w * p.h / p.w; SDOC.edited = true; sdChanged(); };
 ACT.seAddText = () => { ACT.sdAdd({ dataset: { id: 'text:body' } }); seEditOpen(true); };
 
 /* ---------- quick bar above the poster ---------- */

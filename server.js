@@ -17,7 +17,14 @@ function expiredOf(entries, cutoff) {
   return { drop, images: drop.flatMap(e => (e.imgs || []).map(i => i.id)) };
 }
 let db = read(DATA) || { rev: 0, state: null };
+const prPhotos = new Map();
 const store = {
+  async getPrPhoto(key) { return prPhotos.get(key)?.data || null; },
+  async setPrPhoto(key, data, ttl) {
+    clearTimeout(prPhotos.get(key)?.timer);
+    prPhotos.delete(key);
+    if (data) prPhotos.set(key, { data, timer: setTimeout(() => prPhotos.delete(key), ttl * 1000).unref() });
+  },
   async getRev() { return db.rev || 0; }, async getState() { return db; },
   async setState(state) { db = { rev: (db.rev || 0) + 1, state }; write(DATA, db); return db.rev; },
   async getAuth() { return read(AUTH); }, async saveAuth(a) { write(AUTH, a); },

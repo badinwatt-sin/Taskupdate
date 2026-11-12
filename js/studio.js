@@ -59,13 +59,14 @@ function sdSyncRoles() {   // after brief edits on a hand-tuned layout: update t
     else if (L.role === 'pts') { L.items = typeof proItems === 'function' ? proItems(b.points) : b.points.map(p => ({ title: p.title, body: p.body })); }
     else if (L.role === 'sub' && L.t === 'card') { L.body = b.sub; }
     else if (L.role === 'qr') { L.url = b.qr || L.url; }
-    else if (L.role === 'hero') { L.key = b.hero; L.t = sdIsKit(L.key) ? 'art' : 'char'; }
+    else if (L.role === 'hero' && L.t !== 'img') { L.key = b.hero; L.t = sdIsKit(L.key) ? 'art' : 'char'; }
     else if (L.role === 'dateblock') Object.assign(L, sdDateParts(b.date) || {});
   });
 }
 function sdLayerToBrief(L) {   // text edited on a layer → keep the brief in step (so other designs show the same words)
   const b = SDOC.brief; if (!b || !L.role) return;
   if (L.role === 'headline') { b.headline = String(L.text || '').split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3); }
+  else if (L.role === 'person' && b.pr) b.pr.person = L.text || '';
   else if (SD_ROLE_FIELD[L.role]) b[SD_ROLE_FIELD[L.role]] = (L.t === 'card' ? L.body : L.text) || '';
   else if (/^p\d$/.test(L.role)) { const p = b.points[+L.role.slice(1)]; if (p) { p.title = L.title || ''; p.body = L.body || ''; } }
 }
@@ -240,7 +241,7 @@ ACT.sdLook = el => {
   if (!SDOC.brief) return; if (SDOC.edited && !confirm('เปลี่ยนลุคฉากหลังจะจัดตำแหน่งใหม่ทั้งหมด (ข้อความที่แก้ไว้ยังอยู่) ต่อไหม?')) return;
   sdPush(); SDOC.brief.look = el.dataset.id === 'auto' ? '' : el.dataset.id; sdApply(SDOC.design || SDOC.brief.designs[0]); sdChanged(true); sdFull();
 };
-ACT.sdKind = el => { if (!SDOC.brief) return; sdPush(); const b = SDOC.brief; b.kind = el.dataset.id; if (!b.kicker || Object.values(SD_KINDS).some(k => k[1] === b.kicker)) b.kicker = SD_KINDS[b.kind][1]; b.designs = sdRank(b); sdBriefChanged(true); sdLeft(); };
+ACT.sdKind = el => { if (!SDOC.brief) return; sdPush(); const b = SDOC.brief; b.kind = el.dataset.id; if (!b.kicker || Object.values(SD_KINDS).some(k => k[1] === b.kicker)) b.kicker = SD_KINDS[b.kind][1]; if (!b.pr) b.designs = sdRank(b); sdBriefChanged(true); sdLeft(); };
 ACT.sdAccent = el => { if (!SDOC.brief) return; sdPush(); SDOC.brief.accent = el.dataset.id; sdBriefChanged(true); sdLeft(); };
 ACT.sdPtAdd = () => { const b = SDOC.brief; if (!b || b.points.length >= 4) return; sdPush(); b.points.push({ title: 'หัวข้อใหม่', body: '', visual: 'check' }); sdBriefChanged(true); sdLeft(); };
 ACT.sdPtDel = el => { const b = SDOC.brief; if (!b) return; sdPush(); b.points.splice(+el.dataset.id, 1); sdBriefChanged(true); sdLeft(); };
@@ -574,6 +575,7 @@ const sdFileName = ext => `Poster_${(SDOC.design || 'custom')}_${sdFmt()[1].repl
 ACT.sdExport = async el => {
   if (!SDOC.layers.length) return toast('ยังไม่มีโปสเตอร์', 'error');
   if (!SDOC.reviewed) { toast('ติ๊กยืนยันว่าตรวจสอบข้อความแล้วก่อน Export', 'error'); $('#sdReviewed')?.focus(); return; }
+  if (SDOC.brief?.pr && PR_LAYOUTS[SDOC.design]) return prDownload(SDOC, el.dataset.id);
   const ciErr = sdCiCheck(SDOC).filter(x => x.level === 'error'); if (ciErr.length && !confirm('โปสเตอร์นี้ยังไม่ผ่านการตรวจ CI:\n• ' + ciErr.map(x => x.text).join('\n• ') + '\n\nยืนยัน Export ต่อหรือไม่?')) return;
   await sdLogosReady(); const cv = document.createElement('canvas'); sdRender(cv, SDOC);
   const jpg = el.dataset.id === 'jpg'; await pbDownload(cv, sdFileName(jpg ? 'jpg' : 'png'), jpg ? 'image/jpeg' : 'image/png');
@@ -581,17 +583,18 @@ ACT.sdExport = async el => {
 };
 const sdThumbOf = () => { const cv = document.createElement('canvas'); sdRender(cv, SDOC, { scale: 220 / sdFmt()[2] }); return cv.toDataURL('image/jpeg', .7); };
 function sdSaveDraft(quiet) {
-  if (!SDOC.layers.length) { if (!quiet) toast('ยังไม่มีโปสเตอร์ให้บันทึก', 'error'); return; }
+  if (!SDOC.layers.length) { if (!quiet) toast('ยังไม่มีโปสเตอร์ให้บันทึก', 'error'); return false; }
   const list = sdLS.get('drafts', []).filter(d => d.id !== SDOC.id), name = (SDOC.brief?.headline || []).join(' ') || 'โปสเตอร์';
-  list.unshift({ id: SDOC.id, name, at: Date.now(), thumb: sdThumbOf(), doc: SDOC });
+  list.unshift({ id: SDOC.id, name, at: Date.now(), thumb: SDOC.layers.some(seIsMem) ? '' : sdThumbOf(), doc: SDOC });
   let ok = sdLS.set('drafts', list.slice(0, 15)); if (!ok) ok = sdLS.set('drafts', list.slice(0, 5));
   if (!quiet) toast(ok ? 'บันทึกในเบราว์เซอร์นี้แล้ว' : 'พื้นที่เก็บในเบราว์เซอร์เต็ม — ลบงานเก่าออกก่อน', ok ? 'ok' : 'error');
+  return ok;
 }
 ACT.sdSave = () => sdSaveDraft();
 ACT.sdNew = async () => { if (SDOC.layers.length && !(await confirmBox('เริ่มโปสเตอร์ใหม่? (งานนี้บันทึกไว้ใน “งานของฉัน” ให้อัตโนมัติ)', 'เริ่มใหม่'))) return; if (SDOC.layers.length) sdSaveDraft(true); SDOC = sdBlankDoc(); SD_SEL = null; SD_UNDO = []; SD_REDO = []; sdLS.set('cur', SDOC); sdFull(); };
 ACT.sdDrafts = () => {
   const list = sdLS.get('drafts', []);
-  const md = modal({ title: 'งานของฉัน', wide: true, body: list.length ? `<div class="sd-drafts">${list.map(d => `<div class="sd-draft"><button type="button" data-open="${d.id}"><img src="${d.thumb}" alt=""><b>${esc(d.name)}</b><small>${new Date(d.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</small></button><button type="button" class="icon-btn" data-del="${d.id}" aria-label="ลบงานนี้">${ico('trash', 14)}</button></div>`).join('')}</div>` : '<p class="muted">ยังไม่มีงานที่บันทึก — งานจะถูกบันทึกเมื่อกดบันทึกหรือ Export (เก็บในเบราว์เซอร์นี้)</p>', actions: [{ label: 'ปิด', cls: 'btn-primary' }],
+  const md = modal({ title: 'งานของฉัน', wide: true, body: list.length ? `<div class="sd-drafts">${list.map(d => `<div class="sd-draft"><button type="button" data-open="${d.id}">${d.thumb ? `<img src="${d.thumb}" alt="">` : ''}<b>${esc(d.name)}</b><small>${new Date(d.at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</small></button><button type="button" class="icon-btn" data-del="${d.id}" aria-label="ลบงานนี้">${ico('trash', 14)}</button></div>`).join('')}</div>` : '<p class="muted">ยังไม่มีงานที่บันทึก — งานจะถูกบันทึกเมื่อกดบันทึกหรือ Export (เก็บในเบราว์เซอร์นี้)</p>', actions: [{ label: 'ปิด', cls: 'btn-primary' }],
     onOpen(m) { m.el.addEventListener('click', e => {
       const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
       if (o) { const x = sdLS.get('drafts', []).find(v => v.id === o.dataset.open); if (x) { SDOC = { ...sdBlankDoc(), ...x.doc }; SD_SEL = null; SD_UNDO = []; SD_REDO = []; m.close(); sdFull(); } }

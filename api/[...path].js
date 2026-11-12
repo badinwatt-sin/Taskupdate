@@ -18,6 +18,11 @@ function expiredOf(entries, cutoff) {
   return { drop, images: drop.flatMap(e => (e.imgs || []).map(i => i.id)) };
 }
 const store = {
+  async getPrPhoto(key) { return cmd(['GET', 'tmh:pr-photo:' + key]); },
+  async setPrPhoto(key, data, ttl) {
+    const k = 'tmh:pr-photo:' + key;
+    await cmd(data == null ? ['DEL', k] : ['SET', k, data, 'EX', ttl]);
+  },
   async getRev() { return +(await cmd(['GET', 'tmh:rev'])) || 0; },
   async getState() { const [rev, st] = await Promise.all([this.getRev(), cmd(['GET', 'tmh:state'])]); return { rev, state: st ? JSON.parse(st) : null }; },
   async setState(state) { await cmd(['SET', 'tmh:state', JSON.stringify(state)]); return +(await cmd(['INCR', 'tmh:rev'])); },
