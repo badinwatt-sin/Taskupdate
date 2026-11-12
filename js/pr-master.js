@@ -47,17 +47,31 @@ function prExtract(source, ai, requestedType) {
   };
 }
 
-function prPhotoMemory(src, cutout) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.src = src;
-    image.decode().then(() => {
-      const id = 'mem:' + sdId();
-      SE_MEM.set(id, src);
-      PB_IMG.set(src, image);
-      resolve({ src: id, cutout });
-    }).catch(() => reject(new Error('อ่านรูปนี้ไม่ได้')));
-  });
+function prHasTransparency(image) {
+  const scale = Math.min(1, 96 / Math.max(image.naturalWidth, image.naturalHeight));
+  const sample = document.createElement('canvas');
+  sample.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  sample.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const ctx = sample.getContext('2d');
+  ctx.drawImage(image, 0, 0, sample.width, sample.height);
+  const pixels = ctx.getImageData(0, 0, sample.width, sample.height).data;
+  let transparent = 0, visible = 0;
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] < 24) transparent++;
+    if (pixels[i] > 127) visible++;
+  }
+  return visible > 0 && transparent >= sample.width * sample.height * .01;
+}
+
+async function prPhotoMemory(src, cutout) {
+  const image = new Image();
+  image.src = src;
+  try { await image.decode(); } catch { throw new Error('อ่านรูปนี้ไม่ได้'); }
+  const id = 'mem:' + sdId();
+  const photo = { src: id, cutout: cutout ?? prHasTransparency(image) };
+  SE_MEM.set(id, src);
+  PB_IMG.set(src, image);
+  return photo;
 }
 
 function prReleasePhoto(photo) {
@@ -70,7 +84,11 @@ function prReleasePhoto(photo) {
 
 async function prProcessPhoto(file, useAdobe, signal) {
   if (!file) return { photo: null, message: '' };
-  let message = '';
+  const url = URL.createObjectURL(file);
+  let original;
+  try { original = await prPhotoMemory(url, file.type === 'image/jpeg' ? false : undefined); }
+  catch (error) { URL.revokeObjectURL(url); throw error; }
+  if (original.cutout) return { photo: original, message: 'จัดวางรูปพื้นหลังโปร่งใสแล้ว' };
   if (useAdobe) {
     try {
       const data = await pbLoadImage(file, 1400, false);
@@ -79,15 +97,15 @@ async function prProcessPhoto(file, useAdobe, signal) {
       });
       const result = await response.json();
       if (!response.ok || !/^data:image\/png;base64,/.test(result.photo)) throw new Error('Adobe processing failed');
-      return { photo: await prPhotoMemory(result.photo, true), message: 'ตัดพื้นหลังด้วย Adobe Photoshop แล้ว' };
+      const photo = await prPhotoMemory(result.photo, true);
+      prReleasePhoto(original);
+      return { photo, message: 'ตัดพื้นหลังด้วย Adobe Photoshop แล้ว' };
     } catch (error) {
-      if (signal.aborted) throw error;
-      message = 'Adobe ตัดพื้นหลังไม่สำเร็จ จึงใช้รูปเดิม';
+      if (signal.aborted) { prReleasePhoto(original); throw error; }
+      return { photo: original, message: 'Adobe ตัดพื้นหลังไม่สำเร็จ จึงใช้รูปเดิม' };
     }
   }
-  const url = URL.createObjectURL(file);
-  try { return { photo: await prPhotoMemory(url, false), message }; }
-  catch (error) { URL.revokeObjectURL(url); throw error; }
+  return { photo: original, message: '' };
 }
 
 async function prAskAI(source, format, signal) {
@@ -127,6 +145,10 @@ V['pr-master'] = root => {
         <label class="field"><span>รูปบุคคล <small>(ไม่บังคับ)</small></span><input type="file" id="prPhoto" accept="image/jpeg,image/png,image/webp"><small id="prPhotoName">${esc(state.file?.name || 'JPG, PNG หรือ WebP · สูงสุด 15 MB')}</small></label>
         <label class="pb-check" id="prAdobeRow" hidden><input type="checkbox" id="prAdobe" checked> ตัดพื้นหลังด้วย Adobe Photoshop</label>
         <small id="prAdobeInfo" class="muted"></small>
+        <div class="pr-adobe-express">
+          <a href="https://www.adobe.com/express/feature/image/remove-background" target="_blank" rel="noopener noreferrer">ตัดพื้นหลังใน Adobe Express (เปิดแท็บใหม่)</a>
+          <small class="muted">อัปโหลดรูปใน Adobe Express แล้วดาวน์โหลด PNG โปร่งใสมาแนบที่นี่</small>
+        </div>
         <button class="btn btn-primary" id="prGenerate" type="submit">${ico('sparkles', 16)} สร้างโปสเตอร์</button>
         <p class="small muted" id="prStatus" role="status" aria-live="polite"></p>
       </form>
@@ -156,7 +178,7 @@ V['pr-master'] = root => {
   if (Store.mode === 'server') fetch('api/pr-photo', { headers: Store.headers() })
     .then(r => r.ok ? r.json() : null).then(data => {
       $('#prAdobeRow', app).hidden = !data?.adobe;
-      $('#prAdobeInfo', app).textContent = data?.adobe ? 'เมื่อเลือกตัดพื้นหลัง ระบบจะส่งรูปไปประมวลผลกับ Adobe' : 'Adobe ยังไม่พร้อมใช้งาน · ระบบจัดวางรูปต้นฉบับได้';
+      $('#prAdobeInfo', app).textContent = data?.adobe ? 'เมื่อเลือกตัดพื้นหลัง ระบบจะส่งรูปไปประมวลผลกับ Adobe' : 'ใช้รูปต้นฉบับหรือ PNG โปร่งใสได้';
     }).catch(() => { $('#prAdobeInfo', app).textContent = 'ตรวจสถานะ Adobe ไม่สำเร็จ · ระบบจัดวางรูปต้นฉบับได้'; });
   form.onsubmit = async event => {
     event.preventDefault();

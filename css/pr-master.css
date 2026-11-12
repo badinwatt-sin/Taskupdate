@@ -7,6 +7,8 @@
 .pr-form input[type=file]::file-selector-button { margin-right:8px; }
 .pr-form #prAdobeRow[hidden] { display:none; }
 .pr-form #prAdobeInfo:empty, .pr-form #prStatus:empty { display:none; }
+.pr-adobe-express { display:grid; gap:4px; }
+.pr-adobe-express a { width:fit-content; text-decoration:underline; text-underline-offset:2px; }
 .pr-result { display:grid; gap:14px; }
 .pr-empty { text-align:center; padding:clamp(36px,8vw,90px) 8px; }
 .pr-empty h3 { margin:10px 0 4px; }

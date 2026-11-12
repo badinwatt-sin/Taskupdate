@@ -65,7 +65,7 @@ function prBuild(b, design, format) {
     const photoH = Math.max(100 * u, end - photoY);
     c.add({ t: 'shape', role: 'photoPanel', kind: 'round', x: photoX, y: photoY, w: photoW, h: photoH, fill: '#E2EFFF', r: .06 });
     c.add({ t: 'img', role: 'hero', src: b.pr.photo.src, x: photoX, y: photoY, w: photoW, h: photoH, r: .055,
-      contain: !!b.pr.photo.cutout, cropX: b.pr.cropX, cropY: b.pr.cropY });
+      contain: !!b.pr.photo.cutout, cropX: b.pr.cropX, cropY: b.pr.photo.cutout ? 1 : b.pr.cropY });
   }
   result.layers.forEach(c.add);
   return { bg: dark ? { ...SD_THEMES.deep.bg } : { c1: '#FFFFFF' }, layers: c.L, scale: result.scale,
