@@ -79,7 +79,21 @@ const SA_SHAPES = { studioLight: 'แสงสตูดิโอ', rect: 'สี
 function saShape(g, L) {
   const { x, y, w, h } = L, c = L.fill || '#E2EFFF';
   g.save(); g.globalAlpha = L.alpha == null ? 1 : L.alpha; g.fillStyle = c; g.strokeStyle = c;
-  if (L.kind === 'studioLight') {
+  if (L.kind === 'prDarkWash' || L.kind === 'prLightWash') {
+    const dark = L.kind === 'prDarkWash';
+    const horizontal = g.createLinearGradient(x, y, x + w, y);
+    const color = dark ? '#0C0E45' : '#FFFFFF';
+    horizontal.addColorStop(0, color + 'f8');
+    horizontal.addColorStop(.43, color + 'e8');
+    horizontal.addColorStop(1, color + (dark ? '22' : '10'));
+    g.fillStyle = horizontal; g.fillRect(x, y, w, h);
+    const vertical = g.createLinearGradient(x, y, x, y + h);
+    vertical.addColorStop(0, color + (dark ? 'b0' : 'ff'));
+    vertical.addColorStop(.27, color + '00');
+    vertical.addColorStop(.82, color + '06');
+    vertical.addColorStop(1, color + 'bf');
+    g.fillStyle = vertical; g.fillRect(x, y, w, h);
+  } else if (L.kind === 'studioLight') {
     g.translate(x + w / 2, y + h * .48);
     g.scale(w / 2, h * .52);
     const light = g.createRadialGradient(0, 0, 0, 0, 0, 1);

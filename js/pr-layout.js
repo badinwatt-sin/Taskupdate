@@ -7,9 +7,17 @@ const PR_LAYOUTS = {
 Object.assign(SD_DESIGNS, PR_LAYOUTS);
 
 function prBuild(b, design, format) {
-  const c = sdCtx(b, format, 1), { W, M, u } = c;
+  const c = sdCtx(b, format, 1), { W, H, M, u } = c;
   const feature = design === 'pr-portrait', dark = feature, ink = dark ? '#FFFFFF' : '#00008F';
   const inner = W - 2 * M, gutter = 32 * u, logoH = 75 * u, top = c.top;
+  const visual = b.pr.visual || {};
+  if (visual.background) {
+    const sceneTop = feature ? 0 : H * .43;
+    c.add({ t: 'img', role: 'scene', src: visual.background.src, x: 0, y: sceneTop, w: W, h: H - sceneTop, cropY: .56 });
+    c.add({ t: 'shape', role: 'sceneWash', kind: feature ? 'prDarkWash' : 'prLightWash', x: 0, y: sceneTop, w: W, h: H - sceneTop, fill: feature ? '#0C0E45' : '#FFFFFF' });
+  }
+  if (visual.accent) c.add({ t: 'img', role: 'accent', src: visual.accent.src,
+    x: W * .47, y: H * .12, w: W * .53, h: H * .45, contain: true, op: feature ? .36 : .2, blend: feature ? 'screen' : '' });
   const logo = (variant, x, right) => c.add(sdM({ t: 'logo', role: 'logo', variant, dark, x, right, y: top, w: logoH * 2.1, h: logoH }));
   logo(dark ? 'bordered' : 'color', M);
   logo(dark ? 'prime' : 'primeBlue', W - M - logoH * 2, W - M);
@@ -17,11 +25,7 @@ function prBuild(b, design, format) {
   const left = M, fullWidth = !b.pr.photo, split = feature ? .51 : .55;
   const textW = fullWidth ? inner : inner * split - gutter;
   const photoW = inner * (1 - split), photoX = W - M - photoW;
-  const graphics = b.pr.supporting || [];
-  const columns = Math.min(graphics.length, 6), rows = columns ? Math.ceil(graphics.length / columns) : 0;
-  const cellW = columns ? (inner - (columns - 1) * 12 * u) / columns : 0;
-  const cellH = rows ? Math.min(105 * u, 270 * u / rows) : 0;
-  const start = top + logoH + 55 * u, end = c.bot - (rows ? rows * cellH + 28 * u : 0);
+  const start = top + logoH + 55 * u, end = c.bot;
   const text = (role, value, x, y, w, size, color, weight = 400) => value ? sdT({
     role, text: value, x, y, w, size: size * u, font: role === 'headline' ? 'head' : 'body',
     weight, color, lh: 1.25,
@@ -69,9 +73,9 @@ function prBuild(b, design, format) {
     const photoY = feature ? start : result.detailsY;
     const available = end - photoY;
     const photoH = Math.max(100 * u, feature ? available : Math.min(available, 410 * u));
-    if (feature && cutout) {
+    if (feature && cutout && !visual.accent) {
       c.add({ t: 'shape', role: 'studioLight', kind: 'studioLight', x: photoX - 20 * u, y: photoY, w: photoW + 40 * u, h: photoH, fill: '#6574F8' });
-    } else {
+    } else if (!cutout || !visual.background) {
       c.add({ t: 'shape', role: 'photoPanel', kind: cutout && photoH > photoW / 2 ? 'arch' : 'rect',
         x: photoX, y: photoY, w: photoW, h: photoH, fill: '#E2EFFF', r: .045 });
     }
@@ -82,11 +86,6 @@ function prBuild(b, design, format) {
       subjectShadow: feature && cutout });
   }
   result.layers.forEach(c.add);
-  graphics.forEach((graphic, index) => c.add({
-    t: 'img', role: 'slideGraphic', src: graphic.src, contain: true, r: .035,
-    x: M + (index % columns) * (cellW + 12 * u), y: end + 28 * u + Math.floor(index / columns) * cellH,
-    w: cellW, h: cellH,
-  }));
   return { bg: dark ? { ...SD_THEMES.deep.bg } : { c1: '#FFFFFF' }, layers: c.L, scale: result.scale,
     over: result.y > end || (!feature && !fullWidth && end - result.detailsY < 100 * u) };
 }

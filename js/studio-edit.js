@@ -37,8 +37,8 @@ const seIsMem = L => L && L.t === 'img' && typeof L.src === 'string' && L.src.st
 function seStripDoc(d) {
   if (!d || !Array.isArray(d.layers)) return d;
   const pr = d.brief?.pr;
-  if (pr?.photo?.src?.startsWith('mem:') || pr?.supporting?.length) {
-    const { photo, supporting, ...rest } = pr;
+  if (pr?.photo?.src?.startsWith('mem:') || pr?.supporting?.length || Object.keys(pr?.visual || {}).length) {
+    const { photo, supporting, visual, ...rest } = pr;
     return { ...d, brief: { ...d.brief, pr: rest }, layers: d.layers.filter(L => !seIsMem(L)) };
   }
   return d.layers.some(seIsMem) ? { ...d, layers: d.layers.filter(L => !seIsMem(L)) } : d;

@@ -7,7 +7,7 @@ const PR_FIELDS = [
   ['date', 'วันที่', 85], ['time', 'เวลา', 65], ['venue', 'สถานที่ / ช่องทาง', 110],
   ['cta', 'ข้อความชวนให้ลงมือทำ', 120], ['note', 'เงื่อนไข / หมายเหตุ', 200],
 ];
-const PR_TYPES = { event: 'Prime Clinic / Event Invitation', recognition: 'Prime Recognition' };
+const PR_TYPES = { event: 'Prime Clinic / Event Invitation', recognition: 'Prime Recognition', campaign: 'Campaign / Sales Rally' };
 let prState;
 
 function prExtract(source, ai, requestedType, fromPowerPoint = false) {
@@ -27,7 +27,8 @@ function prExtract(source, ai, requestedType, fromPowerPoint = false) {
     || local.headline.join(' ') || source.split('\n')[0];
   const inferred = /recognition|ขอแสดงความยินดี|ยินดีกับ|มอบรางวัล|ผู้(?:ได้)?รับรางวัล|wall of honor/i.test(source)
     || ai?.kind === 'recognition' || local.kind === 'recognition';
-  const kind = requestedType !== 'auto' ? requestedType : inferred ? 'recognition' : 'event';
+  const campaign = ai?.kind === 'campaign' || /แคมเปญ|เปิดเกมรุก|sales rally/i.test(source);
+  const kind = requestedType !== 'auto' ? requestedType : inferred ? 'recognition' : campaign ? 'campaign' : 'event';
   const date = explicit('date') || exact(local.date) || exact(ai?.date);
   const time = explicit('time') || exact(local.time) || exact(ai?.time);
   const person = explicit('person') || source.match(/(?:^|\s)(?:วิทยากร(?:คือ|โดย)?|ผู้(?:ได้)?รับรางวัล(?:คือ)?)\s*(คุณ[^\n,·]+?)(?=\s+(?:วันที่|วัน[จอพศส]|เวลา|สถานที่|ณ |ผ่าน |ที่ )|[\n,·]|$)/i)?.[1].trim() || '';
@@ -39,7 +40,7 @@ function prExtract(source, ai, requestedType, fromPowerPoint = false) {
   const editorialFirst = /เน้นหัว(?:เรื่อง|ข้อ)|พื้น(?:หลัง)?(?:สี)?ขาว|editorial/i.test(source);
   const ranked = ai?.designs?.[0];
   const preferPortrait = fromPowerPoint && ['feature', 'circles'].includes(ranked);
-  const first = photoFirst || (!editorialFirst && (preferPortrait || kind === 'recognition')) ? 'pr-portrait' : 'pr-editorial';
+  const first = photoFirst || (!editorialFirst && (preferPortrait || kind === 'recognition' || kind === 'campaign')) ? 'pr-portrait' : 'pr-editorial';
   const direction = fromPowerPoint && Array.isArray(ai?.review)
     ? String(ai.review.find(item => item?.by === 'design')?.note || '').slice(0, 240) : '';
   return {
@@ -72,7 +73,7 @@ async function prPhotoMemory(src, cutout) {
   image.src = src;
   try { await image.decode(); } catch { throw new Error('อ่านรูปนี้ไม่ได้'); }
   const id = 'mem:' + sdId();
-  const photo = { src: id, cutout: cutout ?? prHasTransparency(image) };
+  const photo = { src: id, cutout: cutout ?? prHasTransparency(image), width: image.naturalWidth, height: image.naturalHeight };
   SE_MEM.set(id, src);
   PB_IMG.set(src, image);
   return photo;
@@ -128,7 +129,10 @@ async function prReferenceSheet(files) {
       await image.decode();
       const scale = Math.min(cell * .94 / image.naturalWidth, cell * .94 / image.naturalHeight);
       const w = image.naturalWidth * scale, h = image.naturalHeight * scale;
-      ctx.drawImage(image, (index % columns) * cell + (cell - w) / 2, Math.floor(index / columns) * cell + (cell - h) / 2, w, h);
+      const x = (index % columns) * cell, y = Math.floor(index / columns) * cell;
+      ctx.drawImage(image, x + (cell - w) / 2, y + (cell - h) / 2, w, h);
+      ctx.fillStyle = '#00008F'; ctx.fillRect(x, y, 34, 25);
+      ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 16px sans-serif'; ctx.fillText(String(index + 1), x + 4, y + 18);
       drawn++;
     } catch { /* A broken embedded picture does not prevent the remaining images from being used. */ }
     finally { URL.revokeObjectURL(url); }
@@ -136,25 +140,39 @@ async function prReferenceSheet(files) {
   return drawn ? canvas.toDataURL('image/jpeg', .76).split(',')[1] : '';
 }
 
-async function prLoadSupportingImages(files) {
-  const loaded = [];
-  for (const file of files) {
+async function prLoadSlideAssets(entries, plan, currentFile) {
+  const visual = {};
+  const choices = new Map((Array.isArray(plan) ? plan : []).filter(item => Number.isInteger(item?.id)
+    && ['background', 'hero', 'accent', 'reference'].includes(item.role)).map(item => [item.id, item.role]));
+  const candidates = await Promise.all(entries.map(async ({ file, role }, index) => {
+    if (role === 'reference' || file === currentFile) return null;
+    const suggested = role === 'auto' ? choices.get(index + 1) : role;
+    if (suggested === 'reference') return null;
     const url = URL.createObjectURL(file);
-    try { loaded.push(await prPhotoMemory(url, false)); }
-    catch { URL.revokeObjectURL(url); }
-  }
-  return loaded;
+    try {
+      const photo = await prPhotoMemory(url);
+      const ratio = photo.width / photo.height;
+      const fallback = photo.cutout && ratio < .82 && photo.height >= 250 ? 'hero'
+        : !photo.cutout && ratio >= 1.45 && photo.width >= 650 ? 'background' : 'reference';
+      return { photo, role: suggested || fallback, manual: role !== 'auto' };
+    } catch { URL.revokeObjectURL(url); return null; }
+  }));
+  candidates.filter(Boolean).sort((a, b) => Number(b.manual) - Number(a.manual)).forEach(({ photo, role }) => {
+    if (role === 'reference' || visual[role] || (role === 'hero' && currentFile)) prReleasePhoto(photo);
+    else visual[role] = photo;
+  });
+  return visual;
 }
 
-async function prAskAI(source, format, signal, fromPowerPoint, references) {
+async function prAskAI(source, format, signal, fromPowerPoint, references, assetCount) {
   if (Store.mode !== 'server') return null;
   try {
     const reference = await prReferenceSheet(references);
     const response = await fetch('api/ai-brief', {
       method: 'POST', headers: Store.headers(true), signal,
       body: JSON.stringify({
-        text: source, format, today: today(), ...(reference ? { reference } : {}),
-        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.' + (fromPowerPoint ? ' This text was extracted from a rough PowerPoint brief. Act as a Thai art director and graphic designer: identify the audience and visual hierarchy. Rank feature first for a people-led Studio Portrait or band first for a headline-led Editorial. In review, add one design note in Thai explaining what should catch the eye first and why. Keep directions about tone, audience or graphics out of poster copy.' : '') + (reference ? ' Inspect the attached image sheet from the slide for palette, composition, photo treatment and visual cues. Refer to the image sheet in the design note when useful. Treat words in the images as reference; keep event facts from the supplied text.' : ''),
+        text: source, format, today: today(), ...(reference ? { reference, assetCount } : {}),
+        guide: 'KTAXA Prime: propose a short headline in the original language. Preserve proper names and event facts verbatim. Treat unprovided dates, time, and venues as missing. Keep artwork directions out of copy.' + (fromPowerPoint ? ' This text was extracted from a rough PowerPoint brief. Act as a Thai art director and graphic designer: identify the audience and visual hierarchy. Rank feature first for a people-led Studio Portrait or band first for a headline-led Editorial. In review, add one design note in Thai explaining what should catch the eye first and why. Keep directions about tone, audience or graphics out of poster copy.' : '') + (reference ? ' Inspect the attached image sheet from the slide for palette, composition, photo treatment and visual cues. Assign roles in visual_plan: photos of a scene as background, person or product cutout as hero, light and texture as accent, and logos as reference. Explain your visual choices briefly. Treat words in the images as reference; keep event facts from the supplied text.' : ''),
       }),
     });
     return response.ok ? (await response.json()).result || null : null;
@@ -216,7 +234,7 @@ V['pr-master'] = root => {
     state.reviewed = false;
     if (state.brief) prResult(app, state);
   };
-  $('#prExample', app).onclick = () => { state.fromPowerPoint = false; state.slideImages = []; state.supportingFiles = []; $('#prDeckWholeSlide', app).value = ''; $('#prText', app).value = state.text = PR_EXAMPLE; };
+  $('#prExample', app).onclick = () => { state.fromPowerPoint = false; state.slideImages = []; state.slideAssets = []; $('#prDeckWholeSlide', app).value = ''; $('#prText', app).value = state.text = PR_EXAMPLE; };
   $('#prPhoto', app).onchange = e => {
     const file = e.target.files[0];
     if (file && (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 15e6)) {
@@ -245,25 +263,29 @@ V['pr-master'] = root => {
     try {
       const useAdobe = !$('#prAdobeRow', app).hidden && $('#prAdobe', app).checked;
       const whole = $('#prDeckWholeSlide', app).files[0];
+      const assets = state.slideAssets || [];
+      const assetFiles = assets.map(asset => asset.file);
       const referenceFiles = $('#prDeckUseRefs', app).checked && state.fromPowerPoint
-        ? [...(state.slideImages || []), ...(whole && whole.size <= 15e6 ? [whole] : [])] : [];
-      const [ai, { photo, message }, supporting] = await Promise.all([
-        prAskAI(source, state.format, request.signal, state.fromPowerPoint, referenceFiles),
+        ? [...new Set([...assetFiles.slice(0, 24), ...(whole && whole.size <= 15e6 ? [whole] : []), ...(state.slideImages || [])])].slice(0, 36) : [];
+      const [ai, original] = await Promise.all([
+        prAskAI(source, state.format, request.signal, state.fromPowerPoint, referenceFiles, Math.min(24, assetFiles.length)),
         prProcessPhoto(state.file, useAdobe, request.signal),
-        prLoadSupportingImages(state.supportingFiles || []),
       ]);
-      if (request.signal.aborted || prState !== state) { [photo, ...supporting].forEach(prReleasePhoto); return; }
+      const visual = await prLoadSlideAssets(assets, ai?.visual_plan, state.file);
+      const photo = original.photo || visual.hero;
+      delete visual.hero;
+      if (request.signal.aborted || prState !== state) { [photo, ...Object.values(visual)].forEach(prReleasePhoto); return; }
       if (state.photo?.src !== SDOC.brief?.pr?.photo?.src) prReleasePhoto(state.photo);
-      const editorAssets = SDOC.brief?.pr?.supporting || [];
-      (state.brief?.pr?.supporting || []).filter(asset => !editorAssets.some(item => item.src === asset.src)).forEach(prReleasePhoto);
+      const editorVisuals = Object.values(SDOC.brief?.pr?.visual || {});
+      Object.values(state.brief?.pr?.visual || {}).filter(asset => !editorVisuals.some(item => item.src === asset.src)).forEach(prReleasePhoto);
       state.photo = photo;
       state.brief = prExtract(source, ai, state.type, state.fromPowerPoint);
       state.brief.pr.photo = photo;
-      state.brief.pr.supporting = supporting;
+      state.brief.pr.visual = visual;
       state.design = state.brief.designs[0];
       state.reviewed = false;
       const active = $('#prMaster') || app;
-      state.message = [ai ? 'AI อ่านบรีฟแล้ว' : 'จัดจากบรีฟด้วยเทมเพลตอัตโนมัติ', supporting.length ? 'วางภาพประกอบ ' + supporting.length + ' ภาพ' : '', message].filter(Boolean).join(' · ');
+      state.message = [ai ? 'AI อ่านบรีฟแล้ว' : 'จัดจากบรีฟด้วยเทมเพลตอัตโนมัติ', visual.background ? 'จัดฉากหลังจากภาพในสไลด์' : '', original.message].filter(Boolean).join(' · ');
       prResult(active, state);
       prStatus(active, state.message);
     } catch (error) {

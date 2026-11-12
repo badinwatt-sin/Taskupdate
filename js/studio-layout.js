@@ -311,6 +311,7 @@ function sdRender(cv, doc, opt = {}) {
   if (bg.band) { const o = bg.band, lg2 = g.createLinearGradient(0, 0, W, o.h); lg2.addColorStop(0, o.c1); lg2.addColorStop(1, o.c2 || o.c1); g.fillStyle = lg2; g.fillRect(0, 0, W, o.h); }
   (doc.layers || []).forEach(L => {
     if (L.hide) return; g.save(); g.globalAlpha = L.op == null ? 1 : L.op;
+    if (L.blend === 'screen') g.globalCompositeOperation = 'screen';
     if (L.rot) { const cx = L.x + L.w / 2, cy = L.y + (L.h || 0) / 2; g.translate(cx, cy); g.rotate(L.rot * Math.PI / 180); g.translate(-cx, -cy); }
     try { (SD_DRAW[L.t] || (() => {}))(k, L, true); } catch (e) { console.warn('layer', L.t, e); }
     g.restore();

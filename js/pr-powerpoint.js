@@ -99,16 +99,16 @@ function prBindPowerPoint(app, state) {
       const cleanup = () => URL.revokeObjectURL(url);
       image.onload = cleanup; image.onerror = cleanup; image.src = url;
       image.alt = 'รูป ' + (index + 1) + ' จากสไลด์';
-      const field = document.createElement('input');
-      field.type = 'checkbox'; field.value = String(index);
-      field.setAttribute('aria-label', 'วางรูป ' + (index + 1) + ' ในโปสเตอร์');
-      label.append(image, field, 'วางรูปนี้');
+      const role = document.createElement('select');
+      role.dataset.assetIndex = String(index);
+      role.setAttribute('aria-label', 'บทบาทรูป ' + (index + 1));
+      for (const [value, text] of Object.entries({ auto: 'เลือกอัตโนมัติ', background: 'ฉากหลัง', hero: 'ภาพหลัก', accent: 'กราฟิก / แสง', reference: 'อ้างอิงเท่านั้น' })) role.add(new Option(text, value));
+      label.append(image, role);
       assets.append(label);
     });
     photos.replaceChildren(new Option('ใช้รูปที่แนบอยู่', ''));
     item?.images.forEach((file, index) => photos.add(new Option('รูป ' + (index + 1) + ' · ' + file.name, String(index))));
     photos.disabled = !item?.images.length;
-    if (item?.images.length === 1 && !state.file) photos.value = '0';
     apply.disabled = !item?.text && !item?.images.length;
     status.textContent = item ? (item.text.split('\n')[0] || 'สไลด์ภาพ · เพิ่มข้อความบรีฟเองได้') : '';
   };
@@ -153,7 +153,7 @@ function prBindPowerPoint(app, state) {
       $('#prPhotoName', app).textContent = photo.name + ' · จากสไลด์ ' + item.number;
     }
     state.slideImages = [...new Set(state.deck.slides.flatMap(slide => slide.images))];
-    state.supportingFiles = [...assets.querySelectorAll('input:checked')].map(input => item.images[Number(input.value)]).filter(file => file !== state.file);
+    state.slideAssets = [...assets.querySelectorAll('select')].map(select => ({ file: item.images[Number(select.dataset.assetIndex)], role: select.value }));
     state.fromPowerPoint = true;
     status.textContent = 'นำเข้าจากสไลด์ ' + item.number + ' แล้ว · พบ ' + item.images.length + ' รูป · ตรวจบรีฟก่อนกดสร้างโปสเตอร์';
   };
