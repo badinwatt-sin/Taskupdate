@@ -306,11 +306,12 @@ function sdStageEvents() {
   let drag = null;
   ov.addEventListener('pointerdown', e => {
     if (e.target.closest('.sd-x')) return;
-    const r = ov.getBoundingClientRect(), s = sdScale(), px = (e.clientX - r.left) / s, py = (e.clientY - r.top) / s, h = e.target.dataset.h;
+    if (typeof seEditClose === 'function') seEditClose();   // typing on the poster ends when another spot is touched
+    const r = ov.getBoundingClientRect(), s = sdScale(), px = (e.clientX - r.left) / s, py = (e.clientY - r.top) / s, h = e.target.dataset.h, was = SD_SEL;
     let L = h ? sdSel() : sdHit(px, py);
     if (!L) { if (SD_SEL) { SD_SEL = null; sdOverlay(); sdProps(); } return; }
     if (L.id !== SD_SEL) { SD_SEL = L.id; sdOverlay(); sdProps(); }
-    drag = { L, h, px, py, o: { x: L.x, y: L.y, w: L.w, h: L.h, size: L.size }, snap: sdSnap(), moved: false };
+    drag = { L, h, px, py, was: was === L.id, o: { x: L.x, y: L.y, w: L.w, h: L.h, size: L.size }, snap: sdSnap(), moved: false };
     ov.setPointerCapture(e.pointerId); e.preventDefault();
   });
   ov.addEventListener('pointermove', e => {
@@ -340,9 +341,9 @@ function sdStageEvents() {
     }
     sdPaint();
   });
-  const end = () => { if (drag && drag.moved) { SD_UNDO.push(drag.snap); SD_REDO = []; SDOC.edited = true; sdChanged(true); sdPaint(); sdProps(); } drag = null; };
+  const end = () => { const d = drag; drag = null; if (!d) return; if (d.moved) { SD_UNDO.push(d.snap); SD_REDO = []; SDOC.edited = true; sdChanged(true); sdPaint(); sdProps(); } else if (d.was && !d.h && typeof seEditOpen === 'function') seEditOpen(false, d.py); };   // tap a selected text again → type on the poster
   ov.addEventListener('pointerup', end); ov.addEventListener('pointercancel', end);
-  ov.addEventListener('dblclick', () => { const f = $('#sdProps [data-lp="text"], #sdProps [data-lp="title"]'); if (f) { f.focus(); f.select?.(); } });
+  ov.addEventListener('dblclick', () => { if (typeof seEditOpen === 'function' && ($('.se-inline') || seEditOpen(true))) return; const f = $('#sdProps [data-lp="text"], #sdProps [data-lp="title"]'); if (f) { f.focus(); f.select?.(); } });
 }
 function sdKeys(e) {
   if (route().name !== 'poster' || !$('#sdRoot')) return;
