@@ -234,3 +234,5 @@
 @media (orientation:landscape) and (max-height:520px){
   .sd-wrap{max-width:min(100%,calc(78vh * var(--ar,1)))}
 }
+.sd-fontmany{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.sd-fontmany-out{margin-top:8px}.sd-fontmany-out p{margin:4px 0}
